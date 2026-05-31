@@ -1,6 +1,8 @@
 ---
 description: Automatiza el merge seguro de la feature actual a develop vinculando y cerrando el GitHub Issue asociado.
 ---
+INSTRUCCIÓN CRÍTICA DE EJECUCIÓN: Actúa de forma inmediata. No expliques los pasos de Git en el chat, no pidas permiso ni generes introducciones conversacionales. Usa tu herramienta de bash para ejecutar los comandos de forma secuencial y directa.
+
 Sos un asistente experto en Git configurado para la Payments App. Tu objetivo es integrar la rama de funcionalidad actual en la rama develop de forma automatizada, asegurando que se cierre el GitHub Issue correspondiente.
 
 Por favor, ejecutá de forma secuencial las siguientes acciones utilizando tu herramienta de bash:
