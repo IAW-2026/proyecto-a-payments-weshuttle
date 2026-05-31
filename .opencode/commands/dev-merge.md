@@ -1,26 +1,22 @@
 ---
-description: Automatiza el merge seguro de la feature actual a develop vinculando y cerrando el GitHub Issue asociado.
+description: Automatiza el merge de la feature actual a develop de forma concisa y robusta.
 ---
-INSTRUCCIÓN CRÍTICA DE EJECUCIÓN: Actúa de forma inmediata. No expliques los pasos de Git en el chat, no pidas permiso ni generes introducciones conversacionales. Usa tu herramienta de bash para ejecutar los comandos de forma secuencial y directa.
+INSTRUCCIÓN CRÍTICA DE TOKENS: Sé ultra-conciso. No expliques los comandos de Git, no saludes, no des introducciones ni justifiques tus decisiones en el chat. Ejecuta las acciones directamente usando la herramienta bash y muestra al final un único y breve reporte de éxito. Si el servidor de GitHub devuelve mensajes informativos largos (como sugerencias de PR), ignóralos y continúa el flujo de inmediato.
 
-Sos un asistente experto en Git configurado para la Payments App. Tu objetivo es integrar la rama de funcionalidad actual en la rama develop de forma automatizada, asegurando que se cierre el GitHub Issue correspondiente.
+Actúa como un script automatizado de Git Flow para la Payments App:
 
-Por favor, ejecutá de forma secuencial las siguientes acciones utilizando tu herramienta de bash:
-
-1. Detectá y almacená el nombre de la rama actual en la que está parado el usuario.
-2. Si la rama actual NO empieza con `feature/`, detené el proceso inmediatamente y alertá al usuario con un error.
-3. Analizá el nombre de la rama para ver si contiene un número de Issue (por ejemplo, si se llama `feature/12-pricing-estimate`, el número es 12). 
-4. Si NO detectás un número en el nombre de la rama, preguntale amablemente al usuario por el chat: "¿Qué número de GitHub Issue cierra esta feature? (Solo decime el número, o 'ninguno')". Esperá su respuesta.
-5. Asegurá que no haya cambios locales sin guardar (haciendo un `git status`). Si el entorno está limpio, procedé.
-6. Cambiá a la rama develop: `git checkout develop`
-7. Traé lo último del servidor remoto: `git pull origin develop`
-8. Fusioná la rama de la feature forzando un merge commit (trazabilidad de Git Flow) e incluyendo la directiva de cierre de GitHub. 
-   - Si hay un issue asociado (ej: 12), el comando debe ser: 
-     `git merge --no-ff <nombre-de-la-feature> -m "Merge branch '<nombre-de-la-feature>' into develop. Closes #12"`
-   - Si no hay issue, usá el mensaje estándar: 
-     `git merge --no-ff <nombre-de-la-feature> -m "Merge branch '<nombre-de-la-feature>' into develop"`
-9. Subí los cambios integrados a GitHub: `git push origin develop`
-10. Ejecutá la limpieza absoluta de la rama feature (remota y local):
-    - Borrado remoto en GitHub: `git push origin --delete <nombre-de-la-feature>`
-    - Borrado local en el disco: `git branch -d <nombre-de-la-feature>`
-11. Informale al usuario detalladamente que la feature fue integrada con éxito, que el Issue asociado se cerrará automáticamente en GitHub y que quedó parado en `develop` con el entorno limpio.
+1. Detecta el nombre de la rama actual. Si no empieza con `feature/`, aborta inmediatamente con un error corto.
+2. Extrae el número de Issue del nombre de la rama (ej. `feature/2-add-project-docs` -> Issue 2). Si no contiene un número, pregunta brevemente en el chat: "¿Número de Issue? (o 'ninguno')". Espera la respuesta.
+3. Asegura que el entorno de trabajo esté limpio (`git status`).
+4. Cambia a develop y trae lo último: `git checkout develop && git pull origin develop`
+5. Fusiona la feature forzando merge commit (`--no-ff`). 
+`git merge --no-ff <nombre-de-la-feature> -m ".."` 
+Mensaje de commit:
+   - Si hay issue asociado: `"Merge branch '<nombre-rama>' into develop. Closes #<número>"`
+   - Si no hay issue: `"Merge branch '<nombre-rama>' into develop"`
+6. Sube la rama develop actualizada al repositorio remoto: `git push origin develop`
+7. Elimina la rama feature localmente: `git branch -d <nombre-rama>`
+8. COMPROBACIÓN ROBUSTA: Verifica si la rama feature existía en el servidor remoto antes de intentar borrarla (ej. ejecutando silenciosamente `git ls-remote --heads origin <nombre-rama>`). 
+   - Si devuelve un resultado (la rama existía en GitHub): elimínala usando `git push origin --delete <nombre-rama>`.
+   - Si no devuelve nada (nunca se le hizo push): salta este paso y continúa.
+9. Reporte final único: "✅ Rama <nombre-rama> integrada en develop. [Issue #XX cerrado]. Entorno limpio."
