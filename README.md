@@ -1,10 +1,29 @@
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/1wBeYWXT)
-# payments
+# Payments App
 
-Aplicación **Payments** del [Proyecto IAW 2026](https://iaw-2026.github.io/proyecto/) — comisión `<!-- completar -->`.
+Proyecto base en Next.js para iniciar el desarrollo de la aplicacion.
 
-Esta app corresponde al módulo de pagos en los proyectos de tipo **A (Transporte)**, **B (Delivery)** y **C (Marketplace)**.
+## Requisitos
 
----
+- Node.js 20+
+- npm 10+
 
-Enunciado completo: <https://iaw-2026.github.io/proyecto/>
+## Instalacion
+
+```bash
+npm install
+```
+
+## Ejecucion local
+
+```bash
+npm run dev
+```
+
+Abrir `http://localhost:3000` en el navegador.
+
+## Scripts
+
+- `npm run dev`: inicia servidor de desarrollo
+- `npm run build`: genera build de produccion
+- `npm run start`: levanta build de produccion
+- `npm run lint`: ejecuta validaciones de lint
