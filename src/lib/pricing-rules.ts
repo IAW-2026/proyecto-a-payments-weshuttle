@@ -2,6 +2,12 @@ import { Prisma, PricingRule, PricingRuleDiscountType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 const DEFAULT_CURRENCY = "ARS";
+const DISTANCE_SURCHARGE_PER_KM = 35;
+
+export type Coordinates = {
+  lat: number;
+  lng: number;
+};
 
 function sortByPassengerRange(a: PricingRule, b: PricingRule) {
   if (a.minPassengers !== b.minPassengers) {
@@ -19,6 +25,28 @@ function roundMoney(value: number) {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
+function toRadians(value: number) {
+  return (value * Math.PI) / 180;
+}
+
+export function calculateDistanceKm(origin: Coordinates, destination: Coordinates) {
+  const earthRadiusKm = 6371;
+  const deltaLat = toRadians(destination.lat - origin.lat);
+  const deltaLng = toRadians(destination.lng - origin.lng);
+  const originLat = toRadians(origin.lat);
+  const destinationLat = toRadians(destination.lat);
+  const haversineA =
+    Math.sin(deltaLat / 2) ** 2 +
+    Math.cos(originLat) * Math.cos(destinationLat) * Math.sin(deltaLng / 2) ** 2;
+  const haversineC = 2 * Math.atan2(Math.sqrt(haversineA), Math.sqrt(1 - haversineA));
+
+  return roundMoney(earthRadiusKm * haversineC);
+}
+
+export function calculateDistanceAdjustment(distanceKm: number) {
+  return roundMoney(Math.max(distanceKm, 0) * DISTANCE_SURCHARGE_PER_KM);
+}
+
 export function calculateDiscountAmount(
   basePrice: number,
   discountType: PricingRuleDiscountType,
@@ -31,23 +59,34 @@ export function calculateDiscountAmount(
   return roundMoney(Math.min(basePrice, discountValue));
 }
 
-export function buildPricingEstimate(rule: PricingRule) {
+export function buildPricingEstimate(
+  rule: PricingRule,
+  trip?: {
+    origin: Coordinates;
+    destination: Coordinates;
+  },
+) {
   const basePrice = toNumber(rule.basePrice);
+  const distanceKm = trip ? calculateDistanceKm(trip.origin, trip.destination) : 0;
+  const distanceAdjustment = calculateDistanceAdjustment(distanceKm);
+  const maxPrice = roundMoney(basePrice + distanceAdjustment);
   const discountValue = toNumber(rule.discountValue);
   const estimatedDiscount = calculateDiscountAmount(
-    basePrice,
+    maxPrice,
     rule.discountType,
     discountValue,
   );
 
   return {
     currency: DEFAULT_CURRENCY,
-    maxPrice: roundMoney(basePrice),
-    estimatedPrice: roundMoney(Math.max(basePrice - estimatedDiscount, 0)),
+    maxPrice,
+    estimatedPrice: roundMoney(Math.max(maxPrice - estimatedDiscount, 0)),
     pricingDetail: {
       basePrice: roundMoney(basePrice),
+      distanceAdjustment,
+      distanceKm,
       estimatedDiscount,
-      discountReason: rule.discountType,
+      discountReason: "OCCUPANCY_DISCOUNT",
     },
   };
 }

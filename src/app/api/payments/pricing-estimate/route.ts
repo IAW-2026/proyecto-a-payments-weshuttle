@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireApiRole } from "@/lib/auth";
+import { getMockDestinationById } from "@/lib/mock/destinations";
 import { buildPricingEstimate, findApplicablePricingRule } from "@/lib/pricing-rules";
 
 export const runtime = "nodejs";
@@ -44,6 +45,17 @@ export async function GET(request: Request) {
   }
 
   const rule = await findApplicablePricingRule(destinationId, currentPassengers);
+  const destination = getMockDestinationById(destinationId);
+
+  if (!destination) {
+    return NextResponse.json(
+      {
+        error: "DESTINATION_NOT_FOUND",
+        message: "No hay informacion de destino disponible para calcular el precio.",
+      },
+      { status: 404 },
+    );
+  }
 
   if (!rule) {
     return NextResponse.json(
@@ -55,17 +67,20 @@ export async function GET(request: Request) {
     );
   }
 
-  const estimate = buildPricingEstimate(rule);
+  const estimate = buildPricingEstimate(rule, {
+    origin: { lat: originLat, lng: originLng },
+    destination: { lat: destination.lat, lng: destination.lng },
+  });
 
   return NextResponse.json({
-    clerk_user_id: authResult.context.clerkUserId,
-    role: authResult.context.role,
     currency: estimate.currency,
     max_price: estimate.maxPrice,
     estimated_price: estimate.estimatedPrice,
     current_passengers: currentPassengers,
     pricing_detail: {
       base_price: estimate.pricingDetail.basePrice,
+      distance_adjustment: estimate.pricingDetail.distanceAdjustment,
+      distance_km: estimate.pricingDetail.distanceKm,
       estimated_discount: estimate.pricingDetail.estimatedDiscount,
       discount_reason: estimate.pricingDetail.discountReason,
     },
