@@ -1,7 +1,3 @@
-import { defineConfig } from "@prisma/config";
-
-export default defineConfig({
-  seed: {
-    command: "npx tsx prisma/seed.ts",
-  },
-});
+// File emptied to prevent TypeScript compilation errors in Vercel build.
+// Configuration has been reverted to package.json to allow deployment.
+export {};
