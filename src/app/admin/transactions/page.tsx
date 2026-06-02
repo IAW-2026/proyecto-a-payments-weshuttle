@@ -1,6 +1,7 @@
-import Link from "next/link";
 import { Prisma } from "@prisma/client";
 import { AppShell } from "@/components/app-shell";
+import { Pagination } from "@/components/pagination";
+import { Search } from "@/components/search";
 import { requirePageRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -16,18 +17,6 @@ type PageProps = {
 function parsePage(value: string | undefined) {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
-}
-
-function buildQueryString(input: Record<string, string | number | undefined>) {
-  const params = new URLSearchParams();
-
-  for (const [key, value] of Object.entries(input)) {
-    if (value !== undefined && value !== "") {
-      params.set(key, String(value));
-    }
-  }
-
-  return params.toString();
 }
 
 function StatusBadge({ value }: { value: string }) {
@@ -88,10 +77,9 @@ export default async function AdminTransactionsPage({ searchParams }: PageProps)
           </span>
         </div>
 
-        <form method="get" className="mt-5 flex flex-col gap-3 sm:flex-row">
-          <input name="q" defaultValue={q} placeholder="Buscar cobro" className="flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-900" />
-          <button type="submit" className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700">Buscar</button>
-        </form>
+        <div className="mt-5">
+          <Search placeholder="Buscar por pool, reserva o pasajero..." />
+        </div>
 
         <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200">
           <table className="min-w-full divide-y divide-slate-200 text-sm">
@@ -143,11 +131,7 @@ export default async function AdminTransactionsPage({ searchParams }: PageProps)
         </div>
 
         <div className="mt-5 flex items-center justify-between gap-4 text-sm text-slate-600">
-          <span>Pagina {page} de {totalPages}</span>
-          <div className="flex items-center gap-3">
-            {page > 1 ? <Link href={`/admin/transactions?${buildQueryString({ q, page: page - 1 })}`} className="rounded-full border border-slate-300 px-4 py-2 font-medium text-slate-700 transition hover:border-slate-900 hover:text-slate-900">Anterior</Link> : null}
-            {page < totalPages ? <Link href={`/admin/transactions?${buildQueryString({ q, page: page + 1 })}`} className="rounded-full border border-slate-300 px-4 py-2 font-medium text-slate-700 transition hover:border-slate-900 hover:text-slate-900">Siguiente</Link> : null}
-          </div>
+          <Pagination totalPages={totalPages} />
         </div>
       </section>
     </AppShell>
