@@ -2,7 +2,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { requirePageRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { createPricingRuleAction, updatePricingRuleAction } from "./actions";
+import { createPricingRuleAction, deletePricingRuleAction, updatePricingRuleAction } from "./actions";
 
 type PageProps = {
   searchParams: Promise<{
@@ -158,9 +158,17 @@ export default async function AdminPricingRulesPage({ searchParams }: PageProps)
                   <input name="active" type="checkbox" defaultChecked={rule.active} className="h-4 w-4 rounded border-slate-300" />
                   {rule.active ? "Activa" : "Inactiva"}
                 </label>
-                <button type="submit" className="rounded-full bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-700">
-                  Guardar
-                </button>
+                <div className="flex items-center gap-2">
+                  <button type="submit" className="rounded-full bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-700">
+                    Guardar
+                  </button>
+                  <form action={deletePricingRuleAction}>
+                    <input type="hidden" name="id" value={rule.id} />
+                    <button type="submit" className="rounded-full border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100">
+                      Eliminar
+                    </button>
+                  </form>
+                </div>
               </form>
             ))}
 

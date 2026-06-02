@@ -119,3 +119,25 @@ export async function createPricingRuleAction(formData: FormData) {
 export async function updatePricingRuleAction(formData: FormData) {
   await savePricingRule(parseFormData(formData));
 }
+
+export async function deletePricingRuleAction(formData: FormData) {
+  await requirePageRole(["admin"]);
+  const id = formData.get("id")?.toString();
+
+  if (!id) {
+    fail("ID de regla no proporcionado.");
+    return;
+  }
+
+  try {
+    await prisma.pricingRule.delete({
+      where: { id },
+    });
+
+    revalidatePath("/admin/pricing-rules");
+    redirect("/admin/pricing-rules?message=Regla%20eliminada%20permanentemente");
+  } catch (error) {
+    console.error("Delete Pricing Rule Error:", error);
+    fail("No se pudo eliminar la regla. Asegurate de que no este siendo referenciada.");
+  }
+}
