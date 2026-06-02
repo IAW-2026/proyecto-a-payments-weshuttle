@@ -1,5 +1,5 @@
+import Link from "next/link";
 import { SignInButton, UserButton } from "@clerk/nextjs";
-import { redirect } from "next/navigation";
 import { getAuthContext } from "@/lib/auth";
 
 function RoleBadge({ role }: { role: string | null }) {
@@ -16,10 +16,14 @@ function RoleBadge({ role }: { role: string | null }) {
 
 export default async function Home() {
   const authContext = await getAuthContext();
-
-  if (authContext.clerkUserId && authContext.role === "admin") {
-    redirect("/admin");
-  }
+  const dashboardHref =
+    authContext.role === "admin"
+      ? "/admin"
+      : authContext.role === "rider"
+        ? "/rider"
+        : authContext.role === "driver"
+          ? "/driver"
+          : null;
 
   return (
     <main className="min-h-screen bg-[#F7F9FB] px-6 py-10 text-[#0A192F]">
@@ -77,6 +81,14 @@ export default async function Home() {
                       </span>
                     )}
                     <UserButton />
+                    {dashboardHref ? (
+                      <Link
+                        href={dashboardHref}
+                        className="rounded-lg bg-[#0A192F] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#122745]"
+                      >
+                        Ir a mi panel
+                      </Link>
+                    ) : null}
                   </>
                 ) : (
                   <SignInButton forceRedirectUrl="/post-login">

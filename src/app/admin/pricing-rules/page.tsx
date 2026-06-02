@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AppShell } from "@/components/app-shell";
 import { requirePageRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createPricingRuleAction, updatePricingRuleAction } from "./actions";
@@ -67,15 +68,20 @@ export default async function AdminPricingRulesPage({ searchParams }: PageProps)
   });
 
   return (
-    <main className="min-h-screen bg-slate-100 px-4 py-8 text-slate-950 sm:px-6 lg:px-8">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-8">
+    <AppShell
+      role="admin"
+      clerkUserId={authContext.clerkUserId}
+      title="Reglas de precio"
+      description="Persisti y ajusta reglas de pricing para cotizaciones y cobros automaticos."
+    >
+      <div className="flex flex-col gap-8">
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
                 Admin Payments
               </p>
-              <h1 className="mt-2 text-3xl font-bold text-slate-900">Pricing Rules</h1>
+              <h2 className="mt-2 text-3xl font-bold text-slate-900">Pricing Rules</h2>
               <p className="mt-3 max-w-2xl text-sm text-slate-600">
                 Persisti reglas de precio para definir el maximo y el estimado de cada viaje segun destino y ocupacion.
               </p>
@@ -116,10 +122,7 @@ export default async function AdminPricingRulesPage({ searchParams }: PageProps)
               Activa
             </label>
             <div className="flex items-end">
-              <button
-                type="submit"
-                className="w-full rounded-full bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-700"
-              >
+              <button type="submit" className="w-full rounded-full bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-700">
                 Crear regla
               </button>
             </div>
@@ -129,7 +132,7 @@ export default async function AdminPricingRulesPage({ searchParams }: PageProps)
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
           <div className="mb-6 flex items-center justify-between gap-4">
             <div>
-              <h2 className="text-xl font-semibold text-slate-900">Reglas persistidas</h2>
+              <h3 className="text-xl font-semibold text-slate-900">Reglas persistidas</h3>
               <p className="mt-2 text-sm text-slate-600">Cada fila se edita y guarda sin crear endpoints adicionales.</p>
             </div>
             <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">
@@ -155,10 +158,7 @@ export default async function AdminPricingRulesPage({ searchParams }: PageProps)
                   <input name="active" type="checkbox" defaultChecked={rule.active} className="h-4 w-4 rounded border-slate-300" />
                   {rule.active ? "Activa" : "Inactiva"}
                 </label>
-                <button
-                  type="submit"
-                  className="rounded-full bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-700"
-                >
+                <button type="submit" className="rounded-full bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-700">
                   Guardar
                 </button>
               </form>
@@ -172,6 +172,6 @@ export default async function AdminPricingRulesPage({ searchParams }: PageProps)
           </div>
         </section>
       </div>
-    </main>
+    </AppShell>
   );
 }
