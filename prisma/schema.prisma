@@ -1,0 +1,183 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PaymentProvider {
+  MERCADO_PAGO
+}
+
+enum PaymentMethodStatus {
+  ACTIVE
+  INACTIVE
+  REVOKED
+}
+
+enum PaymentMethodType {
+  CREDIT_CARD
+  DEBIT_CARD
+}
+
+enum PayoutAccountStatus {
+  ACTIVE
+  INACTIVE
+  REJECTED
+}
+
+enum PricingRuleDiscountType {
+  PERCENTAGE
+  FIXED_AMOUNT
+}
+
+enum AutoChargeJobRequestedBy {
+  DRIVER_APP
+}
+
+enum AutoChargeJobStatus {
+  STARTED
+  COMPLETED
+  PARTIAL_FAILED
+  FAILED
+}
+
+enum ChargeStatus {
+  PENDING
+  PAID
+  DENIED
+  FAILED
+}
+
+enum SettlementStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+model ConnectionTest {
+  id        String   @id @default(cuid())
+  label     String   @default("ok")
+  createdAt DateTime @default(now())
+}
+
+model PaymentMethod {
+  id            String              @id @default(cuid())
+  clerkUserId   String              @map("clerk_user_id")
+  provider      PaymentProvider
+  providerToken String              @unique @map("provider_token")
+  holderName    String              @map("holder_name")
+  cardBrand     String              @map("card_brand")
+  cardBin       String              @map("card_bin")
+  cardLast4     String              @map("card_last4")
+  paymentType   PaymentMethodType   @map("payment_type")
+  status        PaymentMethodStatus
+
+  charges Charge[]
+
+  @@index([clerkUserId, status])
+  @@index([cardBrand, cardLast4])
+  @@map("payment_methods")
+}
+
+model PayoutAccount {
+  id               String              @id @default(cuid())
+  driverUserId     String              @map("driver_user_id")
+  provider         PaymentProvider
+  accountReference String              @unique @map("account_reference")
+  alias            String?
+  status           PayoutAccountStatus
+
+  settlements Settlement[]
+
+  @@index([driverUserId, status])
+  @@map("payout_accounts")
+}
+
+model PricingRule {
+  id            String                  @id @default(cuid())
+  destinationId String?                 @map("destination_id")
+  basePrice     Decimal                 @map("base_price") @db.Decimal(10, 2)
+  minPassengers Int                     @map("min_passengers")
+  maxPassengers Int                     @map("max_passengers")
+  discountType  PricingRuleDiscountType @map("discount_type")
+  discountValue Decimal                 @map("discount_value") @db.Decimal(10, 2)
+  active        Boolean
+
+  @@index([destinationId, active, minPassengers, maxPassengers])
+  @@index([active])
+  @@map("pricing_rules")
+}
+
+model AutoChargeJob {
+  id                String                   @id @default(cuid())
+  poolId            String                   @unique @map("pool_id")
+  requestedBy       AutoChargeJobRequestedBy @map("requested_by")
+  currentPassengers Int                      @map("current_passengers")
+  status            AutoChargeJobStatus
+  startedAt         DateTime                 @map("started_at")
+  finishedAt        DateTime?                @map("finished_at")
+
+  charges Charge[]
+
+  @@index([status])
+  @@map("auto_charge_jobs")
+}
+
+model Charge {
+  id              String      @id @default(cuid())
+  transactionId   String      @unique @map("transaction_id")
+  autoChargeJobId String?     @map("auto_charge_job_id")
+  poolId          String      @map("pool_id")
+  reservationId   String      @unique @map("reservation_id")
+  passengerUserId String      @map("passenger_user_id")
+  paymentMethodId String?     @map("payment_method_id")
+  maxPrice        Decimal     @map("max_price") @db.Decimal(10, 2)
+  effectivePrice  Decimal?    @map("effective_price") @db.Decimal(10, 2)
+  currency        String
+  status          ChargeStatus
+  rejectionReason String?     @map("rejection_reason")
+  processedAt     DateTime?   @map("processed_at")
+
+  autoChargeJob AutoChargeJob? @relation(fields: [autoChargeJobId], references: [id])
+  paymentMethod PaymentMethod? @relation(fields: [paymentMethodId], references: [id])
+  discounts     ChargeDiscount[]
+
+  @@index([poolId, status])
+  @@index([passengerUserId, status])
+  @@index([autoChargeJobId])
+  @@index([paymentMethodId])
+  @@map("charges")
+}
+
+model ChargeDiscount {
+  id          String   @id @default(cuid())
+  chargeId    String   @map("charge_id")
+  type        String
+  amount      Decimal  @db.Decimal(10, 2)
+  description String?
+
+  charge Charge @relation(fields: [chargeId], references: [id], onDelete: Cascade)
+
+  @@index([chargeId])
+  @@map("charge_discounts")
+}
+
+model Settlement {
+  id             String           @id @default(cuid())
+  poolId          String           @unique @map("pool_id")
+  driverUserId    String           @map("driver_user_id")
+  payoutAccountId String?          @map("payout_account_id")
+  amount          Decimal          @db.Decimal(10, 2)
+  currency        String
+  status          SettlementStatus
+  settledAt       DateTime?        @map("settled_at")
+
+  payoutAccount PayoutAccount? @relation(fields: [payoutAccountId], references: [id])
+
+  @@index([driverUserId, status])
+  @@index([payoutAccountId])
+  @@map("settlements")
+}
