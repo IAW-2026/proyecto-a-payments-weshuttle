@@ -12,6 +12,14 @@ export default async function PostLoginPage() {
     redirect("/admin");
   }
 
+  if (authContext.role === "rider") {
+    redirect("/rider");
+  }
+
+  if (authContext.role === "driver") {
+    redirect("/driver");
+  }
+
   return (
     <main className="min-h-screen bg-[#F7F9FB] px-6 py-10 text-[#0A192F]">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
