@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { requirePageRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createPricingRuleAction, updatePricingRuleAction } from "./actions";
 
@@ -59,6 +60,7 @@ function DiscountSelect({ defaultValue }: { defaultValue: "PERCENTAGE" | "FIXED_
 }
 
 export default async function AdminPricingRulesPage({ searchParams }: PageProps) {
+  const authContext = await requirePageRole(["admin"]);
   const params = await searchParams;
   const rules = await prisma.pricingRule.findMany({
     orderBy: [{ active: "desc" }, { destinationId: "asc" }, { minPassengers: "asc" }],
@@ -76,6 +78,9 @@ export default async function AdminPricingRulesPage({ searchParams }: PageProps)
               <h1 className="mt-2 text-3xl font-bold text-slate-900">Pricing Rules</h1>
               <p className="mt-3 max-w-2xl text-sm text-slate-600">
                 Persisti reglas de precio para definir el maximo y el estimado de cada viaje segun destino y ocupacion.
+              </p>
+              <p className="mt-3 text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+                Admin authenticated: {authContext.clerkUserId}
               </p>
             </div>
 
