@@ -17,6 +17,11 @@ enum PaymentMethodStatus {
   REVOKED
 }
 
+enum PaymentMethodType {
+  CREDIT_CARD
+  DEBIT_CARD
+}
+
 enum PayoutAccountStatus {
   ACTIVE
   INACTIVE
@@ -63,11 +68,17 @@ model PaymentMethod {
   clerkUserId   String              @map("clerk_user_id")
   provider      PaymentProvider
   providerToken String              @unique @map("provider_token")
+  holderName    String              @map("holder_name")
+  cardBrand     String              @map("card_brand")
+  cardBin       String              @map("card_bin")
+  cardLast4     String              @map("card_last4")
+  paymentType   PaymentMethodType   @map("payment_type")
   status        PaymentMethodStatus
 
   charges Charge[]
 
   @@index([clerkUserId, status])
+  @@index([cardBrand, cardLast4])
   @@map("payment_methods")
 }
 

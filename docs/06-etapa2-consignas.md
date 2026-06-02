@@ -55,9 +55,9 @@ Durante la Etapa 2, cualquier comunicación con el exterior (salvo Mercado Pago)
 
 ### A. Usuarios de Prueba (Clerk)
 Crear usuarios en Clerk siguiendo estrictamente este formato para la corrección:
-* **Pasajero:** `rider+clerktest@iaw.com` | Pass: `iawuser#` (Asegurar claim: `role: "rider"`)
-* **Conductor:** `driver+clerktest@iaw.com` | Pass: `iawuser#` (Asegurar claim: `role: "driver"`)
-* **Administrador:** `admin+clerktest@iaw.com` | Pass: `iawuser#` (Asegurar claim: `role: "admin"`)
+* **Pasajero:** `rider+clerk_test@iaw.com` | Pass: `iawuser#` (Asegurar claim: `role: "rider"`)
+* **Conductor:** `driver+clerk_test@iaw.com` | Pass: `iawuser#` (Asegurar claim: `role: "driver"`)
+* **Administrador:** `admin+clerk_test@iaw.com` | Pass: `iawuser#` (Asegurar claim: `role: "admin"`)
 
 ### B. Datos Precargados (Seed)
 La base de datos de producción **no puede estar vacía**. Se debe crear un script de `seed` en Prisma que genere un volumen razonable de información para recorrer todos los casos de uso: múltiples reglas de precio, métodos de pago vinculados, historiales de cobros (exitosos y fallidos), descuentos aplicados y liquidaciones completadas.
