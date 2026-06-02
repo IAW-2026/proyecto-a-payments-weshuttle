@@ -1,10 +1,10 @@
 import { Prisma } from "@prisma/client";
-import { getMockDestinationById } from "@/lib/mock/destinations";
-import { notifyMockPoolPaymentDenied } from "@/lib/mock/driver-api";
 import {
-  getMockPoolPassengers,
-  notifyMockReservationPaymentResult,
-} from "@/lib/mock/rider-api";
+  getPoolPassengers,
+  notifyPoolPaymentDenied,
+  notifyReservationPaymentResult,
+} from "@/lib/external-apis";
+import { getMockDestinationById } from "@/lib/mock/destinations";
 import { simulatePaymentCharge } from "@/lib/payments/provider";
 import { buildPricingEstimate, findApplicablePricingRule } from "@/lib/pricing-rules";
 import { prisma } from "@/lib/prisma";
@@ -51,7 +51,7 @@ export async function startAutoChargeForPool(
     };
   }
 
-  const manifest = await getMockPoolPassengers(input.poolId);
+  const manifest = await getPoolPassengers(input.poolId);
 
   if (!manifest || manifest.passengers.length === 0) {
     return {
@@ -113,7 +113,7 @@ export async function startAutoChargeForPool(
           },
         });
 
-        await notifyMockReservationPaymentResult({
+        await notifyReservationPaymentResult({
           reservationId: passenger.reservationId,
           paymentStatus: "DENIED",
           transactionId,
@@ -121,10 +121,11 @@ export async function startAutoChargeForPool(
           rejectionReason: !rule ? "PRICING_RULE_NOT_FOUND" : "DESTINATION_NOT_FOUND",
           processedAt: processedAt.toISOString(),
         });
-        await notifyMockPoolPaymentDenied({
+        await notifyPoolPaymentDenied({
           poolId: input.poolId,
           reservationId: passenger.reservationId,
           passengerUserId: passenger.passengerUserId,
+          reason: "PAYMENT_REJECTED",
         });
 
         deniedCount += 1;
@@ -178,7 +179,7 @@ export async function startAutoChargeForPool(
           });
         }
 
-        await notifyMockReservationPaymentResult({
+        await notifyReservationPaymentResult({
           reservationId: passenger.reservationId,
           paymentStatus: "PAID",
           transactionId: chargeResult.transactionId,
@@ -200,7 +201,7 @@ export async function startAutoChargeForPool(
         continue;
       }
 
-      await notifyMockReservationPaymentResult({
+      await notifyReservationPaymentResult({
         reservationId: passenger.reservationId,
         paymentStatus: "DENIED",
         transactionId: chargeResult.transactionId,
@@ -208,10 +209,11 @@ export async function startAutoChargeForPool(
         rejectionReason: chargeResult.rejectionReason,
         processedAt: chargeResult.processedAt.toISOString(),
       });
-      await notifyMockPoolPaymentDenied({
+      await notifyPoolPaymentDenied({
         poolId: input.poolId,
         reservationId: passenger.reservationId,
         passengerUserId: passenger.passengerUserId,
+        reason: "PAYMENT_REJECTED",
       });
 
       deniedCount += 1;

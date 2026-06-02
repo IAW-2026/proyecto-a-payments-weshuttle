@@ -1,41 +1,10 @@
-type PassengerManifestPassenger = {
-  reservationId: string;
-  passengerUserId: string;
-  passengerName: string;
-  reservationStatus: "CONFIRMED" | "PAID" | "DENIED";
-  pickupPoint: {
-    address: string;
-    lat: number;
-    lng: number;
-  };
-  destinationId: string;
-  departureTime: string;
-  maxPrice: number;
-  effectivePrice: number | null;
-};
+import type {
+  ExternalPaymentResultInput,
+  ExternalPaymentResultResponse,
+  ExternalPoolPassengersResponse,
+} from "@/lib/external-apis/types";
 
-type PassengerManifest = {
-  poolId: string;
-  passengers: PassengerManifestPassenger[];
-};
-
-type PaymentStatus = "PAID" | "DENIED";
-
-type PaymentResultInput = {
-  reservationId: string;
-  paymentStatus: PaymentStatus;
-  transactionId: string;
-  effectivePrice?: number;
-  currency: string;
-  rejectionReason?: string;
-  discountsApplied?: Array<{
-    type: string;
-    amount: number;
-  }>;
-  processedAt: string;
-};
-
-const MOCK_MANIFESTS: Record<string, PassengerManifest> = {
+const MOCK_MANIFESTS: Record<string, ExternalPoolPassengersResponse> = {
   pool_charge_ready_01: {
     poolId: "pool_charge_ready_01",
     passengers: [
@@ -123,17 +92,17 @@ const MOCK_MANIFESTS: Record<string, PassengerManifest> = {
   },
 };
 
-export type MockPoolPassenger = PassengerManifestPassenger;
-
-export async function getMockPoolPassengers(poolId: string, status?: string) {
+export async function getPoolPassengers(poolId: string, options?: { status?: string }) {
   const manifest = MOCK_MANIFESTS[poolId];
 
   if (!manifest) {
     return null;
   }
 
-  const passengers = status
-    ? manifest.passengers.filter((passenger) => passenger.reservationStatus === status)
+  const passengers = options?.status
+    ? manifest.passengers.filter(
+        (passenger) => passenger.reservationStatus === options.status,
+      )
     : manifest.passengers;
 
   return {
@@ -142,7 +111,9 @@ export async function getMockPoolPassengers(poolId: string, status?: string) {
   };
 }
 
-export async function notifyMockReservationPaymentResult(input: PaymentResultInput) {
+export async function notifyReservationPaymentResult(
+  input: ExternalPaymentResultInput,
+): Promise<ExternalPaymentResultResponse> {
   if (input.paymentStatus === "PAID") {
     return {
       reservation_id: input.reservationId,
