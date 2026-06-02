@@ -1,7 +1,7 @@
 # WeShuttle - Payments App (Etapa 2)
 
 ## 1. Link al deploy de producción
-[Agregar link al deploy de producción aquí]
+https://proyecto-a-payments-weshuttle.vercel.app/
 
 ## 2. Listado de usuarios disponibles para pruebas
 A continuación, los usuarios configurados en Clerk para probar los distintos roles del sistema. La contraseña para todos es `iawuser#`.
