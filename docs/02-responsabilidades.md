@@ -81,12 +81,23 @@ Responsabilidades principales:
 - Permitir que un pasajero solicite un viaje.
 - Crear reservas asociadas a pools.
 - Mantener los estados de reserva:
-  - `PENDING_DRIVER`
-  - `CONFIRMED`
-  - `PAID`
-  - `DENIED`
-  - `CANCELED`
+ - `PENDING_PAYMENT`: la reserva fue creada, pero todavía no tiene pago exitoso.
+ - `PENDING_DRIVER`: la reserva ya fue pagada, pero el pool todavía no tiene conductor asignado.
+ - `CONFIRMED`: la reserva ya fue pagada y el pool tiene conductor asignado.
+ - `CANCELED`: la reserva fue cancelada.
+- Mantener el estado de pago de la reserva
+  - `UNPAID`: la reserva todavía no fue pagada.
+  - `PENDING`: el pago fue iniciado pero todavía no fue confirmado.
+  - `PAID`: el pago fue exitoso.
+  - `DENIED`: el pago fue rechazado
 - Guardar los datos principales de la reserva para mantener su inmutabilidad.
+- Crear reservas inicialmente en estado `PENDING_PAYMENT`.
+- Redirigir al pasajero a Payments App para pagar la reserva.
+- Confirmar la reserva solo cuando Payments App informa pago exitoso.
+- Notificar a Driver App que una reserva se suma al pool solo después de que el pago fue exitoso.
+- Guardar el estado de pago de la reserva.
+- Guardar el precio máximo pagado, saldo aplicado, monto cobrado, precio final y saldo a favor generado.
+- Mostrar al pasajero notificaciones cuando se genere saldo a favor.
 - Informar a la Driver App cuando una reserva se suma a un pool.
 - Informar a la Driver App cuando una reserva se cancela.
 - Proveer el listado de pasajeros de un pool cuando otra app lo requiera.
@@ -115,14 +126,16 @@ Responsabilidades principales:
 
 - Calcular el precio máximo de un viaje.
 - Calcular el precio estimado según origen, destino y ocupación.
-- Procesar el cobro automático de las reservas al cierre del pool.
-- Aplicar descuentos o ajustes correspondientes.
-- Determinar el precio efectivo cobrado al pasajero.
+- Crear instancias de pago para reservas.
+- Aplicar saldo a favor disponible antes de cobrar.
+- Procesar el pago directo del pasajero al momento de reservar.
+- Registrar cobros y transacciones.
 - Informar a la Rider App el resultado del pago.
-- Informar a la Rider App el precio efectivo pagado.
-- Informar a la Driver App cuando un pago rechazado requiere ajustar la ocupación del pool.
+- Calcular el precio final del viaje al cierre T-1h según ocupación real.
+- Generar saldo a favor cuando el precio final sea menor al precio máximo pagado.
+- Mantener el saldo a favor de cada usuario.
+- Notificar a la Rider App cuando se genere saldo a favor para una reserva.
 - Procesar la liquidación al conductor cuando el viaje finaliza.
-
 ---
 
 ### Feedback App
@@ -169,11 +182,13 @@ Responsabilidades principales:
 | **Driver App** | Consultar el promedio de calificaciones de los pasajeros de un pool | **Feedback App** | `GET /api/ratings/pools/:pool_id/passengers` |
 | **Feedback App** | Consultar los pasajeros asociados a un pool para calcular sus calificaciones | **Rider App** | `GET /api/pools/:pool_id/passengers` |
 | **Driver App** | Notificar que un pool fue cancelado por falta de conductor asignado | **Rider App** | `POST /api/pools/:pool_id/cancellations` |
-| **Driver App** | Solicitar inicio de cobros automáticos al cerrar el pool en T-1h | **Payments App** | `POST /api/payments/pools/:pool_id/auto-charge` |
-| **Payments App** | Solicitar el manifiesto de pasajeros de un pool para procesar cobros | **Rider App** | `GET /api/pools/:pool_id/passengers` |
+| **Rider App** | Solicitar a Payments App la creación de un checkout para pagar una reserva | **Payments App** | `POST /api/payments/reservations/:reservation_id/checkout` |
+| **Driver App** | Solicitar el cálculo de ajustes de crédito al cerrar o cancelar un pool | **Payments App** | `POST /api/payments/pools/:pool_id/credit-adjustments` |
+| **Payments App** | Consultar el manifiesto de pasajeros pagados de un pool para calcular ajustes de crédito | **Rider App** | `GET /api/pools/:pool_id/passengers?status=PAID` |
+| **Payments App** | Notificar a Rider App el saldo a favor generado para una reserva | **Rider App** | `PATCH /api/reservations/:reservation_id/credit-adjustment` |
+| **Rider App** | Consultar el saldo a favor disponible de un usuario | **Payments App** | `GET /api/payments/users/:user_id/credit-balance` |
 | **Payments App** | Notificar pago exitoso de una reserva, incluyendo el precio efectivo cobrado | **Rider App** | `PATCH /api/reservations/:reservation_id/payment-result` |
 | **Payments App** | Notificar pago rechazado de una reserva | **Rider App** | `PATCH /api/reservations/:reservation_id/payment-result` |
-| **Payments App** | Notificar que un pago rechazado debe descontarse de la ocupación del pool | **Driver App** | `POST /api/pools/:pool_id/payment-denied` |
 | **Driver App** | Solicitar el manifiesto final de pasajeros pagados para iniciar el recorrido | **Rider App** | `GET /api/pools/:pool_id/passengers?status=PAID` |
 | **Driver App** | Notificar inicio del recorrido para pre-crear reseñas | **Feedback App** | `POST /api/reviews/precreate` |
 | **Rider App** | Consultar hitos y estado granular del recorrido | **Driver App** | `GET /api/pools/:pool_id/status` |

@@ -446,73 +446,7 @@ Si el pool todavía no tiene conductor asignado:
 
 ---
 
-## 7. POST `/api/pools/:pool_id/payment-denied`
 
-### Descripción
-
-Permite a la **Payments App** notificar que el cobro de una reserva fue rechazado.
-
-La **Driver App** descuenta ese pasajero de la ocupación del pool.
-
-Este ajuste puede realizarse aunque el pool esté `LOCKED`, porque no representa una cancelación voluntaria del usuario sino un ajuste interno por pago rechazado.
-
-### Quién llama a quién
-
-| App origen | App destino |
-|------------|-------------|
-| Payments App | Driver App |
-
-### Path params
-
-| Campo | Tipo | Descripción |
-|------|------|-------------|
-| `pool_id` | string | Identificador del pool. |
-
-### Request body
-
-```json
-{
-  "reservation_id": "res_456",
-  "passenger_user_id": "user_def456",
-  "reason": "PAYMENT_REJECTED"
-}
-```
-
-### Response `200 OK`
-
-Si el pool sigue teniendo pasajeros:
-
-```json
-{
-  "pool_id": "pool_abc123",
-  "reservation_id": "res_456",
-  "current_passengers": 7,
-  "pool_status": "LOCKED"
-}
-```
-
-Si el pool queda vacío:
-
-```json
-{
-  "pool_id": "pool_abc123",
-  "reservation_id": "res_456",
-  "current_passengers": 0,
-  "pool_status": "CANCELED"
-}
-```
-
-### Errores
-
-| Código | Motivo |
-|--------|--------|
-| `400 Bad Request` | Faltan datos obligatorios. |
-| `401 Unauthorized` | Token inválido o ausente. |
-| `404 Not Found` | El pool no existe. |
-| `409 Conflict` | La reserva ya había sido descontada previamente. |
-| `500 Internal Server Error` | Error interno al descontar la ocupación. |
-
----
 
 ## 8. POST `/api/notifications/feedback`
 
@@ -570,8 +504,8 @@ Devuelve la lista de pasajeros asociados a un pool.
 Este endpoint es central para el sistema y puede ser utilizado por:
 
 - la **Driver App**, para mostrar los pasajeros que ya se sumaron a un pool en el marketplace;
-- la **Payments App**, para obtener el manifiesto de pasajeros a cobrar;
-- la **Driver App**, para obtener el manifiesto final de pasajeros pagados antes de iniciar el recorrido.
+- la **Payments App**, para obtener el manifiesto de pasajeros pagados y calcular ajustes de crédito;
+- la **Driver App**, para obtener el manifiesto final de pasajeros pagados antes de iniciar el recorrido;
 - la **Feedback App**, para obtener los pasajeros del pool y calcular sus promedios de calificación.
 
 ### Quién llama a quién
@@ -580,6 +514,7 @@ Este endpoint es central para el sistema y puede ser utilizado por:
 |------------|-------------|
 | Driver App | Rider App |
 | Payments App | Rider App |
+| Feedback App | Rider App |
 
 ### Path params
 
@@ -591,7 +526,8 @@ Este endpoint es central para el sistema y puede ser utilizado por:
 
 | Campo | Tipo | Obligatorio | Descripción |
 |------|------|-------------|-------------|
-| `status` | string | No | Permite filtrar reservas por estado. Ejemplo: `PAID`. |
+| `reservation_status` | string | No | Permite filtrar reservas por estado operativo. Ejemplo: `CONFIRMED`. |
+| `payment_status` | string | No | Permite filtrar reservas por estado de pago. Ejemplo: `PAID`. |
 
 ### Ejemplos
 
@@ -600,7 +536,11 @@ GET /api/pools/pool_abc123/passengers
 ```
 
 ```http
-GET /api/pools/pool_abc123/passengers?status=PAID
+GET /api/pools/pool_abc123/passengers?payment_status=PAID
+```
+
+```http
+GET /api/pools/pool_abc123/passengers?reservation_status=CONFIRMED&payment_status=PAID
 ```
 
 ### Response `200 OK`
@@ -613,7 +553,8 @@ GET /api/pools/pool_abc123/passengers?status=PAID
       "reservation_id": "res_101",
       "passenger_user_id": "user_abc123",
       "passenger_name": "Franco Gulino",
-      "reservation_status": "PAID",
+      "reservation_status": "CONFIRMED",
+      "payment_status": "PAID",
       "pickup_point": {
         "address": "Av. Alem 1250, Bahía Blanca",
         "lat": -38.718,
@@ -622,13 +563,18 @@ GET /api/pools/pool_abc123/passengers?status=PAID
       "destination_id": "dest_polo_petroquimico",
       "departure_time": "2026-06-10T08:00:00Z",
       "max_price": 5000,
-      "effective_price": 3800
+      "amount_charged": 3800,
+      "credit_applied": 1200,
+      "final_trip_price": null,
+      "credit_granted": 0,
+      "currency": "ARS"
     },
     {
       "reservation_id": "res_102",
       "passenger_user_id": "user_def456",
       "passenger_name": "Juan Ignacio Ibarra",
-      "reservation_status": "PAID",
+      "reservation_status": "PENDING_DRIVER",
+      "payment_status": "PAID",
       "pickup_point": {
         "address": "Sarmiento 850, Bahía Blanca",
         "lat": -38.713,
@@ -637,20 +583,45 @@ GET /api/pools/pool_abc123/passengers?status=PAID
       "destination_id": "dest_polo_petroquimico",
       "departure_time": "2026-06-10T08:00:00Z",
       "max_price": 5000,
-      "effective_price": 3800
+      "amount_charged": 5000,
+      "credit_applied": 0,
+      "final_trip_price": null,
+      "credit_granted": 0,
+      "currency": "ARS"
     }
   ]
 }
 ```
 
-### Reglas del contrato
+### Response `200 OK` después del cálculo de crédito
 
-- `passengers` siempre debe ser un array.
-- Si no hay pasajeros para el filtro solicitado, debe responder `passengers: []`.
-- `effective_price` puede ser `null` antes de que Payments App procese el cobro.
-- Cuando se consulta con `status=PAID`, la respuesta debe incluir únicamente reservas en estado `PAID`.
-- Payments App utiliza este endpoint como manifiesto de cobro.
-- Driver App utiliza este endpoint con `status=PAID` como manifiesto final operativo.
+```json
+{
+  "pool_id": "pool_abc123",
+  "passengers": [
+    {
+      "reservation_id": "res_101",
+      "passenger_user_id": "user_abc123",
+      "passenger_name": "Franco Gulino",
+      "reservation_status": "CONFIRMED",
+      "payment_status": "PAID",
+      "pickup_point": {
+        "address": "Av. Alem 1250, Bahía Blanca",
+        "lat": -38.718,
+        "lng": -62.266
+      },
+      "destination_id": "dest_polo_petroquimico",
+      "departure_time": "2026-06-10T08:00:00Z",
+      "max_price": 5000,
+      "amount_charged": 3800,
+      "credit_applied": 1200,
+      "final_trip_price": 3800,
+      "credit_granted": 1200,
+      "currency": "ARS"
+    }
+  ]
+}
+```
 
 ### Response `200 OK` sin resultados
 
@@ -661,11 +632,26 @@ GET /api/pools/pool_abc123/passengers?status=PAID
 }
 ```
 
+### Reglas del contrato
+
+- `passengers` siempre debe ser un array.
+- Si no hay pasajeros para el filtro solicitado, debe responder `passengers: []`.
+- `reservation_status` representa el estado operativo de la reserva.
+- `payment_status` representa el estado del pago asociado a la reserva.
+- El filtro `payment_status=PAID` debe devolver únicamente reservas pagadas.
+- Las reservas con `payment_status = DENIED` no forman parte efectiva del pool.
+- La **Rider App** solo debe notificar a la **Driver App** que una reserva se suma al pool cuando el pago fue exitoso.
+- La **Payments App** utiliza este endpoint con `payment_status=PAID` para calcular ajustes de crédito.
+- La **Driver App** utiliza este endpoint con `payment_status=PAID` como manifiesto final operativo.
+- La **Feedback App** utiliza este endpoint para obtener los pasajeros del pool y calcular sus promedios de calificación.
+- `final_trip_price` puede ser `null` antes del cálculo de ajustes de crédito.
+- `credit_granted` puede ser `0` si todavía no se generó saldo a favor o si no correspondía generarlo.
+
 ### Errores
 
 | Código | Motivo |
 |--------|--------|
-| `400 Bad Request` | El estado enviado como filtro no es válido. |
+| `400 Bad Request` | Alguno de los filtros enviados tiene un valor inválido. |
 | `401 Unauthorized` | Token inválido o ausente. |
 | `404 Not Found` | El pool no tiene reservas asociadas o no existe para Rider App. |
 | `500 Internal Server Error` | Error interno al obtener pasajeros del pool. |
@@ -758,14 +744,10 @@ Si el pago fue rechazado:
 {
   "payment_status": "PAID",
   "transaction_id": "txn_123456",
-  "effective_price": 3800,
+  "max_price": 5000,
+  "credit_applied": 1200,
+  "amount_charged": 3800,
   "currency": "ARS",
-  "discounts_applied": [
-    {
-      "type": "OCCUPANCY_DISCOUNT",
-      "amount": 1200
-    }
-  ],
   "processed_at": "2026-06-10T07:00:00Z"
 }
 ```
@@ -787,8 +769,11 @@ Si el pago fue rechazado:
 ```json
 {
   "reservation_id": "res_101",
-  "reservation_status": "PAID",
-  "effective_price": 3800
+  "payment_status": "PAID",
+  "reservation_status": "PENDING_DRIVER",
+  "max_price": 5000,
+  "credit_applied": 1200,
+  "amount_charged": 3800
 }
 ```
 
@@ -797,8 +782,8 @@ Si el pago fue rechazado:
 ```json
 {
   "reservation_id": "res_101",
-  "reservation_status": "DENIED",
-  "effective_price": null
+  "payment_status": "DENIED",
+  "reservation_status": "PENDING_PAYMENT"
 }
 ```
 
@@ -922,19 +907,104 @@ GET /api/payments/pricing-estimate?origin_lat=-38.718&origin_lng=-62.266&destina
 
 ---
 
-## 2. POST `/api/payments/pools/:pool_id/auto-charge`
+## 2. POST `/api/payments/reservations/:reservation_id/checkout`
 
 ### Descripción
 
-Permite a la **Driver App** solicitar el inicio de los cobros automáticos cuando el pool se cierra en T-1h.
+Permite a la **Rider App** solicitar a la **Payments App** la creación de una instancia de pago para una reserva.
 
-Al recibir esta solicitud, la **Payments App** debe consultar a la **Rider App** el manifiesto de pasajeros del pool mediante:
+Este endpoint se utiliza cuando el pasajero confirma que quiere reservar un viaje. La **Rider App** crea previamente una reserva en estado `PENDING_PAYMENT` y con `payment_status = UNPAID`. Luego llama a este endpoint para que la **Payments App** prepare el checkout correspondiente.
 
-```http
-GET /api/pools/:pool_id/passengers
+La **Payments App** calcula el saldo a favor disponible del pasajero, aplica ese saldo sobre el precio máximo de la reserva y determina cuánto debe cobrarse mediante Mercado Pago.
+
+Luego, la **Payments App** devuelve una URL de pago para que la **Rider App** redirija al pasajero.
+
+### Quién llama a quién
+
+| App origen | App destino |
+|------------|-------------|
+| Rider App | Payments App |
+
+### Path params
+
+| Campo | Tipo | Descripción |
+|------|------|-------------|
+| `reservation_id` | string | Identificador de la reserva creada en Rider App. |
+
+### Request body
+
+```json
+{
+  "pool_id": "pool_abc123",
+  "passenger_user_id": "user_abc123",
+  "max_price": 5000,
+  "currency": "ARS",
+  "success_url": "https://rider-app.com/reservations/res_123/success",
+  "failure_url": "https://rider-app.com/reservations/res_123/failure"
+}
 ```
 
-Luego procesa los cobros de cada reserva.
+### Campos
+
+| Campo | Tipo | Obligatorio | Descripción |
+|------|------|-------------|-------------|
+| `pool_id` | string | Sí | Identificador del pool asociado a la reserva. |
+| `passenger_user_id` | string | Sí | Identificador del pasajero en Clerk. |
+| `max_price` | number | Sí | Precio máximo que debe pagar el pasajero por la reserva. |
+| `currency` | string | Sí | Moneda del pago. Ejemplo: `ARS`. |
+| `success_url` | string | Sí | URL a la que se redirige al usuario si el pago fue exitoso. |
+| `failure_url` | string | Sí | URL a la que se redirige al usuario si el pago fue rechazado o cancelado. |
+
+### Response `201 Created`
+
+```json
+{
+  "checkout_id": "checkout_123",
+  "reservation_id": "res_123",
+  "pool_id": "pool_abc123",
+  "passenger_user_id": "user_abc123",
+  "payment_url": "https://payments-app.com/checkout/checkout_123",
+  "max_price": 5000,
+  "available_credit": 1200,
+  "credit_applied": 1200,
+  "amount_to_charge": 3800,
+  "currency": "ARS",
+  "checkout_status": "CREATED"
+}
+```
+
+### Reglas del contrato
+
+- La **Rider App** no debe enviar al usuario directamente a Payments App con datos sensibles en la URL.
+- La **Rider App** debe llamar primero a este endpoint para crear una instancia de checkout.
+- La **Payments App** calcula el saldo disponible del usuario.
+- Si el usuario tiene saldo a favor, este se aplica primero.
+- Si el saldo a favor cubre todo el precio máximo, `amount_to_charge` puede ser `0`.
+- Si `amount_to_charge = 0`, la **Payments App** puede marcar el pago como exitoso sin redirigir a Mercado Pago.
+- Si `amount_to_charge > 0`, la **Payments App** genera una instancia de pago y devuelve `payment_url`.
+- La reserva recién se considera pagada cuando la **Payments App** notifica a la **Rider App** mediante `PATCH /api/reservations/:reservation_id/payment-result`.
+
+### Errores
+
+| Código | Motivo |
+|--------|--------|
+| `400 Bad Request` | Faltan datos obligatorios o tienen formato inválido. |
+| `401 Unauthorized` | Token inválido o ausente. |
+| `404 Not Found` | No se encontró información suficiente para crear el checkout. |
+| `409 Conflict` | Ya existe un checkout activo o pagado para esa reserva. |
+| `500 Internal Server Error` | Error interno al crear el checkout. |
+
+---
+
+## 3. POST `/api/payments/pools/:pool_id/credit-adjustments`
+
+### Descripción
+
+Permite a la **Driver App** solicitar a la **Payments App** el cálculo de ajustes de crédito asociados a un pool.
+
+Este endpoint reemplaza al cobro automático en T-1h. En este nuevo flujo, los pasajeros ya pagaron el precio máximo al momento de reservar. Por lo tanto, al cierre del pool ya no se cobran pagos automáticos.
+
+En T-1h, o ante una cancelación del pool por falta de conductor, la **Payments App** calcula si corresponde generar saldo a favor para los pasajeros.
 
 ### Quién llama a quién
 
@@ -942,58 +1012,209 @@ Luego procesa los cobros de cada reserva.
 |------------|-------------|
 | Driver App | Payments App |
 
+### Comunicación interna requerida
+
+La **Payments App** consulta a la **Rider App** el manifiesto de pasajeros pagados del pool mediante:
+
+```http
+GET /api/pools/:pool_id/passengers?payment_status=PAID
+```
+
 ### Path params
 
 | Campo | Tipo | Descripción |
 |------|------|-------------|
-| `pool_id` | string | Identificador del pool. |
+| `pool_id` | string | Identificador del pool sobre el cual se calculan los ajustes. |
 
-### Request body
+### Request body para cierre normal del pool
 
 ```json
 {
+  "reason": "POOL_LOCKED",
   "departure_time": "2026-06-10T08:00:00Z",
   "current_passengers": 8
 }
 ```
 
-### Response `202 Accepted`
+### Request body para cancelación por falta de conductor
+
+```json
+{
+  "reason": "NO_DRIVER_ASSIGNED",
+  "departure_time": "2026-06-10T08:00:00Z",
+  "current_passengers": 0
+}
+```
+
+### Campos
+
+| Campo | Tipo | Obligatorio | Descripción |
+|------|------|-------------|-------------|
+| `reason` | string | Sí | Motivo del ajuste. Valores posibles: `POOL_LOCKED`, `NO_DRIVER_ASSIGNED`. |
+| `departure_time` | string | Sí | Fecha y hora de salida del pool. |
+| `current_passengers` | number | Sí | Ocupación del pool al momento del ajuste. |
+
+### Response `200 OK` para cierre normal del pool
 
 ```json
 {
   "pool_id": "pool_abc123",
-  "auto_charge_status": "STARTED",
-  "message": "El proceso de cobro automático fue iniciado."
+  "reason": "POOL_LOCKED",
+  "final_price": 3800,
+  "processed_reservations": 8,
+  "currency": "ARS",
+  "credits_generated": [
+    {
+      "reservation_id": "res_101",
+      "passenger_user_id": "user_abc123",
+      "max_price_paid": 5000,
+      "final_price": 3800,
+      "credit_granted": 1200,
+      "credit_balance_after": 1800
+    },
+    {
+      "reservation_id": "res_102",
+      "passenger_user_id": "user_def456",
+      "max_price_paid": 5000,
+      "final_price": 3800,
+      "credit_granted": 1200,
+      "credit_balance_after": 1200
+    }
+  ]
+}
+```
+
+### Response `200 OK` para cancelación por falta de conductor
+
+```json
+{
+  "pool_id": "pool_abc123",
+  "reason": "NO_DRIVER_ASSIGNED",
+  "final_price": 0,
+  "processed_reservations": 2,
+  "currency": "ARS",
+  "credits_generated": [
+    {
+      "reservation_id": "res_101",
+      "passenger_user_id": "user_abc123",
+      "max_price_paid": 5000,
+      "final_price": 0,
+      "credit_granted": 5000,
+      "credit_balance_after": 6200
+    },
+    {
+      "reservation_id": "res_102",
+      "passenger_user_id": "user_def456",
+      "max_price_paid": 5000,
+      "final_price": 0,
+      "credit_granted": 5000,
+      "credit_balance_after": 5000
+    }
+  ]
+}
+```
+
+### Response `200 OK` si no se genera crédito
+
+```json
+{
+  "pool_id": "pool_abc123",
+  "reason": "POOL_LOCKED",
+  "final_price": 5000,
+  "processed_reservations": 4,
+  "currency": "ARS",
+  "credits_generated": []
 }
 ```
 
 ### Reglas del contrato
 
-Por cada reserva procesada, la **Payments App** debe notificar el resultado a la **Rider App** mediante:
-
-```http
-PATCH /api/reservations/:reservation_id/payment-result
-```
-
-Si un pago es rechazado, además debe notificar a la **Driver App** mediante:
-
-```http
-POST /api/pools/:pool_id/payment-denied
-```
+- Este endpoint no realiza cobros.
+- Este endpoint reemplaza al antiguo endpoint de cobro automático.
+- Si `reason = POOL_LOCKED`, la **Payments App** calcula el precio final del viaje según la ocupación del pool.
+- Si `reason = NO_DRIVER_ASSIGNED`, la **Payments App** acredita como saldo a favor el total pagado por cada reserva.
+- La **Payments App** solo debe procesar reservas con `payment_status = PAID`.
+- Para obtener esas reservas, la **Payments App** consulta a la **Rider App** mediante `GET /api/pools/:pool_id/passengers?payment_status=PAID`.
+- Si el precio final es menor al precio máximo pagado, la diferencia se acredita como saldo a favor.
+- El saldo a favor generado se guarda en **Payments App**.
+- Por cada crédito generado, la **Payments App** debe notificar a la **Rider App** mediante `PATCH /api/reservations/:reservation_id/credit-adjustment`.
+- La **Rider App** utiliza esa notificación para actualizar la reserva y mostrar una notificación o toast al pasajero.
 
 ### Errores
 
 | Código | Motivo |
 |--------|--------|
-| `400 Bad Request` | Faltan datos obligatorios. |
+| `400 Bad Request` | Faltan datos obligatorios o `reason` tiene un valor inválido. |
 | `401 Unauthorized` | Token inválido o ausente. |
-| `404 Not Found` | No existe información suficiente para procesar el pool. |
-| `409 Conflict` | El pool no está en un estado válido para iniciar cobros. |
-| `500 Internal Server Error` | Error interno al iniciar el proceso de cobro. |
+| `404 Not Found` | No existen reservas pagadas asociadas al pool. |
+| `409 Conflict` | Los ajustes de crédito para ese pool ya fueron procesados. |
+| `502 Bad Gateway` | La Payments App no pudo obtener el manifiesto desde Rider App. |
+| `500 Internal Server Error` | Error interno al calcular los ajustes de crédito. |
 
 ---
 
-## 3. POST `/api/payments/pools/:pool_id/settle`
+## 4. GET `/api/payments/users/:user_id/credit-balance`
+
+### Descripción
+
+Permite consultar el saldo a favor disponible de un usuario.
+
+Este endpoint puede ser utilizado por la **Rider App** para mostrarle al pasajero cuánto saldo tiene disponible antes de iniciar un nuevo pago.
+
+También puede ser utilizado por la propia **Payments App** para mostrar el saldo dentro de sus pantallas de usuario.
+
+### Quién llama a quién
+
+| App origen | App destino |
+|------------|-------------|
+| Rider App | Payments App |
+| Payments App Frontend | Payments App Backend |
+
+### Path params
+
+| Campo | Tipo | Descripción |
+|------|------|-------------|
+| `user_id` | string | Identificador del usuario en Clerk. |
+
+### Response `200 OK`
+
+```json
+{
+  "user_id": "user_abc123",
+  "available_credit": 1800,
+  "currency": "ARS"
+}
+```
+
+### Response `200 OK` si el usuario no tiene saldo a favor
+
+```json
+{
+  "user_id": "user_abc123",
+  "available_credit": 0,
+  "currency": "ARS"
+}
+```
+
+### Reglas del contrato
+
+- La **Payments App** es la fuente de verdad del saldo a favor.
+- La **Rider App** no calcula ni modifica el saldo a favor.
+- Si el usuario no tiene cuenta de crédito creada, la **Payments App** puede responder `available_credit = 0`.
+- El saldo a favor se aplica automáticamente al crear un checkout mediante `POST /api/payments/reservations/:reservation_id/checkout`.
+
+### Errores
+
+| Código | Motivo |
+|--------|--------|
+| `400 Bad Request` | El `user_id` tiene formato inválido. |
+| `401 Unauthorized` | Token inválido o ausente. |
+| `403 Forbidden` | El usuario no tiene permisos para consultar ese saldo. |
+| `500 Internal Server Error` | Error interno al consultar el saldo a favor. |
+
+---
+
+## 5. POST `/api/payments/pools/:pool_id/settle`
 
 ### Descripción
 
