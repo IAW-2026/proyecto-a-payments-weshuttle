@@ -6,34 +6,222 @@ https://proyecto-a-payments-weshuttle.vercel.app/
 ## 2. Listado de usuarios disponibles para pruebas
 A continuación, los usuarios configurados en Clerk para probar los distintos roles del sistema. La contraseña para todos es `iawuser#`.
 
-* **Pasajeros (Rider):**
-  * `rider+clerk_test@iaw.com` (Pasajero principal)
-  * `rider2+clerk_test@iaw.com` (Pasajero secundario)
-  * `rider_fund+clerk_test@iaw.com` (Pasajero para simular rechazo por fondos insuficientes)
-* **Conductores (Driver):**
-  * `driver+clerk_test@iaw.com` (Conductor principal)
-  * `driver2+clerk_test@iaw.com` (Conductor secundario)
+* **Pasajero (Rider):**
+  * `rider+clerk_test@iaw.com`
+
+* **Conductor (Driver):**
+  * `driver+clerk_test@iaw.com`
+
 * **Administrador (Admin):**
   * `admin+clerk_test@iaw.com`
 
+### Usuarios adicionales para pruebas internas
+
+Estos usuarios pueden utilizarse para recorrer casos alternativos del seed o flujos específicos de prueba.
+
+* **Pasajeros adicionales:**
+  * `rider2+clerk_test@iaw.com`
+  * `rider_credit+clerk_test@iaw.com` — pasajero con saldo a favor precargado.
+  * `rider_denied+clerk_test@iaw.com` — pasajero para simular pago rechazado.
+
+* **Conductores adicionales:**
+  * `driver2+clerk_test@iaw.com`
+
 ## 3. Instrucciones de uso
-1. Asegurarse de configurar las variables de entorno en un archivo `.env.local` o `.env` copiando el contenido de `.env.example` y agregando un `MERCADOPAGO_ACCESS_TOKEN` de Sandbox válido, junto con las claves de Clerk.
-2. Ejecutar `npm install` para instalar las dependencias.
-3. Para el entorno local, ejecutar `npm run prisma:generate` y `npm run prisma:migrate` para preparar la base de datos PostgreSQL.
-4. Ejecutar `npm run prisma:seed` (o `npx prisma db seed`) para poblar la base de datos con un volumen robusto de datos de prueba (reglas de precio, cuentas vinculadas, historial de viajes, transacciones y liquidaciones).
-5. Levantar el entorno de desarrollo con `npm run dev` y acceder a `http://localhost:3000`.
-6. **Cobro Automático:** Para disparar un cobro masivo simulado, se puede realizar una petición `POST` al endpoint `/api/payments/pools/[pool_id]/auto-charge` enviando `departure_time` y `current_passengers` en el body.
+1. Clonar el repositorio e ingresar al proyecto.
+
+2. Configurar las variables de entorno copiando el contenido de `.env.example` en un archivo `.env.local` o `.env`.
+
+   Deben configurarse, como mínimo:
+
+   - credenciales de Clerk;
+   - URL de conexión a PostgreSQL;
+   - `MERCADOPAGO_ACCESS_TOKEN` de Sandbox;
+   - variables públicas necesarias para el frontend.
+
+3. Instalar dependencias:
+
+```bash
+npm install
+```
+
+4. Generar el cliente de Prisma:
+
+```bash
+npm run prisma:generate
+```
+
+5. Ejecutar las migraciones de base de datos:
+
+```bash
+npm run prisma:migrate
+```
+
+6. Poblar la base de datos con datos de prueba:
+
+```bash
+npm run prisma:seed
+```
+
+También puede ejecutarse:
+
+```bash
+npx prisma db seed
+```
+
+7. Levantar el entorno de desarrollo:
+
+```bash
+npm run dev
+```
+
+8. Acceder a la aplicación local:
+
+```text
+http://localhost:3000
+```
 
 ## 4. Breve descripción del proyecto
-WeShuttle es una plataforma de transporte optimizada para nodos industriales mediante servicios de carpooling programado. Esta aplicación, "Payments App", es un microservicio Full-Stack desarrollado en Next.js (App Router) encargado de aislar y centralizar toda la lógica financiera, de cobros y liquidaciones del ecosistema.
 
-Durante la Etapa 2, la aplicación funciona de manera aislada. Recibe las intenciones de cobro o cálculo de precios y simula la interacción con las aplicaciones de Pasajero y Conductor utilizando *mocks* (funciones stub). Su núcleo operativo es el procesamiento de los cobros masivos en diferido (T-1h) de los pools cerrados, donde se aplican reglas de precio dinámicas y descuentos automáticos por ocupación.
+WeShuttle es una plataforma de transporte orientada a empleados que se trasladan hacia nodos industriales mediante viajes compartidos y programados.
 
-El sistema permite a los administradores gestionar estas reglas de precio y auditar el historial financiero mediante un Dashboard. A su vez, los pasajeros pueden gestionar sus medios de pago (Mercado Pago) y revisar el detalle de sus cargos efectivos, mientras que los conductores configuran sus cuentas de cobro (CVU/Alias) y revisan las liquidaciones realizadas por sus servicios completados.
+Esta aplicación, **Payments App**, es un microservicio full-stack desarrollado con Next.js App Router. Su responsabilidad es centralizar la lógica financiera del sistema: cálculo de precios, checkouts de reserva, cobros, saldo a favor, movimientos de crédito y liquidaciones a conductores.
+
+Durante la Etapa 2, la Payments App funciona de forma aislada. Las demás aplicaciones del ecosistema, como Rider App y Driver App, se simulan mediante mocks o stubs que respetan los contratos de APIs definidos en la documentación del proyecto.
+
+El flujo actualizado establece que el pasajero paga el precio máximo al momento de reservar. Luego, al cierre T-1h, Payments App calcula el precio final del viaje según la ocupación real del pool. Si corresponde, la diferencia entre el precio máximo pagado y el precio final se acredita como saldo a favor para próximos viajes.
 
 ## 5. Notas o comentarios para la corrección
-- **Integración de Mercado Pago (Sandbox):** Se implementó el SDK oficial de Mercado Pago Node.js utilizando la API de Pagos (Direct Payment Custom API). Los cobros se realizan contra el entorno Sandbox utilizando los tokens de tarjeta guardados. El usuario `rider_fund+clerk_test@iaw.com` ha sido inyectado en el *seed* con una tarjeta "fund" para forzar y probar los flujos de rechazo (INSUFFICIENT_FUNDS).
-- **Búsqueda y Paginación por URL:** Se desarrollaron componentes de cliente reutilizables (`<Search />` con *debouncing* y `<Pagination />`) que leen y escriben el estado directamente en los `searchParams` de la URL sin realizar recargas completas de la página, mejorando significativamente la navegabilidad de los listados en los paneles de Administrador y Conductor.
-- **Dashboard Financiero (Admin):** Se transformó la página principal de administración en un Dashboard Analítico. Utilizando consultas agregadas (`_sum`, `_count`, `groupBy`) de Prisma concurrentes, se calculan métricas vitales como el Total Recaudado, Total Liquidado y la Tasa de Éxito de los cobros en tiempo real.
-- **ABM Reglas de Precio:** Se completó el ciclo ABM de las `pricing_rules` añadiendo un botón y acción de servidor para la eliminación física ("Baja física") de las mismas, sumándose a la "Baja lógica" (checkbox Activa/Inactiva) existente.
-- **Aislamiento estricto:** Todas las interacciones externas hacia otras aplicaciones del ecosistema (Driver App, Rider App) se encuentran aisladas y se responden mediante promesas simuladas en el directorio `src/lib/external-apis/`.
+### Integración de Mercado Pago Sandbox
+
+La aplicación utiliza Mercado Pago en modo Sandbox para simular pagos sin dinero real.
+
+El flujo de pago se realiza mediante una sesión de checkout asociada a una reserva. Si el pasajero tiene saldo a favor disponible, Payments App lo aplica antes de cobrar la diferencia mediante Mercado Pago.
+
+---
+
+### Cambio de flujo respecto al cobro automático
+
+En versiones anteriores del diseño se contemplaba un cobro automático en T-1h.
+
+Ese flujo fue reemplazado por una alternativa más simple y demostrable para la defensa:
+
+1. El pasajero paga al momento de reservar.
+2. Payments App cobra el precio máximo.
+3. Si el pasajero tiene saldo a favor, lo aplica primero.
+4. En T-1h, Payments App calcula el precio final según la ocupación real.
+5. Si el precio final es menor al precio máximo pagado, se genera saldo a favor.
+
+Por este motivo, ya no se utiliza el endpoint:
+
+```http
+POST /api/payments/pools/:pool_id/auto-charge
+```
+
+y fue reemplazado por:
+
+```http
+POST /api/payments/pools/:pool_id/credit-adjustments
+```
+
+---
+
+### Saldo a favor
+
+Payments App es la fuente de verdad del saldo a favor.
+
+El saldo se modela mediante:
+
+- `credit_accounts`;
+- `credit_movements`.
+
+Los movimientos principales son:
+
+```text
+CREDIT_GRANTED
+CREDIT_APPLIED
+MANUAL_ADJUSTMENT
+```
+
+No se modela expiración de crédito en esta etapa.
+
+---
+
+### Reglas de precio y descuento por ocupación
+
+Las reglas de precio se administran mediante `pricing_rules`.
+
+El descuento por ocupación se calcula al cierre T-1h dentro del proceso `pool_price_finalization_jobs`.
+
+No se modela una entidad separada de `charge_discounts` en esta etapa, porque el descuento principal depende del pool completo y de su ocupación final. El resultado individual se refleja en cada `charge` mediante:
+
+- `final_trip_price`;
+- `credit_granted`;
+- `pool_price_finalization_job_id`.
+
+---
+
+### Mocks de APIs externas
+
+Todas las interacciones externas hacia otras aplicaciones del ecosistema se encuentran aisladas y simuladas.
+
+Los mocks o stubs se ubican en el directorio:
+
+```text
+src/lib/external-apis/
+```
+
+Endpoints externos simulados:
+
+```http
+GET /api/pools/:pool_id/passengers?payment_status=PAID
+PATCH /api/reservations/:reservation_id/payment-result
+PATCH /api/reservations/:reservation_id/credit-adjustment
+```
+
+Ya no se mockea:
+
+```http
+POST /api/pools/:pool_id/payment-denied
+```
+
+porque en el nuevo flujo no hay pagos automáticos rechazados en T-1h. Si el pago falla al momento de reservar, la reserva no queda confirmada y no forma parte efectiva del pool.
+
+---
+
+### Búsqueda y paginación por URL
+
+Los listados principales deben implementar búsqueda, filtros y paginación mediante parámetros en la URL cuando corresponda.
+
+Esto permite navegar los listados del panel administrativo y de las vistas por rol sin perder el estado de búsqueda.
+
+---
+
+### Dashboard financiero
+
+El panel administrativo permite visualizar información financiera relevante, como:
+
+- total cobrado;
+- cantidad de cobros exitosos;
+- cantidad de cobros rechazados;
+- saldo a favor generado;
+- saldo a favor aplicado;
+- liquidaciones pendientes;
+- liquidaciones completadas;
+- procesos de finalización de precio del pool.
+
+---
+
+### Alcance de la Etapa 2
+
+La aplicación debe poder demostrar de forma aislada:
+
+- estimación de precios;
+- creación de checkout;
+- pago mediante Mercado Pago Sandbox;
+- aplicación de saldo a favor;
+- consulta de saldo a favor;
+- cálculo de ajustes de crédito al cierre T-1h;
+- generación de saldo a favor por cancelación de pool sin conductor;
+- liquidaciones a conductores;
+- panel administrativo con datos precargados.
