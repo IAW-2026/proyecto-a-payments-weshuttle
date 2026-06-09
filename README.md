@@ -98,6 +98,26 @@ La aplicación utiliza Mercado Pago en modo Sandbox para simular pagos sin diner
 
 El flujo de pago se realiza mediante una sesión de checkout asociada a una reserva. Si el pasajero tiene saldo a favor disponible, Payments App lo aplica antes de cobrar la diferencia mediante Mercado Pago.
 
+El resultado del checkout se informa a Rider App reutilizando:
+
+```http
+PATCH /api/reservations/:reservation_id/payment-result
+```
+
+Los resultados posibles del intento de pago son:
+
+- `PAID`;
+- `DENIED`;
+- `CANCELED`;
+- `EXPIRED`.
+
+Reglas del flujo:
+
+- si el pago es `PAID`, la reserva pasa a formar parte efectiva del pool;
+- si el pago es `DENIED`, la reserva permanece en `PENDING_PAYMENT` y puede reintentarse;
+- si el checkout es `CANCELED` o `EXPIRED`, la reserva pasa a `CANCELED`;
+- en ningun caso no exitoso la reserva forma parte efectiva del pool.
+
 ---
 
 ### Cambio de flujo respecto al cobro automático

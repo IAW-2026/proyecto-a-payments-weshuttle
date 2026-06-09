@@ -89,7 +89,9 @@ Responsabilidades principales:
   - `UNPAID`: la reserva todavía no fue pagada.
   - `PENDING`: el pago fue iniciado pero todavía no fue confirmado.
   - `PAID`: el pago fue exitoso.
-  - `DENIED`: el pago fue rechazado
+  - `DENIED`: el pago fue rechazado.
+  - `CANCELED`: el checkout fue cancelado por el usuario.
+  - `EXPIRED`: el checkout vencio sin pago exitoso.
 - Guardar los datos principales de la reserva para mantener su inmutabilidad.
 - Crear reservas inicialmente en estado `PENDING_PAYMENT`.
 - Redirigir al pasajero a Payments App para pagar la reserva.
@@ -102,7 +104,7 @@ Responsabilidades principales:
 - Informar a la Driver App cuando una reserva se cancela.
 - Proveer el listado de pasajeros de un pool cuando otra app lo requiera.
 - Actualizar la reserva con el resultado del pago informado por Payments App.
-- Guardar el precio efectivo pagado para mostrarlo en el resumen e historial de viajes.
+- Guardar `amount_charged`, `credit_applied`, `final_trip_price` y `credit_granted` para mostrarlo en el resumen e historial de viajes.
 - Mostrar al pasajero el estado del viaje y la información disponible del conductor asignado.
 
 ---

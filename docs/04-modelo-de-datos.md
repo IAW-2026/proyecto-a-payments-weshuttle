@@ -266,6 +266,8 @@ UNPAID
 PENDING
 PAID
 DENIED
+CANCELED
+EXPIRED
 ```
 
 Estructura sugerida para `assigned_driver_snapshot`:
@@ -569,7 +571,8 @@ Notas:
 - `final_trip_price` se completa cuando se calculan los ajustes de crédito del pool.
 - `credit_granted` se completa cuando el precio final resulta menor que el precio máximo pagado.
 - El detalle de qué regla de descuento se usó se registra a nivel del proceso `pool_price_finalization_jobs`.
-- Si el pago falla, la Payments App notifica a Rider App mediante `PATCH /api/reservations/:reservation_id/payment-result`.
+- Si el pago es rechazado, la Payments App notifica a Rider App mediante `PATCH /api/reservations/:reservation_id/payment-result`, Rider App mantiene `reservation_status = PENDING_PAYMENT` y permite reintento.
+- Si el checkout es cancelado o expira, la Payments App lo informa mediante `PATCH /api/reservations/:reservation_id/payment-result` y Rider App pasa la reserva a `CANCELED`.
 - Si el pago falla, la reserva no debe formar parte efectiva del pool.
 ---
 

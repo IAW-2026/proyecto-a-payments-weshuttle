@@ -208,11 +208,20 @@ Debe poder enviar:
 
 - pago exitoso (`payment_status = PAID`);
 - pago rechazado (`payment_status = DENIED`);
+- checkout cancelado (`payment_status = CANCELED`);
+- checkout expirado (`payment_status = EXPIRED`);
 - `transaction_id`;
 - `max_price`;
 - `credit_applied`;
 - `amount_charged`;
 - `rejection_reason`, si corresponde.
+
+Reglas esperadas en Rider App:
+
+- si `payment_status = PAID`, la reserva deja `PENDING_PAYMENT` y pasa a `PENDING_DRIVER` o `CONFIRMED`;
+- si `payment_status = DENIED`, la reserva queda en `PENDING_PAYMENT` y puede reintentarse;
+- si `payment_status = CANCELED` o `EXPIRED`, la reserva pasa a `CANCELED`;
+- en ningun caso no exitoso la reserva forma parte efectiva del pool.
 
 ---
 
@@ -310,7 +319,7 @@ Se debe crear un script de `seed` en Prisma que genere un volumen razonable de i
 Datos mínimos recomendados:
 
 - múltiples reglas de precio (`pricing_rules`) para distintos niveles de ocupación;
-- sesiones de checkout (`checkout_sessions`) en estados `CREATED`, `PAID`, `DENIED` y `CANCELED`;
+- sesiones de checkout (`checkout_sessions`) en estados `CREATED`, `PAID`, `DENIED`, `CANCELED` y `EXPIRED`;
 - cobros (`charges`) exitosos, rechazados y pendientes;
 - cuentas de crédito (`credit_accounts`) con saldo disponible y sin saldo;
 - movimientos de crédito (`credit_movements`) de tipo `CREDIT_GRANTED`, `CREDIT_APPLIED` y `MANUAL_ADJUSTMENT`;

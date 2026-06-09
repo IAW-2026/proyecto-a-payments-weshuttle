@@ -29,6 +29,8 @@
 - `PENDING`: el pago fue iniciado pero todavía no fue confirmado.
 - `PAID`: el pago fue exitoso.
 - `DENIED`: el pago fue rechazado.
+- `CANCELED`: el checkout fue cancelado por el usuario.
+- `EXPIRED`: el checkout venció sin pago exitoso.
 
 #### Estados del pool en Driver App
 
@@ -227,7 +229,7 @@ Cuando el pool pasa a `COMPLETED`, la **Driver App** notifica a la **Payments Ap
 
 Al detectar el estado `COMPLETED`, la **Rider App** muestra un resumen del viaje finalizado a cada uno de los pasajeros.
 
-El resumen del viaje muestra los datos principales de la reserva, incluyendo destino, horario, conductor, vehículo, estado final del viaje y `effective_price`, es decir, el precio efectivamente pagado por el pasajero (este mismo valor también queda disponible para el historial de viajes del usuario dentro de la **Rider App**).
+El resumen del viaje muestra los datos principales de la reserva, incluyendo destino, horario, conductor, vehiculo, estado final del viaje, `amount_charged`, `credit_applied`, `final_trip_price` y `credit_granted`.
 
 La **Feedback App** cambia el estado de las reseñas asociadas al pool de `PRECREATED` a `PENDING`. A partir de este momento, las reseñas quedan visibles y disponibles para los usuarios.
 
