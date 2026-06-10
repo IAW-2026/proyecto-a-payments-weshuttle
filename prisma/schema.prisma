@@ -11,17 +11,6 @@ enum PaymentProvider {
   MERCADO_PAGO
 }
 
-enum PaymentMethodStatus {
-  ACTIVE
-  INACTIVE
-  REVOKED
-}
-
-enum PaymentMethodType {
-  CREDIT_CARD
-  DEBIT_CARD
-}
-
 enum PayoutAccountStatus {
   ACTIVE
   INACTIVE
@@ -33,22 +22,44 @@ enum PricingRuleDiscountType {
   FIXED_AMOUNT
 }
 
-enum AutoChargeJobRequestedBy {
-  DRIVER_APP
-}
-
-enum AutoChargeJobStatus {
-  STARTED
-  COMPLETED
-  PARTIAL_FAILED
-  FAILED
+enum CheckoutSessionStatus {
+  CREATED
+  PENDING
+  PAID
+  DENIED
+  CANCELED
+  EXPIRED
 }
 
 enum ChargeStatus {
   PENDING
   PAID
   DENIED
+  CANCELED
+  EXPIRED
   FAILED
+}
+
+enum CreditMovementType {
+  CREDIT_GRANTED
+  CREDIT_APPLIED
+  MANUAL_ADJUSTMENT
+}
+
+enum PoolPriceFinalizationJobReason {
+  POOL_LOCKED
+  NO_DRIVER_ASSIGNED
+}
+
+enum PoolPriceFinalizationJobStatus {
+  STARTED
+  COMPLETED
+  FAILED
+}
+
+enum PoolPriceFinalizationDiscountType {
+  OCCUPANCY_DISCOUNT
+  NO_DRIVER_CREDIT
 }
 
 enum SettlementStatus {
@@ -61,25 +72,6 @@ model ConnectionTest {
   id        String   @id @default(cuid())
   label     String   @default("ok")
   createdAt DateTime @default(now())
-}
-
-model PaymentMethod {
-  id            String              @id @default(cuid())
-  clerkUserId   String              @map("clerk_user_id")
-  provider      PaymentProvider
-  providerToken String              @unique @map("provider_token")
-  holderName    String              @map("holder_name")
-  cardBrand     String              @map("card_brand")
-  cardBin       String              @map("card_bin")
-  cardLast4     String              @map("card_last4")
-  paymentType   PaymentMethodType   @map("payment_type")
-  status        PaymentMethodStatus
-
-  charges Charge[]
-
-  @@index([clerkUserId, status])
-  @@index([cardBrand, cardLast4])
-  @@map("payment_methods")
 }
 
 model PayoutAccount {
@@ -106,63 +98,133 @@ model PricingRule {
   discountValue Decimal                 @map("discount_value") @db.Decimal(10, 2)
   active        Boolean
 
+  poolPriceFinalizationJobs PoolPriceFinalizationJob[]
+
   @@index([destinationId, active, minPassengers, maxPassengers])
   @@index([active])
   @@map("pricing_rules")
 }
 
-model AutoChargeJob {
-  id                String                   @id @default(cuid())
-  poolId            String                   @unique @map("pool_id")
-  requestedBy       AutoChargeJobRequestedBy @map("requested_by")
-  currentPassengers Int                      @map("current_passengers")
-  status            AutoChargeJobStatus
-  startedAt         DateTime                 @map("started_at")
-  finishedAt        DateTime?                @map("finished_at")
+model CheckoutSession {
+  id                        String                @id @default(cuid())
+  reservationId             String                @map("reservation_id")
+  poolId                    String                @map("pool_id")
+  passengerUserId           String                @map("passenger_user_id")
+  maxPrice                  Decimal               @map("max_price") @db.Decimal(10, 2)
+  availableCreditAtCreation Decimal               @map("available_credit_at_creation") @db.Decimal(10, 2)
+  creditApplied             Decimal               @map("credit_applied") @db.Decimal(10, 2)
+  amountToCharge            Decimal               @map("amount_to_charge") @db.Decimal(10, 2)
+  currency                  String
+  status                    CheckoutSessionStatus
+  provider                  PaymentProvider
+  paymentUrl                String?               @map("payment_url")
+  providerCheckoutReference String?               @map("provider_checkout_reference")
+  expiresAt                 DateTime?             @map("expires_at")
+  createdAt                 DateTime              @default(now()) @map("created_at")
+  updatedAt                 DateTime              @updatedAt @map("updated_at")
 
   charges Charge[]
 
-  @@index([status])
-  @@map("auto_charge_jobs")
+  @@index([reservationId, status])
+  @@index([passengerUserId, status])
+  @@index([poolId])
+  @@map("checkout_sessions")
 }
 
 model Charge {
-  id              String      @id @default(cuid())
-  transactionId   String      @unique @map("transaction_id")
-  autoChargeJobId String?     @map("auto_charge_job_id")
-  poolId          String      @map("pool_id")
-  reservationId   String      @unique @map("reservation_id")
-  passengerUserId String      @map("passenger_user_id")
-  paymentMethodId String?     @map("payment_method_id")
-  maxPrice        Decimal     @map("max_price") @db.Decimal(10, 2)
-  effectivePrice  Decimal?    @map("effective_price") @db.Decimal(10, 2)
-  currency        String
-  status          ChargeStatus
-  rejectionReason String?     @map("rejection_reason")
-  processedAt     DateTime?   @map("processed_at")
+  id                         String      @id @default(cuid())
+  transactionId              String      @unique @map("transaction_id")
+  checkoutSessionId          String?     @map("checkout_session_id")
+  poolPriceFinalizationJobId String?     @map("pool_price_finalization_job_id")
+  poolId                     String      @map("pool_id")
+  reservationId              String      @map("reservation_id")
+  passengerUserId            String      @map("passenger_user_id")
+  maxPrice                   Decimal     @map("max_price") @db.Decimal(10, 2)
+  creditApplied              Decimal     @map("credit_applied") @db.Decimal(10, 2)
+  amountCharged              Decimal     @map("amount_charged") @db.Decimal(10, 2)
+  finalTripPrice             Decimal?    @map("final_trip_price") @db.Decimal(10, 2)
+  creditGranted              Decimal     @map("credit_granted") @db.Decimal(10, 2)
+  currency                   String
+  status                     ChargeStatus
+  provider                   PaymentProvider
+  rejectionReason            String?     @map("rejection_reason")
+  processedAt                DateTime?   @map("processed_at")
+  createdAt                  DateTime    @default(now()) @map("created_at")
 
-  autoChargeJob AutoChargeJob? @relation(fields: [autoChargeJobId], references: [id])
-  paymentMethod PaymentMethod? @relation(fields: [paymentMethodId], references: [id])
-  discounts     ChargeDiscount[]
+  checkoutSession          CheckoutSession?          @relation(fields: [checkoutSessionId], references: [id])
+  poolPriceFinalizationJob PoolPriceFinalizationJob? @relation(fields: [poolPriceFinalizationJobId], references: [id])
+  creditMovements          CreditMovement[]
 
+  @@index([reservationId, status])
   @@index([poolId, status])
   @@index([passengerUserId, status])
-  @@index([autoChargeJobId])
-  @@index([paymentMethodId])
+  @@index([checkoutSessionId])
+  @@index([poolPriceFinalizationJobId])
   @@map("charges")
 }
 
-model ChargeDiscount {
-  id          String   @id @default(cuid())
-  chargeId    String   @map("charge_id")
-  type        String
-  amount      Decimal  @db.Decimal(10, 2)
-  description String?
+model CreditAccount {
+  id        String   @id @default(cuid())
+  userId    String   @unique @map("user_id")
+  balance   Decimal  @db.Decimal(10, 2)
+  currency  String
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  charge Charge @relation(fields: [chargeId], references: [id], onDelete: Cascade)
+  movements CreditMovement[]
 
+  @@map("credit_accounts")
+}
+
+model CreditMovement {
+  id                         String             @id @default(cuid())
+  creditAccountId            String             @map("credit_account_id")
+  userId                     String             @map("user_id")
+  type                       CreditMovementType
+  amount                     Decimal            @db.Decimal(10, 2)
+  currency                   String
+  reservationId              String?            @map("reservation_id")
+  poolId                     String?            @map("pool_id")
+  chargeId                   String?            @map("charge_id")
+  poolPriceFinalizationJobId String?            @map("pool_price_finalization_job_id")
+  description                String?
+  createdAt                  DateTime           @default(now()) @map("created_at")
+
+  creditAccount            CreditAccount             @relation(fields: [creditAccountId], references: [id], onDelete: Cascade)
+  charge                   Charge?                   @relation(fields: [chargeId], references: [id])
+  poolPriceFinalizationJob PoolPriceFinalizationJob? @relation(fields: [poolPriceFinalizationJobId], references: [id])
+
+  @@index([creditAccountId])
+  @@index([userId, createdAt])
+  @@index([reservationId])
+  @@index([poolId])
   @@index([chargeId])
-  @@map("charge_discounts")
+  @@index([poolPriceFinalizationJobId])
+  @@map("credit_movements")
+}
+
+model PoolPriceFinalizationJob {
+  id                String                             @id @default(cuid())
+  poolId            String                             @map("pool_id")
+  reason            PoolPriceFinalizationJobReason
+  currentPassengers Int                                @map("current_passengers")
+  pricingRuleId     String?                            @map("pricing_rule_id")
+  basePrice         Decimal                            @map("base_price") @db.Decimal(10, 2)
+  finalPrice        Decimal?                           @map("final_price") @db.Decimal(10, 2)
+  discountType      PoolPriceFinalizationDiscountType? @map("discount_type")
+  discountValue     Decimal?                           @map("discount_value") @db.Decimal(10, 2)
+  currency          String
+  status            PoolPriceFinalizationJobStatus
+  startedAt         DateTime                           @map("started_at")
+  finishedAt        DateTime?                          @map("finished_at")
+
+  pricingRule     PricingRule?      @relation(fields: [pricingRuleId], references: [id])
+  charges         Charge[]
+  creditMovements CreditMovement[]
+
+  @@index([poolId, status])
+  @@index([poolId, reason])
+  @@index([pricingRuleId])
+  @@map("pool_price_finalization_jobs")
 }
 
 model Settlement {

@@ -1,151 +1,145 @@
-import { PrismaClient, Prisma } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-// Mandatory Test Users
 const ADMIN_USER = "admin+clerk_test@iaw.com";
 const RIDER_1 = "rider+clerk_test@iaw.com";
-const DRIVER_1 = "driver+clerk_test@iaw.com";
-
-// Dummy Users in requested format
 const RIDER_2 = "rider2+clerk_test@iaw.com";
-const RIDER_3 = "rider3+clerk_test@iaw.com";
-const RIDER_FUND = "rider_fund+clerk_test@iaw.com"; // User meant to simulate failed payments (Insufficient Funds)
-
+const RIDER_CREDIT = "rider_credit+clerk_test@iaw.com";
+const RIDER_DENIED = "rider_denied+clerk_test@iaw.com";
+const DRIVER_1 = "driver+clerk_test@iaw.com";
 const DRIVER_2 = "driver2+clerk_test@iaw.com";
 
-async function main() {
+const CURRENCY = "ARS";
+
+function money(value: string) {
+  return new Prisma.Decimal(value);
+}
+
+async function resetDatabase() {
   console.log("Limpiando base de datos...");
-  await prisma.chargeDiscount.deleteMany();
+  await prisma.creditMovement.deleteMany();
   await prisma.charge.deleteMany();
+  await prisma.checkoutSession.deleteMany();
+  await prisma.poolPriceFinalizationJob.deleteMany();
   await prisma.settlement.deleteMany();
-  await prisma.autoChargeJob.deleteMany();
-  await prisma.paymentMethod.deleteMany();
+  await prisma.creditAccount.deleteMany();
   await prisma.payoutAccount.deleteMany();
   await prisma.pricingRule.deleteMany();
   await prisma.connectionTest.deleteMany();
+}
 
-  console.log("Inyectando Pricing Rules...");
+async function seedPricingRules() {
+  console.log("Inyectando pricing rules...");
+
   await prisma.pricingRule.createMany({
     data: [
       {
         id: "pr_gen_1_4",
         destinationId: null,
-        basePrice: new Prisma.Decimal("4800.00"),
+        basePrice: money("4800.00"),
         minPassengers: 1,
         maxPassengers: 4,
         discountType: "FIXED_AMOUNT",
-        discountValue: new Prisma.Decimal("0.00"),
+        discountValue: money("0.00"),
         active: true,
       },
       {
         id: "pr_gen_5_8",
         destinationId: null,
-        basePrice: new Prisma.Decimal("4800.00"),
+        basePrice: money("4800.00"),
         minPassengers: 5,
         maxPassengers: 8,
         discountType: "PERCENTAGE",
-        discountValue: new Prisma.Decimal("12.00"),
+        discountValue: money("12.00"),
         active: true,
       },
       {
         id: "pr_dest_polo_1_4",
         destinationId: "dest_polo_petroquimico",
-        basePrice: new Prisma.Decimal("5800.00"),
+        basePrice: money("5800.00"),
         minPassengers: 1,
         maxPassengers: 4,
         discountType: "FIXED_AMOUNT",
-        discountValue: new Prisma.Decimal("0.00"),
+        discountValue: money("0.00"),
         active: true,
       },
       {
         id: "pr_dest_polo_5_15",
         destinationId: "dest_polo_petroquimico",
-        basePrice: new Prisma.Decimal("5800.00"),
+        basePrice: money("5800.00"),
         minPassengers: 5,
         maxPassengers: 15,
         discountType: "PERCENTAGE",
-        discountValue: new Prisma.Decimal("18.00"),
+        discountValue: money("18.00"),
         active: true,
       },
       {
         id: "pr_dest_parque_1_15",
         destinationId: "dest_parque_industrial",
-        basePrice: new Prisma.Decimal("6500.00"),
+        basePrice: money("6500.00"),
         minPassengers: 1,
         maxPassengers: 15,
         discountType: "PERCENTAGE",
-        discountValue: new Prisma.Decimal("10.00"),
+        discountValue: money("10.00"),
         active: true,
       },
       {
         id: "pr_inactive_old",
         destinationId: null,
-        basePrice: new Prisma.Decimal("3500.00"),
+        basePrice: money("3500.00"),
         minPassengers: 1,
         maxPassengers: 10,
         discountType: "PERCENTAGE",
-        discountValue: new Prisma.Decimal("5.00"),
+        discountValue: money("5.00"),
         active: false,
       },
     ],
   });
+}
 
-  console.log("Inyectando Payment Methods...");
-  await prisma.paymentMethod.createMany({
+async function seedCreditAccounts() {
+  console.log("Inyectando cuentas de saldo a favor...");
+
+  await prisma.creditAccount.createMany({
     data: [
       {
-        id: "pm_rider1_visa",
-        clerkUserId: RIDER_1,
-        provider: "MERCADO_PAGO",
-        providerToken: "tok_test_mp_visa_450995_xxxx_3704",
-        holderName: "Test Rider Uno",
-        cardBrand: "VISA",
-        cardBin: "450995",
-        cardLast4: "3704",
-        paymentType: "CREDIT_CARD",
-        status: "ACTIVE",
+        id: "ca_rider_1",
+        userId: RIDER_1,
+        balance: money("1044.00"),
+        currency: CURRENCY,
       },
       {
-        id: "pm_rider2_mc",
-        clerkUserId: RIDER_2,
-        provider: "MERCADO_PAGO",
-        providerToken: "tok_test_mp_mc_503175_xxxx_0604",
-        holderName: "Test Rider Dos",
-        cardBrand: "MASTERCARD",
-        cardBin: "503175",
-        cardLast4: "0604",
-        paymentType: "CREDIT_CARD",
-        status: "ACTIVE",
+        id: "ca_rider_2",
+        userId: RIDER_2,
+        balance: money("6044.00"),
+        currency: CURRENCY,
       },
       {
-        id: "pm_rider3_debit",
-        clerkUserId: RIDER_3,
-        provider: "MERCADO_PAGO",
-        providerToken: "tok_test_mp_visa_400276_xxxx_5619",
-        holderName: "Test Rider Tres",
-        cardBrand: "VISA",
-        cardBin: "400276",
-        cardLast4: "5619",
-        paymentType: "DEBIT_CARD",
-        status: "ACTIVE",
+        id: "ca_rider_credit",
+        userId: RIDER_CREDIT,
+        balance: money("0.00"),
+        currency: CURRENCY,
       },
       {
-        id: "pm_rider_fund_fail",
-        clerkUserId: RIDER_FUND,
-        provider: "MERCADO_PAGO",
-        providerToken: "tok_test_mp_fail_000000_xxxx_0000",
-        holderName: "FUND", // Mandatory Keyword to trigger mock rejection
-        cardBrand: "VISA",
-        cardBin: "000000",
-        cardLast4: "0000",
-        paymentType: "CREDIT_CARD",
-        status: "ACTIVE",
+        id: "ca_rider_denied",
+        userId: RIDER_DENIED,
+        balance: money("0.00"),
+        currency: CURRENCY,
+      },
+      {
+        id: "ca_admin_demo",
+        userId: ADMIN_USER,
+        balance: money("0.00"),
+        currency: CURRENCY,
       },
     ],
   });
+}
 
-  console.log("Inyectando Payout Accounts...");
+async function seedPayoutAccounts() {
+  console.log("Inyectando payout accounts...");
+
   await prisma.payoutAccount.createMany({
     data: [
       {
@@ -164,150 +158,520 @@ async function main() {
         alias: "driver.secundario.mp",
         status: "ACTIVE",
       },
+      {
+        id: "po_driver2_old",
+        driverUserId: DRIVER_2,
+        provider: "MERCADO_PAGO",
+        accountReference: "mp_acc_driver_02_old",
+        alias: "driver.secundario.old",
+        status: "INACTIVE",
+      },
     ],
   });
+}
 
-  console.log("Inyectando Datos Historicos (Pools, Cargos, Liquidaciones)...");
+async function seedCheckoutSessions() {
+  console.log("Inyectando checkout sessions...");
 
-  // Historical Pool 1: dest_polo_petroquimico, 12 passengers
-  const pool1StartedAt = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000); // 10 days ago
-  const job1 = await prisma.autoChargeJob.create({
-    data: {
-      id: "acj_hist_1",
-      poolId: "pool_hist_101",
-      requestedBy: "DRIVER_APP",
-      currentPassengers: 12,
-      status: "COMPLETED",
-      startedAt: pool1StartedAt,
-      finishedAt: new Date(pool1StartedAt.getTime() + 10 * 60000),
-    },
+  const now = new Date();
+
+  await prisma.checkoutSession.createMany({
+    data: [
+      {
+        id: "chk_paid_001",
+        reservationId: "res_paid_001",
+        poolId: "pool_demo_checkout_01",
+        passengerUserId: RIDER_1,
+        maxPrice: money("5800.00"),
+        availableCreditAtCreation: money("0.00"),
+        creditApplied: money("0.00"),
+        amountToCharge: money("5800.00"),
+        currency: CURRENCY,
+        status: "PAID",
+        provider: "MERCADO_PAGO",
+        paymentUrl: "https://sandbox.mercadopago.com/checkout/chk_paid_001",
+        providerCheckoutReference: "mp_chk_paid_001",
+        expiresAt: new Date(now.getTime() + 60 * 60 * 1000),
+        createdAt: new Date(now.getTime() - 12 * 60 * 60 * 1000),
+        updatedAt: new Date(now.getTime() - 11 * 60 * 60 * 1000),
+      },
+      {
+        id: "chk_paid_credit_001",
+        reservationId: "res_paid_credit_001",
+        poolId: "pool_demo_checkout_01",
+        passengerUserId: RIDER_CREDIT,
+        maxPrice: money("5800.00"),
+        availableCreditAtCreation: money("1200.00"),
+        creditApplied: money("1200.00"),
+        amountToCharge: money("4600.00"),
+        currency: CURRENCY,
+        status: "PAID",
+        provider: "MERCADO_PAGO",
+        paymentUrl: "https://sandbox.mercadopago.com/checkout/chk_paid_credit_001",
+        providerCheckoutReference: "mp_chk_paid_credit_001",
+        expiresAt: new Date(now.getTime() + 60 * 60 * 1000),
+        createdAt: new Date(now.getTime() - 10 * 60 * 60 * 1000),
+        updatedAt: new Date(now.getTime() - 9 * 60 * 60 * 1000),
+      },
+      {
+        id: "chk_paid_full_credit_001",
+        reservationId: "res_paid_full_credit_001",
+        poolId: "pool_demo_checkout_02",
+        passengerUserId: RIDER_CREDIT,
+        maxPrice: money("2500.00"),
+        availableCreditAtCreation: money("2500.00"),
+        creditApplied: money("2500.00"),
+        amountToCharge: money("0.00"),
+        currency: CURRENCY,
+        status: "PAID",
+        provider: "MERCADO_PAGO",
+        paymentUrl: null,
+        providerCheckoutReference: "credit_only_chk_001",
+        expiresAt: new Date(now.getTime() + 60 * 60 * 1000),
+        createdAt: new Date(now.getTime() - 8 * 60 * 60 * 1000),
+        updatedAt: new Date(now.getTime() - 8 * 60 * 60 * 1000),
+      },
+      {
+        id: "chk_denied_001",
+        reservationId: "res_denied_001",
+        poolId: "pool_demo_checkout_02",
+        passengerUserId: RIDER_DENIED,
+        maxPrice: money("4800.00"),
+        availableCreditAtCreation: money("0.00"),
+        creditApplied: money("0.00"),
+        amountToCharge: money("4800.00"),
+        currency: CURRENCY,
+        status: "DENIED",
+        provider: "MERCADO_PAGO",
+        paymentUrl: "https://sandbox.mercadopago.com/checkout/chk_denied_001",
+        providerCheckoutReference: "mp_chk_denied_001",
+        expiresAt: new Date(now.getTime() + 60 * 60 * 1000),
+        createdAt: new Date(now.getTime() - 7 * 60 * 60 * 1000),
+        updatedAt: new Date(now.getTime() - 6 * 60 * 60 * 1000),
+      },
+      {
+        id: "chk_canceled_001",
+        reservationId: "res_canceled_001",
+        poolId: "pool_demo_checkout_02",
+        passengerUserId: RIDER_1,
+        maxPrice: money("4800.00"),
+        availableCreditAtCreation: money("0.00"),
+        creditApplied: money("0.00"),
+        amountToCharge: money("4800.00"),
+        currency: CURRENCY,
+        status: "CANCELED",
+        provider: "MERCADO_PAGO",
+        paymentUrl: "https://sandbox.mercadopago.com/checkout/chk_canceled_001",
+        providerCheckoutReference: "mp_chk_canceled_001",
+        expiresAt: new Date(now.getTime() + 30 * 60 * 1000),
+        createdAt: new Date(now.getTime() - 5 * 60 * 60 * 1000),
+        updatedAt: new Date(now.getTime() - 4 * 60 * 60 * 1000),
+      },
+      {
+        id: "chk_expired_001",
+        reservationId: "res_expired_001",
+        poolId: "pool_demo_checkout_02",
+        passengerUserId: RIDER_2,
+        maxPrice: money("5000.00"),
+        availableCreditAtCreation: money("0.00"),
+        creditApplied: money("0.00"),
+        amountToCharge: money("5000.00"),
+        currency: CURRENCY,
+        status: "EXPIRED",
+        provider: "MERCADO_PAGO",
+        paymentUrl: "https://sandbox.mercadopago.com/checkout/chk_expired_001",
+        providerCheckoutReference: "mp_chk_expired_001",
+        expiresAt: new Date(now.getTime() - 2 * 60 * 60 * 1000),
+        createdAt: new Date(now.getTime() - 6 * 60 * 60 * 1000),
+        updatedAt: new Date(now.getTime() - 2 * 60 * 60 * 1000),
+      },
+    ],
   });
+}
 
-  // Successful Charge for RIDER_1 in Pool 1 (with 18% discount)
-  const charge1 = await prisma.charge.create({
-    data: {
-      id: "chg_hist_1_r1",
-      transactionId: "txn_mp_hist_1001",
-      autoChargeJobId: job1.id,
-      poolId: "pool_hist_101",
-      reservationId: "res_hist_r1_01",
-      passengerUserId: RIDER_1,
-      paymentMethodId: "pm_rider1_visa",
-      maxPrice: new Prisma.Decimal("5800.00"),
-      effectivePrice: new Prisma.Decimal("4756.00"), // 5800 * 0.82
-      currency: "ARS",
-      status: "PAID",
-      processedAt: new Date(pool1StartedAt.getTime() + 2 * 60000),
-      discounts: {
-        create: {
-          type: "OCCUPANCY_DISCOUNT",
-          amount: new Prisma.Decimal("1044.00"),
-          description: "Descuento por alta ocupacion (12 pasajeros)",
-        }
-      }
-    },
+async function seedPoolPriceFinalizationJobs() {
+  console.log("Inyectando pool price finalization jobs...");
+
+  const now = new Date();
+
+  await prisma.poolPriceFinalizationJob.createMany({
+    data: [
+      {
+        id: "ppfj_locked_001",
+        poolId: "pool_demo_locked_01",
+        reason: "POOL_LOCKED",
+        currentPassengers: 8,
+        pricingRuleId: "pr_dest_polo_5_15",
+        basePrice: money("5800.00"),
+        finalPrice: money("4756.00"),
+        discountType: "OCCUPANCY_DISCOUNT",
+        discountValue: money("1044.00"),
+        currency: CURRENCY,
+        status: "COMPLETED",
+        startedAt: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000),
+        finishedAt: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000 + 10 * 60 * 1000),
+      },
+      {
+        id: "ppfj_no_driver_001",
+        poolId: "pool_demo_no_driver_01",
+        reason: "NO_DRIVER_ASSIGNED",
+        currentPassengers: 0,
+        pricingRuleId: null,
+        basePrice: money("5000.00"),
+        finalPrice: money("0.00"),
+        discountType: "NO_DRIVER_CREDIT",
+        discountValue: money("5000.00"),
+        currency: CURRENCY,
+        status: "COMPLETED",
+        startedAt: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000),
+        finishedAt: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000 + 5 * 60 * 1000),
+      },
+      {
+        id: "ppfj_failed_001",
+        poolId: "pool_demo_failed_01",
+        reason: "POOL_LOCKED",
+        currentPassengers: 6,
+        pricingRuleId: "pr_gen_5_8",
+        basePrice: money("4800.00"),
+        finalPrice: null,
+        discountType: null,
+        discountValue: null,
+        currency: CURRENCY,
+        status: "FAILED",
+        startedAt: new Date(now.getTime() - 24 * 60 * 60 * 1000),
+        finishedAt: new Date(now.getTime() - 24 * 60 * 60 * 1000 + 15 * 60 * 1000),
+      },
+    ],
   });
+}
 
-  // Settlement for Pool 1 (DRIVER_1)
-  await prisma.settlement.create({
-    data: {
-      id: "st_hist_1",
-      poolId: "pool_hist_101",
-      driverUserId: DRIVER_1,
-      payoutAccountId: "po_driver1",
-      amount: new Prisma.Decimal("57072.00"), // 12 pax * 4756
-      currency: "ARS",
-      status: "COMPLETED",
-      settledAt: new Date(pool1StartedAt.getTime() + 2 * 24 * 60 * 60 * 1000), // 2 days later
-    },
+async function seedCharges() {
+  console.log("Inyectando charges...");
+
+  const now = new Date();
+
+  await prisma.charge.createMany({
+    data: [
+      {
+        id: "chg_paid_001",
+        transactionId: "txn_paid_001",
+        checkoutSessionId: "chk_paid_001",
+        poolId: "pool_demo_checkout_01",
+        reservationId: "res_paid_001",
+        passengerUserId: RIDER_1,
+        maxPrice: money("5800.00"),
+        creditApplied: money("0.00"),
+        amountCharged: money("5800.00"),
+        finalTripPrice: null,
+        creditGranted: money("0.00"),
+        currency: CURRENCY,
+        status: "PAID",
+        provider: "MERCADO_PAGO",
+        rejectionReason: null,
+        processedAt: new Date(now.getTime() - 11 * 60 * 60 * 1000),
+        createdAt: new Date(now.getTime() - 12 * 60 * 60 * 1000),
+      },
+      {
+        id: "chg_paid_credit_001",
+        transactionId: "txn_paid_credit_001",
+        checkoutSessionId: "chk_paid_credit_001",
+        poolId: "pool_demo_checkout_01",
+        reservationId: "res_paid_credit_001",
+        passengerUserId: RIDER_CREDIT,
+        maxPrice: money("5800.00"),
+        creditApplied: money("1200.00"),
+        amountCharged: money("4600.00"),
+        finalTripPrice: null,
+        creditGranted: money("0.00"),
+        currency: CURRENCY,
+        status: "PAID",
+        provider: "MERCADO_PAGO",
+        rejectionReason: null,
+        processedAt: new Date(now.getTime() - 9 * 60 * 60 * 1000),
+        createdAt: new Date(now.getTime() - 10 * 60 * 60 * 1000),
+      },
+      {
+        id: "chg_paid_full_credit_001",
+        transactionId: "txn_paid_full_credit_001",
+        checkoutSessionId: "chk_paid_full_credit_001",
+        poolId: "pool_demo_checkout_02",
+        reservationId: "res_paid_full_credit_001",
+        passengerUserId: RIDER_CREDIT,
+        maxPrice: money("2500.00"),
+        creditApplied: money("2500.00"),
+        amountCharged: money("0.00"),
+        finalTripPrice: null,
+        creditGranted: money("0.00"),
+        currency: CURRENCY,
+        status: "PAID",
+        provider: "MERCADO_PAGO",
+        rejectionReason: null,
+        processedAt: new Date(now.getTime() - 8 * 60 * 60 * 1000),
+        createdAt: new Date(now.getTime() - 8 * 60 * 60 * 1000),
+      },
+      {
+        id: "chg_denied_001",
+        transactionId: "txn_denied_001",
+        checkoutSessionId: "chk_denied_001",
+        poolId: "pool_demo_checkout_02",
+        reservationId: "res_denied_001",
+        passengerUserId: RIDER_DENIED,
+        maxPrice: money("4800.00"),
+        creditApplied: money("0.00"),
+        amountCharged: money("0.00"),
+        finalTripPrice: null,
+        creditGranted: money("0.00"),
+        currency: CURRENCY,
+        status: "DENIED",
+        provider: "MERCADO_PAGO",
+        rejectionReason: "INSUFFICIENT_FUNDS",
+        processedAt: new Date(now.getTime() - 6 * 60 * 60 * 1000),
+        createdAt: new Date(now.getTime() - 7 * 60 * 60 * 1000),
+      },
+      {
+        id: "chg_locked_credit_001",
+        transactionId: "txn_locked_credit_001",
+        poolPriceFinalizationJobId: "ppfj_locked_001",
+        poolId: "pool_demo_locked_01",
+        reservationId: "res_locked_credit_001",
+        passengerUserId: RIDER_1,
+        maxPrice: money("5800.00"),
+        creditApplied: money("0.00"),
+        amountCharged: money("5800.00"),
+        finalTripPrice: money("4756.00"),
+        creditGranted: money("1044.00"),
+        currency: CURRENCY,
+        status: "PAID",
+        provider: "MERCADO_PAGO",
+        rejectionReason: null,
+        processedAt: new Date(now.getTime() - 4 * 24 * 60 * 60 * 1000),
+        createdAt: new Date(now.getTime() - 4 * 24 * 60 * 60 * 1000 - 30 * 60 * 1000),
+      },
+      {
+        id: "chg_locked_credit_002",
+        transactionId: "txn_locked_credit_002",
+        poolPriceFinalizationJobId: "ppfj_locked_001",
+        poolId: "pool_demo_locked_01",
+        reservationId: "res_locked_credit_002",
+        passengerUserId: RIDER_2,
+        maxPrice: money("5800.00"),
+        creditApplied: money("0.00"),
+        amountCharged: money("5800.00"),
+        finalTripPrice: money("4756.00"),
+        creditGranted: money("1044.00"),
+        currency: CURRENCY,
+        status: "PAID",
+        provider: "MERCADO_PAGO",
+        rejectionReason: null,
+        processedAt: new Date(now.getTime() - 4 * 24 * 60 * 60 * 1000 + 5 * 60 * 1000),
+        createdAt: new Date(now.getTime() - 4 * 24 * 60 * 60 * 1000 - 25 * 60 * 1000),
+      },
+      {
+        id: "chg_no_driver_001",
+        transactionId: "txn_no_driver_001",
+        poolPriceFinalizationJobId: "ppfj_no_driver_001",
+        poolId: "pool_demo_no_driver_01",
+        reservationId: "res_no_driver_001",
+        passengerUserId: RIDER_2,
+        maxPrice: money("5000.00"),
+        creditApplied: money("0.00"),
+        amountCharged: money("5000.00"),
+        finalTripPrice: money("0.00"),
+        creditGranted: money("5000.00"),
+        currency: CURRENCY,
+        status: "PAID",
+        provider: "MERCADO_PAGO",
+        rejectionReason: null,
+        processedAt: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000),
+        createdAt: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000 - 20 * 60 * 1000),
+      },
+      {
+        id: "chg_settlement_pending_001",
+        transactionId: "txn_settlement_pending_001",
+        poolId: "pool_demo_settlement_01",
+        reservationId: "res_settlement_pending_001",
+        passengerUserId: RIDER_1,
+        maxPrice: money("6500.00"),
+        creditApplied: money("0.00"),
+        amountCharged: money("6500.00"),
+        finalTripPrice: money("5850.00"),
+        creditGranted: money("650.00"),
+        currency: CURRENCY,
+        status: "PAID",
+        provider: "MERCADO_PAGO",
+        rejectionReason: null,
+        processedAt: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000),
+        createdAt: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000 - 15 * 60 * 1000),
+      },
+      {
+        id: "chg_settlement_failed_001",
+        transactionId: "txn_settlement_failed_001",
+        poolId: "pool_demo_settlement_02",
+        reservationId: "res_settlement_failed_001",
+        passengerUserId: RIDER_CREDIT,
+        maxPrice: money("4800.00"),
+        creditApplied: money("0.00"),
+        amountCharged: money("4800.00"),
+        finalTripPrice: money("4800.00"),
+        creditGranted: money("0.00"),
+        currency: CURRENCY,
+        status: "PAID",
+        provider: "MERCADO_PAGO",
+        rejectionReason: null,
+        processedAt: new Date(now.getTime() - 24 * 60 * 60 * 1000),
+        createdAt: new Date(now.getTime() - 24 * 60 * 60 * 1000 - 10 * 60 * 1000),
+      },
+    ],
   });
+}
 
-  // Historical Pool 2: General, 3 passengers
-  const pool2StartedAt = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000); // 5 days ago
-  const job2 = await prisma.autoChargeJob.create({
-    data: {
-      id: "acj_hist_2",
-      poolId: "pool_hist_202",
-      requestedBy: "DRIVER_APP",
-      currentPassengers: 3,
-      status: "PARTIAL_FAILED",
-      startedAt: pool2StartedAt,
-      finishedAt: new Date(pool2StartedAt.getTime() + 8 * 60000),
-    },
+async function seedCreditMovements() {
+  console.log("Inyectando credit movements...");
+
+  await prisma.creditMovement.createMany({
+    data: [
+      {
+        id: "cm_manual_001",
+        creditAccountId: "ca_rider_credit",
+        userId: RIDER_CREDIT,
+        type: "MANUAL_ADJUSTMENT",
+        amount: money("3700.00"),
+        currency: CURRENCY,
+        reservationId: null,
+        poolId: null,
+        chargeId: null,
+        poolPriceFinalizationJobId: null,
+        description: "Ajuste manual de saldo para casos demo de checkout.",
+      },
+      {
+        id: "cm_applied_001",
+        creditAccountId: "ca_rider_credit",
+        userId: RIDER_CREDIT,
+        type: "CREDIT_APPLIED",
+        amount: money("1200.00"),
+        currency: CURRENCY,
+        reservationId: "res_paid_credit_001",
+        poolId: "pool_demo_checkout_01",
+        chargeId: "chg_paid_credit_001",
+        poolPriceFinalizationJobId: null,
+        description: "Saldo a favor aplicado en checkout con cobro parcial.",
+      },
+      {
+        id: "cm_applied_002",
+        creditAccountId: "ca_rider_credit",
+        userId: RIDER_CREDIT,
+        type: "CREDIT_APPLIED",
+        amount: money("2500.00"),
+        currency: CURRENCY,
+        reservationId: "res_paid_full_credit_001",
+        poolId: "pool_demo_checkout_02",
+        chargeId: "chg_paid_full_credit_001",
+        poolPriceFinalizationJobId: null,
+        description: "Saldo a favor aplicado en checkout cubierto al 100% por credito.",
+      },
+      {
+        id: "cm_granted_locked_001",
+        creditAccountId: "ca_rider_1",
+        userId: RIDER_1,
+        type: "CREDIT_GRANTED",
+        amount: money("1044.00"),
+        currency: CURRENCY,
+        reservationId: "res_locked_credit_001",
+        poolId: "pool_demo_locked_01",
+        chargeId: "chg_locked_credit_001",
+        poolPriceFinalizationJobId: "ppfj_locked_001",
+        description: "Saldo a favor generado por descuento de ocupacion al cierre T-1h.",
+      },
+      {
+        id: "cm_granted_locked_002",
+        creditAccountId: "ca_rider_2",
+        userId: RIDER_2,
+        type: "CREDIT_GRANTED",
+        amount: money("1044.00"),
+        currency: CURRENCY,
+        reservationId: "res_locked_credit_002",
+        poolId: "pool_demo_locked_01",
+        chargeId: "chg_locked_credit_002",
+        poolPriceFinalizationJobId: "ppfj_locked_001",
+        description: "Saldo a favor generado por descuento de ocupacion al cierre T-1h.",
+      },
+      {
+        id: "cm_granted_no_driver_001",
+        creditAccountId: "ca_rider_2",
+        userId: RIDER_2,
+        type: "CREDIT_GRANTED",
+        amount: money("5000.00"),
+        currency: CURRENCY,
+        reservationId: "res_no_driver_001",
+        poolId: "pool_demo_no_driver_01",
+        chargeId: "chg_no_driver_001",
+        poolPriceFinalizationJobId: "ppfj_no_driver_001",
+        description: "Saldo a favor total por pool cancelado sin conductor asignado.",
+      },
+    ],
   });
+}
 
-  // Successful Charge for RIDER_2
-  await prisma.charge.create({
-    data: {
-      id: "chg_hist_2_r2",
-      transactionId: "txn_mp_hist_2001",
-      autoChargeJobId: job2.id,
-      poolId: "pool_hist_202",
-      reservationId: "res_hist_r2_02",
-      passengerUserId: RIDER_2,
-      paymentMethodId: "pm_rider2_mc",
-      maxPrice: new Prisma.Decimal("4800.00"),
-      effectivePrice: new Prisma.Decimal("4800.00"),
-      currency: "ARS",
-      status: "PAID",
-      processedAt: new Date(pool2StartedAt.getTime() + 3 * 60000),
-    },
+async function seedSettlements() {
+  console.log("Inyectando settlements...");
+
+  const now = new Date();
+
+  await prisma.settlement.createMany({
+    data: [
+      {
+        id: "st_completed_001",
+        poolId: "pool_demo_locked_01",
+        driverUserId: DRIVER_1,
+        payoutAccountId: "po_driver1",
+        amount: money("9512.00"),
+        currency: CURRENCY,
+        status: "COMPLETED",
+        settledAt: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000),
+      },
+      {
+        id: "st_pending_001",
+        poolId: "pool_demo_settlement_01",
+        driverUserId: DRIVER_2,
+        payoutAccountId: "po_driver2",
+        amount: money("5850.00"),
+        currency: CURRENCY,
+        status: "PENDING",
+        settledAt: null,
+      },
+      {
+        id: "st_failed_001",
+        poolId: "pool_demo_settlement_02",
+        driverUserId: DRIVER_2,
+        payoutAccountId: "po_driver2",
+        amount: money("4800.00"),
+        currency: CURRENCY,
+        status: "FAILED",
+        settledAt: null,
+      },
+    ],
   });
+}
 
-  // Denied Charge for RIDER_FUND
-  await prisma.charge.create({
-    data: {
-      id: "chg_hist_2_fail",
-      transactionId: "txn_mp_hist_fail_01",
-      autoChargeJobId: job2.id,
-      poolId: "pool_hist_202",
-      reservationId: "res_hist_rfund_03",
-      passengerUserId: RIDER_FUND,
-      paymentMethodId: "pm_rider_fund_fail",
-      maxPrice: new Prisma.Decimal("4800.00"),
-      effectivePrice: null,
-      currency: "ARS",
-      status: "DENIED",
-      rejectionReason: "INSUFFICIENT_FUNDS",
-      processedAt: new Date(pool2StartedAt.getTime() + 4 * 60000),
-    },
+async function seedConnectionTests() {
+  await prisma.connectionTest.createMany({
+    data: [{ label: "ok" }],
   });
+}
 
-  // Pending Settlement for Pool 2 (DRIVER_2)
-  await prisma.settlement.create({
-    data: {
-      id: "st_hist_2",
-      poolId: "pool_hist_202",
-      driverUserId: DRIVER_2,
-      payoutAccountId: "po_driver2",
-      amount: new Prisma.Decimal("9600.00"), // 2 successful pax * 4800
-      currency: "ARS",
-      status: "PENDING",
-      settledAt: null,
-    },
-  });
+async function main() {
+  await resetDatabase();
+  await seedPricingRules();
+  await seedCreditAccounts();
+  await seedPayoutAccounts();
+  await seedCheckoutSessions();
+  await seedPoolPriceFinalizationJobs();
+  await seedCharges();
+  await seedCreditMovements();
+  await seedSettlements();
+  await seedConnectionTests();
 
-  console.log("Inyectando Volumen de Transacciones Recientes para el Dashboard...");
-  const recentCharges = [];
-  for (let i = 0; i < 20; i++) {
-    const hoursAgo = i * 4;
-    recentCharges.push({
-      id: `chg_rec_${i}`,
-      transactionId: `txn_mp_recent_${1000 + i}`,
-      poolId: `pool_recent_${Math.floor(i/5)}`,
-      reservationId: `res_recent_${5000 + i}`,
-      passengerUserId: i % 2 === 0 ? RIDER_1 : RIDER_3,
-      paymentMethodId: i % 2 === 0 ? "pm_rider1_visa" : "pm_rider3_debit",
-      maxPrice: new Prisma.Decimal("4800.00"),
-      effectivePrice: new Prisma.Decimal("4800.00"),
-      currency: "ARS",
-      status: "PAID" as const,
-      processedAt: new Date(Date.now() - hoursAgo * 60 * 60 * 1000),
-    });
-  }
-  await prisma.charge.createMany({ data: recentCharges });
-
-  console.log("Seeding Finalizado Correctamente.");
+  console.log("Seeding finalizado correctamente.");
 }
 
 main()
