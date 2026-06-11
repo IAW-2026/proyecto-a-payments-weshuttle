@@ -164,21 +164,23 @@ export async function calculateCreditAdjustments(
         continue;
       }
 
+      const chargedMaxPrice = decimalToNumber(charge.maxPrice);
+
       const finalTripPrice =
         input.reason === "NO_DRIVER_ASSIGNED"
           ? 0
           : roundMoney(
               Math.max(
-                passenger.maxPrice -
+                chargedMaxPrice -
                   calculateDiscountAmount(
-                    passenger.maxPrice,
+                    chargedMaxPrice,
                     pricingRule!.discountType,
                     decimalToNumber(pricingRule!.discountValue),
                   ),
                 0,
               ),
             );
-      const creditGranted = roundMoney(Math.max(passenger.maxPrice - finalTripPrice, 0));
+      const creditGranted = roundMoney(Math.max(chargedMaxPrice - finalTripPrice, 0));
 
       const creditAccount = await prisma.creditAccount.upsert({
         where: { userId: passenger.passengerUserId },
@@ -238,7 +240,7 @@ export async function calculateCreditAdjustments(
         creditsGenerated.push({
           reservationId: passenger.reservationId,
           passengerUserId: passenger.passengerUserId,
-          maxPricePaid: passenger.maxPrice,
+          maxPricePaid: chargedMaxPrice,
           finalPrice: finalTripPrice,
           creditGranted,
           creditBalanceAfter,

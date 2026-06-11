@@ -144,13 +144,15 @@ export async function processCheckoutPayment(
       currency: input.currency,
       processedAt,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Mercado Pago Error:", error);
+
+    const message = error instanceof Error ? error.message : "GATEWAY_ERROR";
 
     return {
       status: "DENIED",
       transactionId: buildTransactionId("gateway_error"),
-      rejectionReason: error.message || "GATEWAY_ERROR",
+      rejectionReason: message,
       currency: input.currency,
       processedAt,
     };

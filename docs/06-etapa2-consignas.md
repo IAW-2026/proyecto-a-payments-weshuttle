@@ -145,8 +145,6 @@ Puede ser usado por Rider App o por la propia Payments App para mostrar el créd
 
 Solicita el cálculo de ajustes de crédito de un pool.
 
-Este endpoint reemplaza a `POST /api/payments/pools/:pool_id/auto-charge`.
-
 **Lógica esperada:**
 
 1. Recibe la solicitud desde Driver App.
@@ -245,13 +243,7 @@ Rider App usaría esta información para actualizar la reserva y mostrar una not
 
 ### Hacia Driver App
 
-En el nuevo flujo ya no se mockea:
-
-```http
-POST /api/pools/:pool_id/payment-denied
-```
-
-Ese endpoint se elimina porque ya no existen pagos automáticos rechazados en T-1h. Si el pago falla al momento de reservar, la reserva no queda confirmada y no forma parte efectiva del pool.
+En el nuevo flujo no existe un endpoint separado para `payment-denied` en T-1h. Si el pago falla al momento de reservar, la reserva no queda confirmada y no forma parte efectiva del pool.
 
 ## 7. Flujos que debe poder demostrar la app
 
@@ -394,9 +386,8 @@ PATCH /api/reservations/:reservation_id/payment-result
 PATCH /api/reservations/:reservation_id/credit-adjustment
 ```
 
-### Endpoints eliminados
+### Endpoints eliminados o reemplazados
 
 ```http
-POST /api/payments/pools/:pool_id/auto-charge
-POST /api/pools/:pool_id/payment-denied
+POST /api/payments/pools/:pool_id/auto-charge  # reemplazado por /credit-adjustments
 ```

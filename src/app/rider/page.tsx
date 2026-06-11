@@ -2,7 +2,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { requirePageRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { savePaymentMethodAction } from "./actions";
+import { createDemoCheckoutAction } from "./actions";
 
 type PageProps = {
   searchParams: Promise<{
@@ -26,17 +26,20 @@ function Field({
   name,
   defaultValue,
   placeholder,
+  type = "text",
 }: {
   label: string;
   name: string;
   defaultValue?: string;
   placeholder?: string;
+  type?: string;
 }) {
   return (
     <label className="flex flex-col gap-2 text-sm text-slate-700">
       <span className="font-medium">{label}</span>
       <input
         name={name}
+        type={type}
         defaultValue={defaultValue ?? ""}
         placeholder={placeholder}
         required
@@ -47,7 +50,7 @@ function Field({
 }
 
 function Money({ amount, currency }: { amount: string | null; currency: string }) {
-  if (!amount) {
+  if (amount === null) {
     return <span className="text-slate-500">No disponible</span>;
   }
 
@@ -62,41 +65,56 @@ export default async function RiderPage({ searchParams }: PageProps) {
   const authContext = await requirePageRole(["rider"]);
   const params = await searchParams;
   const reservationId = params.reservation_id?.trim() || "";
-  const paymentMethod = await prisma.paymentMethod.findFirst({
-    where: {
-      clerkUserId: authContext.clerkUserId,
-      status: "ACTIVE",
-    },
-    orderBy: { id: "asc" },
-  });
-  const charge = reservationId
-    ? await prisma.charge.findFirst({
-        where: {
-          reservationId,
-          passengerUserId: authContext.clerkUserId,
-        },
-        include: {
-          discounts: true,
-          paymentMethod: true,
-        },
-      })
-    : null;
+
+  const [creditAccount, recentMovements, recentCheckouts, latestCheckout, latestCharge] = await Promise.all([
+    prisma.creditAccount.findUnique({
+      where: { userId: authContext.clerkUserId },
+    }),
+    prisma.creditMovement.findMany({
+      where: { userId: authContext.clerkUserId },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+    }),
+    prisma.checkoutSession.findMany({
+      where: { passengerUserId: authContext.clerkUserId },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+    }),
+    reservationId
+      ? prisma.checkoutSession.findFirst({
+          where: {
+            reservationId,
+            passengerUserId: authContext.clerkUserId,
+          },
+          orderBy: { createdAt: "desc" },
+        })
+      : Promise.resolve(null),
+    reservationId
+      ? prisma.charge.findFirst({
+          where: {
+            reservationId,
+            passengerUserId: authContext.clerkUserId,
+          },
+          orderBy: { processedAt: "desc" },
+        })
+      : Promise.resolve(null),
+  ]);
 
   return (
     <AppShell
       role="rider"
       clerkUserId={authContext.clerkUserId}
-      title="Mercado Pago y detalle de cobro"
-      description="Gestiona tu medio de pago y consulta el resultado efectivo de tus reservas."
+      title="Checkouts y saldo a favor"
+      description="Simula el pago de una reserva, consulta tu saldo disponible y revisa el estado financiero de tus viajes."
     >
       <div className="flex flex-col gap-8">
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Rider Payments</p>
-              <h2 className="mt-2 text-3xl font-bold text-slate-900">Mercado Pago y detalle de cobro</h2>
+              <h2 className="mt-2 text-3xl font-bold text-slate-900">Checkouts y saldo a favor</h2>
               <p className="mt-3 max-w-2xl text-sm text-slate-600">
-                Vincula tu medio de pago y consulta el resultado efectivo de una reserva mediante su identificador.
+                Esta vista permite simular el resultado del checkout de una reserva y consultar el detalle financiero ya persistido en Payments App.
               </p>
               <p className="mt-3 text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
                 Usuario autenticado: {authContext.clerkUserId}
@@ -117,91 +135,140 @@ export default async function RiderPage({ searchParams }: PageProps) {
           ) : null}
         </section>
 
-        <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-          <div id="payment-method">
-            <InfoCard title="Tu medio de pago activo">
-              {paymentMethod ? (
-                <dl className="grid gap-4 text-sm text-slate-600 sm:grid-cols-2">
-                  <div><dt className="font-semibold text-slate-900">Proveedor</dt><dd className="mt-1">{paymentMethod.provider}</dd></div>
-                  <div><dt className="font-semibold text-slate-900">Titular</dt><dd className="mt-1">{paymentMethod.holderName}</dd></div>
-                  <div><dt className="font-semibold text-slate-900">Tarjeta</dt><dd className="mt-1">{paymentMethod.cardBrand} terminada en {paymentMethod.cardLast4}</dd></div>
-                  <div><dt className="font-semibold text-slate-900">Tipo</dt><dd className="mt-1">{paymentMethod.paymentType}</dd></div>
-                  <div><dt className="font-semibold text-slate-900">BIN</dt><dd className="mt-1">{paymentMethod.cardBin}</dd></div>
-                  <div><dt className="font-semibold text-slate-900">Estado</dt><dd className="mt-1">{paymentMethod.status}</dd></div>
-                </dl>
-              ) : (
-                <p className="rounded-2xl border border-dashed border-slate-300 px-4 py-6 text-sm text-slate-500">
-                  No tienes un medio de pago activo cargado todavia.
+        <div className="grid gap-8 xl:grid-cols-[0.9fr_1.1fr]">
+          <div id="credit-balance" className="space-y-8">
+            <InfoCard title="Tu saldo a favor disponible">
+              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-6">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Balance actual</p>
+                <p className="mt-3 text-3xl font-bold text-slate-900">
+                  {creditAccount?.currency ?? "ARS"} {(creditAccount?.balance.toNumber() ?? 0).toFixed(2)}
                 </p>
-              )}
+                <p className="mt-2 text-sm text-slate-600">
+                  Este saldo se aplica automaticamente antes de cobrar por Mercado Pago.
+                </p>
+              </div>
 
-              <form action={savePaymentMethodAction} className="mt-6 grid gap-4 rounded-3xl border border-slate-200 bg-slate-50 p-5 sm:grid-cols-2">
-                <input type="hidden" name="reservationId" value={reservationId} />
-                <Field label="Titular" name="holderName" defaultValue={paymentMethod?.holderName} placeholder="Nombre y apellido" />
-                <Field label="Token de Mercado Pago" name="providerToken" defaultValue={paymentMethod?.providerToken} placeholder="tok_test_mp_..." />
-                <Field label="Marca" name="cardBrand" defaultValue={paymentMethod?.cardBrand} placeholder="VISA" />
-                <Field label="BIN" name="cardBin" defaultValue={paymentMethod?.cardBin} placeholder="450995" />
-                <Field label="Ultimos 4" name="cardLast4" defaultValue={paymentMethod?.cardLast4} placeholder="3704" />
-                <label className="flex flex-col gap-2 text-sm text-slate-700">
-                  <span className="font-medium">Tipo de tarjeta</span>
-                  <select name="paymentType" defaultValue={paymentMethod?.paymentType ?? "CREDIT_CARD"} className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none transition focus:border-slate-900">
-                    <option value="CREDIT_CARD">CREDIT_CARD</option>
-                    <option value="DEBIT_CARD">DEBIT_CARD</option>
-                  </select>
-                </label>
-                <div className="sm:col-span-2">
-                  <button type="submit" className="w-full rounded-full bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-700">
-                    Guardar medio de pago
-                  </button>
+              <div className="mt-6">
+                <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Ultimos movimientos</h3>
+                <div className="mt-3 space-y-3">
+                  {recentMovements.map((movement) => (
+                    <div key={movement.id} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                      <p className="font-semibold text-slate-900">{movement.type}</p>
+                      <p className="mt-1">{movement.currency} {movement.amount.toNumber().toFixed(2)}</p>
+                      <p className="mt-1 text-xs text-slate-500">{movement.description ?? "Sin descripcion"}</p>
+                    </div>
+                  ))}
+                  {recentMovements.length === 0 ? (
+                    <p className="text-sm text-slate-500">Todavia no tienes movimientos de credito registrados.</p>
+                  ) : null}
                 </div>
-              </form>
+              </div>
+            </InfoCard>
+
+            <InfoCard title="Tus ultimos checkouts">
+              <div className="space-y-3">
+                {recentCheckouts.map((checkout) => (
+                  <div key={checkout.id} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                    <p className="font-semibold text-slate-900">{checkout.reservationId}</p>
+                    <p className="mt-1 text-xs text-slate-500">Pool: {checkout.poolId}</p>
+                    <p className="mt-1 text-xs text-slate-500">Estado: {checkout.status}</p>
+                    <p className="mt-1 text-xs text-slate-500">Cobro previsto: {checkout.currency} {checkout.amountToCharge.toNumber().toFixed(2)}</p>
+                  </div>
+                ))}
+                {recentCheckouts.length === 0 ? (
+                  <p className="text-sm text-slate-500">Todavia no tienes checkouts registrados.</p>
+                ) : null}
+              </div>
             </InfoCard>
           </div>
 
-          <div id="reservation-detail">
-            <InfoCard title="Detalle efectivo de una reserva">
-              <form method="get" className="flex flex-col gap-3 sm:flex-row">
-                <input name="reservation_id" defaultValue={reservationId} placeholder="res_100001" className="flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-900" />
-                <button type="submit" className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700">
-                  Consultar
-                </button>
-              </form>
+          <div className="space-y-8">
+            <div id="checkout-demo">
+              <InfoCard title="Simular checkout de una reserva">
+                <p className="mb-4 text-sm text-slate-600">
+                  Si el checkout tiene un monto pendiente de cobro, en esta etapa demo debes elegir un resultado simulado para cerrar el intento de pago.
+                </p>
+                <form action={createDemoCheckoutAction} className="grid gap-4 rounded-3xl border border-slate-200 bg-slate-50 p-5 sm:grid-cols-2">
+                  <Field label="Reservation ID" name="reservationId" defaultValue={reservationId || "res_demo_new_001"} placeholder="res_demo_new_001" />
+                  <Field label="Pool ID" name="poolId" defaultValue="pool_demo_checkout_new" placeholder="pool_demo_checkout_new" />
+                  <Field label="Max price" name="maxPrice" type="number" defaultValue="5800" placeholder="5800" />
+                  <Field label="Currency" name="currency" defaultValue="ARS" placeholder="ARS" />
+                  <Field label="Success URL" name="successUrl" defaultValue="https://rider-app.local/success" placeholder="https://rider-app.local/success" />
+                  <Field label="Failure URL" name="failureUrl" defaultValue="https://rider-app.local/failure" placeholder="https://rider-app.local/failure" />
+                  <Field label="Payment token (optional)" name="paymentToken" defaultValue="tok_test_mock_001" placeholder="tok_test_mock_001" />
+                  <Field label="Payment method id (optional)" name="paymentMethodId" defaultValue="visa" placeholder="visa" />
+                  <Field label="Payer email (optional)" name="payerEmail" defaultValue={`${authContext.clerkUserId}@mock-iaw.com`} placeholder="user@mock-iaw.com" />
+                  <label className="flex flex-col gap-2 text-sm text-slate-700">
+                    <span className="font-medium">Resultado simulado</span>
+                    <select name="mockPaymentStatus" defaultValue="PAID" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none transition focus:border-slate-900">
+                      <option value="PAID">PAID</option>
+                      <option value="DENIED">DENIED</option>
+                      <option value="CANCELED">CANCELED</option>
+                      <option value="EXPIRED">EXPIRED</option>
+                    </select>
+                  </label>
+                  <div className="sm:col-span-2">
+                    <button type="submit" className="w-full rounded-full bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-700">
+                      Crear checkout demo
+                    </button>
+                  </div>
+                </form>
+              </InfoCard>
+            </div>
 
-              {!reservationId ? (
-                <p className="mt-5 rounded-2xl border border-dashed border-slate-300 px-4 py-6 text-sm text-slate-500">Ingresa un `reservation_id` para ver el resultado del cobro.</p>
-              ) : !charge ? (
-                <p className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">No se encontro un cobro asociado a esa reserva para tu usuario.</p>
-              ) : (
-                <div className="mt-5 space-y-5">
-                  <dl className="grid gap-4 text-sm text-slate-600 sm:grid-cols-2">
-                    <div><dt className="font-semibold text-slate-900">Reserva</dt><dd className="mt-1 break-all">{charge.reservationId}</dd></div>
-                    <div><dt className="font-semibold text-slate-900">Transaccion</dt><dd className="mt-1 break-all">{charge.transactionId}</dd></div>
-                    <div><dt className="font-semibold text-slate-900">Precio maximo</dt><dd className="mt-1"><Money amount={charge.maxPrice.toString()} currency={charge.currency} /></dd></div>
-                    <div><dt className="font-semibold text-slate-900">Precio efectivo</dt><dd className="mt-1"><Money amount={charge.effectivePrice?.toString() ?? null} currency={charge.currency} /></dd></div>
-                    <div><dt className="font-semibold text-slate-900">Estado</dt><dd className="mt-1">{charge.status}</dd></div>
-                    <div><dt className="font-semibold text-slate-900">Procesado</dt><dd className="mt-1">{charge.processedAt ? charge.processedAt.toISOString() : "Pendiente"}</dd></div>
-                    <div className="sm:col-span-2"><dt className="font-semibold text-slate-900">Motivo de rechazo</dt><dd className="mt-1">{charge.rejectionReason ?? "Sin rechazo"}</dd></div>
-                  </dl>
+            <div id="reservation-detail">
+              <InfoCard title="Detalle financiero de una reserva">
+                <form method="get" className="flex flex-col gap-3 sm:flex-row">
+                  <input name="reservation_id" defaultValue={reservationId} placeholder="res_paid_001" className="flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-900" />
+                  <button type="submit" className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700">
+                    Consultar
+                  </button>
+                </form>
 
-                  <div>
-                    <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Descuentos aplicados</h3>
-                    {charge.discounts.length === 0 ? (
-                      <p className="mt-3 text-sm text-slate-500">No se registraron descuentos para esta reserva.</p>
-                    ) : (
-                      <div className="mt-3 space-y-3">
-                        {charge.discounts.map((discount) => (
-                          <div key={discount.id} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                            <p className="font-semibold text-slate-900">{discount.type}</p>
-                            <p className="mt-1">{charge.currency} {discount.amount.toNumber().toFixed(2)}</p>
-                            <p className="mt-1">{discount.description ?? "Sin descripcion"}</p>
-                          </div>
-                        ))}
+                {!reservationId ? (
+                  <p className="mt-5 rounded-2xl border border-dashed border-slate-300 px-4 py-6 text-sm text-slate-500">Ingresa un `reservation_id` para ver el estado del checkout y del cobro asociado.</p>
+                ) : !latestCheckout && !latestCharge ? (
+                  <p className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">No se encontro informacion asociada a esa reserva para tu usuario.</p>
+                ) : (
+                  <div className="mt-5 space-y-6">
+                    {latestCheckout ? (
+                      <div>
+                        <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Checkout</h3>
+                        <dl className="mt-3 grid gap-4 text-sm text-slate-600 sm:grid-cols-2">
+                          <div><dt className="font-semibold text-slate-900">Checkout ID</dt><dd className="mt-1 break-all">{latestCheckout.id}</dd></div>
+                          <div><dt className="font-semibold text-slate-900">Estado</dt><dd className="mt-1">{latestCheckout.status}</dd></div>
+                          <div><dt className="font-semibold text-slate-900">Precio maximo</dt><dd className="mt-1"><Money amount={latestCheckout.maxPrice.toString()} currency={latestCheckout.currency} /></dd></div>
+                          <div><dt className="font-semibold text-slate-900">Cobro previsto</dt><dd className="mt-1"><Money amount={latestCheckout.amountToCharge.toString()} currency={latestCheckout.currency} /></dd></div>
+                          <div><dt className="font-semibold text-slate-900">Credito aplicado</dt><dd className="mt-1"><Money amount={latestCheckout.creditApplied.toString()} currency={latestCheckout.currency} /></dd></div>
+                          <div><dt className="font-semibold text-slate-900">Expira</dt><dd className="mt-1">{latestCheckout.expiresAt ? latestCheckout.expiresAt.toISOString() : "No definido"}</dd></div>
+                        </dl>
                       </div>
+                    ) : null}
+
+                    {latestCharge ? (
+                      <div>
+                        <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Charge</h3>
+                        <dl className="mt-3 grid gap-4 text-sm text-slate-600 sm:grid-cols-2">
+                          <div><dt className="font-semibold text-slate-900">Transaccion</dt><dd className="mt-1 break-all">{latestCharge.transactionId}</dd></div>
+                          <div><dt className="font-semibold text-slate-900">Estado</dt><dd className="mt-1">{latestCharge.status}</dd></div>
+                          <div><dt className="font-semibold text-slate-900">Monto cobrado</dt><dd className="mt-1"><Money amount={latestCharge.amountCharged.toString()} currency={latestCharge.currency} /></dd></div>
+                          <div><dt className="font-semibold text-slate-900">Credito aplicado</dt><dd className="mt-1"><Money amount={latestCharge.creditApplied.toString()} currency={latestCharge.currency} /></dd></div>
+                          <div><dt className="font-semibold text-slate-900">Precio final del viaje</dt><dd className="mt-1"><Money amount={latestCharge.finalTripPrice?.toString() ?? null} currency={latestCharge.currency} /></dd></div>
+                          <div><dt className="font-semibold text-slate-900">Credito generado</dt><dd className="mt-1"><Money amount={latestCharge.creditGranted.toString()} currency={latestCharge.currency} /></dd></div>
+                          <div><dt className="font-semibold text-slate-900">Procesado</dt><dd className="mt-1">{latestCharge.processedAt ? latestCharge.processedAt.toISOString() : "Pendiente"}</dd></div>
+                          <div><dt className="font-semibold text-slate-900">Finalizacion T-1h</dt><dd className="mt-1">{latestCharge.poolPriceFinalizationJobId ?? "Pendiente"}</dd></div>
+                          <div className="sm:col-span-2"><dt className="font-semibold text-slate-900">Motivo de rechazo</dt><dd className="mt-1">{latestCharge.rejectionReason ?? "Sin rechazo"}</dd></div>
+                        </dl>
+                      </div>
+                    ) : (
+                      <p className="rounded-2xl border border-dashed border-slate-300 px-4 py-6 text-sm text-slate-500">
+                        Esta reserva todavia no genero un charge persistido. Puede tratarse de un checkout cancelado, expirado o aun no procesado.
+                      </p>
                     )}
                   </div>
-                </div>
-              )}
-            </InfoCard>
+                )}
+              </InfoCard>
+            </div>
           </div>
         </div>
       </div>

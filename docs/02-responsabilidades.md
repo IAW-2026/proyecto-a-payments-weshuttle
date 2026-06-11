@@ -186,12 +186,11 @@ Responsabilidades principales:
 | **Driver App** | Notificar que un pool fue cancelado por falta de conductor asignado | **Rider App** | `POST /api/pools/:pool_id/cancellations` |
 | **Rider App** | Solicitar a Payments App la creación de un checkout para pagar una reserva | **Payments App** | `POST /api/payments/reservations/:reservation_id/checkout` |
 | **Driver App** | Solicitar el cálculo de ajustes de crédito al cerrar o cancelar un pool | **Payments App** | `POST /api/payments/pools/:pool_id/credit-adjustments` |
-| **Payments App** | Consultar el manifiesto de pasajeros pagados de un pool para calcular ajustes de crédito | **Rider App** | `GET /api/pools/:pool_id/passengers?status=PAID` |
+| **Payments App** | Consultar el manifiesto de pasajeros pagados de un pool para calcular ajustes de crédito | **Rider App** | `GET /api/pools/:pool_id/passengers?payment_status=PAID` |
 | **Payments App** | Notificar a Rider App el saldo a favor generado para una reserva | **Rider App** | `PATCH /api/reservations/:reservation_id/credit-adjustment` |
 | **Rider App** | Consultar el saldo a favor disponible de un usuario | **Payments App** | `GET /api/payments/users/:user_id/credit-balance` |
-| **Payments App** | Notificar pago exitoso de una reserva, incluyendo el precio efectivo cobrado | **Rider App** | `PATCH /api/reservations/:reservation_id/payment-result` |
-| **Payments App** | Notificar pago rechazado de una reserva | **Rider App** | `PATCH /api/reservations/:reservation_id/payment-result` |
-| **Driver App** | Solicitar el manifiesto final de pasajeros pagados para iniciar el recorrido | **Rider App** | `GET /api/pools/:pool_id/passengers?status=PAID` |
+| **Payments App** | Notificar el resultado del checkout de una reserva, incluyendo `amount_charged` y `credit_applied` cuando corresponda | **Rider App** | `PATCH /api/reservations/:reservation_id/payment-result` |
+| **Driver App** | Solicitar el manifiesto final de pasajeros pagados para iniciar el recorrido | **Rider App** | `GET /api/pools/:pool_id/passengers?payment_status=PAID` |
 | **Driver App** | Notificar inicio del recorrido para pre-crear reseñas | **Feedback App** | `POST /api/reviews/precreate` |
 | **Rider App** | Consultar hitos y estado granular del recorrido | **Driver App** | `GET /api/pools/:pool_id/status` |
 | **Feedback App** | Consultar estado del pool para monitorear avance y finalización del viaje | **Driver App** | `GET /api/pools/:pool_id/status` |

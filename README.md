@@ -132,13 +132,7 @@ Ese flujo fue reemplazado por una alternativa más simple y demostrable para la 
 4. En T-1h, Payments App calcula el precio final según la ocupación real.
 5. Si el precio final es menor al precio máximo pagado, se genera saldo a favor.
 
-Por este motivo, ya no se utiliza el endpoint:
-
-```http
-POST /api/payments/pools/:pool_id/auto-charge
-```
-
-y fue reemplazado por:
+Por este motivo, el cierre T-1h se resuelve mediante:
 
 ```http
 POST /api/payments/pools/:pool_id/credit-adjustments
@@ -199,13 +193,7 @@ PATCH /api/reservations/:reservation_id/payment-result
 PATCH /api/reservations/:reservation_id/credit-adjustment
 ```
 
-Ya no se mockea:
-
-```http
-POST /api/pools/:pool_id/payment-denied
-```
-
-porque en el nuevo flujo no hay pagos automáticos rechazados en T-1h. Si el pago falla al momento de reservar, la reserva no queda confirmada y no forma parte efectiva del pool.
+No existe un endpoint separado para `payment-denied` en T-1h, porque en el nuevo flujo no hay pagos automáticos rechazados al cierre del pool. Si el pago falla al momento de reservar, la reserva no queda confirmada y no forma parte efectiva del pool.
 
 ---
 

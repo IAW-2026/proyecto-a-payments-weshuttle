@@ -29,7 +29,7 @@ type CheckoutResponseData = {
   creditApplied: number;
   amountToCharge: number;
   currency: string;
-  checkoutStatus: "CREATED" | "PAID" | "DENIED" | "CANCELED" | "EXPIRED";
+  checkoutStatus: "CREATED" | "PENDING" | "PAID" | "DENIED" | "CANCELED" | "EXPIRED";
 };
 
 type CreateCheckoutResult =
@@ -241,6 +241,17 @@ export async function createCheckoutSession(
   const availableCredit = decimalToNumber(creditAccount.balance);
   const creditApplied = Math.min(availableCredit, input.maxPrice);
   const amountToCharge = Math.max(input.maxPrice - creditApplied, 0);
+
+  if (amountToCharge > 0 && !input.mockPaymentStatus) {
+    return {
+      ok: false,
+      status: 400,
+      error: "MOCK_PAYMENT_STATUS_REQUIRED",
+      message:
+        "En esta etapa demo, los checkouts con monto a cobrar requieren mockPaymentStatus para resolver el resultado del pago.",
+    };
+  }
+
   const paymentUrl = amountToCharge > 0
     ? createPaymentUrl({
         reservationId: input.reservationId,

@@ -66,11 +66,13 @@ export async function POST(request: Request, context: RouteContext) {
     );
   }
 
+  const validatedDepartureTime = departureTime as string;
+
   try {
     const result = await calculateCreditAdjustments({
       poolId: poolId.trim(),
       reason,
-      departureTime,
+      departureTime: validatedDepartureTime,
       currentPassengers,
     });
 

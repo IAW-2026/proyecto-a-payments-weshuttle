@@ -30,6 +30,8 @@ export async function POST(request: Request, context: RouteContext) {
     return authResult.response;
   }
 
+  const { clerkUserId, role } = authResult.context;
+
   const { reservation_id: reservationId } = await context.params;
 
   if (!reservationId?.trim()) {
@@ -74,7 +76,9 @@ export async function POST(request: Request, context: RouteContext) {
     ? (body as { failure_url: string }).failure_url.trim()
     : "";
 
-  if (!poolId || !passengerUserId || maxPrice === null || maxPrice < 0 || !currency || !isValidUrl(successUrl) || !isValidUrl(failureUrl)) {
+  const isPassengerUserIdMissing = role === "rider" ? !passengerUserId : false;
+
+  if (!poolId || isPassengerUserIdMissing || maxPrice === null || maxPrice < 0 || !currency || !isValidUrl(successUrl) || !isValidUrl(failureUrl)) {
     return NextResponse.json(
       {
         error: "INVALID_BODY",
@@ -100,10 +104,24 @@ export async function POST(request: Request, context: RouteContext) {
     ? (body as { expires_at: string }).expires_at
     : undefined;
 
+  if (role === "rider" && passengerUserId !== clerkUserId) {
+    return NextResponse.json(
+      {
+        error: "FORBIDDEN_PASSENGER_USER_ID",
+        message: "Un rider solo puede crear checkouts para su propio usuario autenticado.",
+      },
+      { status: 403 },
+    );
+  }
+
+  const resolvedPassengerUserId = role === "admin"
+    ? passengerUserId || clerkUserId
+    : clerkUserId;
+
   const result = await createCheckoutSession({
     reservationId: reservationId.trim(),
     poolId,
-    passengerUserId,
+    passengerUserId: resolvedPassengerUserId,
     maxPrice,
     currency,
     successUrl,

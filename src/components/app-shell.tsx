@@ -15,7 +15,8 @@ const NAV_ITEMS: Record<AppRole, NavItem[]> = {
     { href: "/admin/settlements", label: "Liquidaciones" },
   ],
   rider: [
-    { href: "/rider#payment-method", label: "Mi medio de pago" },
+    { href: "/rider#credit-balance", label: "Saldo a favor" },
+    { href: "/rider#checkout-demo", label: "Simular checkout" },
     { href: "/rider#reservation-detail", label: "Detalle de reserva" },
   ],
   driver: [
