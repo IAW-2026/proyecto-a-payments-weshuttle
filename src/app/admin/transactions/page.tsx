@@ -47,10 +47,6 @@ export default async function AdminTransactionsPage({ searchParams }: PageProps)
   const [charges, totalCharges] = await Promise.all([
     prisma.charge.findMany({
       where,
-      include: {
-        discounts: true,
-        paymentMethod: true,
-      },
       orderBy: [{ processedAt: "desc" }, { id: "desc" }],
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
@@ -64,7 +60,7 @@ export default async function AdminTransactionsPage({ searchParams }: PageProps)
       role="admin"
       clerkUserId={authContext.clerkUserId}
       title="Transacciones"
-      description="Visualiza cobros individuales, descuentos asociados y su trazabilidad operativa."
+      description="Visualiza cobros individuales, credito aplicado, precio final y su trazabilidad operativa."
     >
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -87,9 +83,9 @@ export default async function AdminTransactionsPage({ searchParams }: PageProps)
               <tr>
                 <th className="px-4 py-3 font-semibold">Reserva</th>
                 <th className="px-4 py-3 font-semibold">Pasajero</th>
-                <th className="px-4 py-3 font-semibold">Monto</th>
+                <th className="px-4 py-3 font-semibold">Montos</th>
                 <th className="px-4 py-3 font-semibold">Estado</th>
-                <th className="px-4 py-3 font-semibold">Metodo</th>
+                <th className="px-4 py-3 font-semibold">Checkout / Ajuste</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 bg-white text-slate-700">
@@ -103,8 +99,10 @@ export default async function AdminTransactionsPage({ searchParams }: PageProps)
                   <td className="px-4 py-3 align-top">{charge.passengerUserId}</td>
                   <td className="px-4 py-3 align-top">
                     <p>Max: {charge.currency} {charge.maxPrice.toNumber().toFixed(2)}</p>
-                    <p className="mt-1 text-xs text-slate-500">Efectivo: {charge.effectivePrice ? `${charge.currency} ${charge.effectivePrice.toNumber().toFixed(2)}` : "No disponible"}</p>
-                    <p className="mt-1 text-xs text-slate-500">Descuentos: {charge.discounts.length}</p>
+                    <p className="mt-1 text-xs text-slate-500">Cobrado: {charge.currency} {charge.amountCharged.toNumber().toFixed(2)}</p>
+                    <p className="mt-1 text-xs text-slate-500">Credito aplicado: {charge.currency} {charge.creditApplied.toNumber().toFixed(2)}</p>
+                    <p className="mt-1 text-xs text-slate-500">Precio final: {charge.finalTripPrice !== null ? `${charge.currency} ${charge.finalTripPrice.toNumber().toFixed(2)}` : "Pendiente"}</p>
+                    <p className="mt-1 text-xs text-slate-500">Credito generado: {charge.currency} {charge.creditGranted.toNumber().toFixed(2)}</p>
                   </td>
                   <td className="px-4 py-3 align-top">
                     <StatusBadge value={charge.status} />
@@ -112,14 +110,9 @@ export default async function AdminTransactionsPage({ searchParams }: PageProps)
                     <p className="mt-1 text-xs text-slate-500">{charge.rejectionReason ?? "Sin rechazo"}</p>
                   </td>
                   <td className="px-4 py-3 align-top">
-                    {charge.paymentMethod ? (
-                      <>
-                        <p>{charge.paymentMethod.cardBrand} {charge.paymentMethod.cardLast4}</p>
-                        <p className="mt-1 text-xs text-slate-500">{charge.paymentMethod.paymentType}</p>
-                      </>
-                    ) : (
-                      <span className="text-slate-500">Sin metodo</span>
-                    )}
+                    <p>Checkout: {charge.checkoutSessionId ?? "No aplica"}</p>
+                    <p className="mt-1 text-xs text-slate-500">Finalizacion: {charge.poolPriceFinalizationJobId ?? "Pendiente"}</p>
+                    <p className="mt-1 text-xs text-slate-500">Proveedor: {charge.provider}</p>
                   </td>
                 </tr>
               ))}

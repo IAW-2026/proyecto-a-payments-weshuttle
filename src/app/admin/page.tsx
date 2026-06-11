@@ -25,15 +25,26 @@ export default async function AdminHomePage() {
 
   const [
     totalCollectedData,
+    totalCreditAppliedData,
+    totalCreditGrantedData,
     totalSettledData,
     pendingSettlementsData,
     chargeStats,
     recentCharges,
+    recentFinalizationJobs,
     recentSettlements,
   ] = await Promise.all([
     prisma.charge.aggregate({
-      _sum: { effectivePrice: true },
+      _sum: { amountCharged: true },
       where: { status: "PAID" },
+    }),
+    prisma.creditMovement.aggregate({
+      _sum: { amount: true },
+      where: { type: "CREDIT_APPLIED" },
+    }),
+    prisma.creditMovement.aggregate({
+      _sum: { amount: true },
+      where: { type: "CREDIT_GRANTED" },
     }),
     prisma.settlement.aggregate({
       _sum: { amount: true },
@@ -51,7 +62,10 @@ export default async function AdminHomePage() {
     prisma.charge.findMany({
       take: 5,
       orderBy: { processedAt: "desc" },
-      include: { paymentMethod: true },
+    }),
+    prisma.poolPriceFinalizationJob.findMany({
+      take: 5,
+      orderBy: { startedAt: "desc" },
     }),
     prisma.settlement.findMany({
       take: 5,
@@ -59,7 +73,9 @@ export default async function AdminHomePage() {
     }),
   ]);
 
-  const totalCollected = totalCollectedData._sum.effectivePrice?.toNumber() || 0;
+  const totalCollected = totalCollectedData._sum.amountCharged?.toNumber() || 0;
+  const totalCreditApplied = totalCreditAppliedData._sum.amount?.toNumber() || 0;
+  const totalCreditGranted = totalCreditGrantedData._sum.amount?.toNumber() || 0;
   const totalSettled = totalSettledData._sum.amount?.toNumber() || 0;
   const pendingAmount = pendingSettlementsData._sum.amount?.toNumber() || 0;
   const pendingCount = pendingSettlementsData._count.id || 0;
@@ -91,12 +107,24 @@ export default async function AdminHomePage() {
             </div>
           </div>
 
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <StatCard 
               title="Total Recaudado" 
               value={`ARS ${totalCollected.toLocaleString()}`} 
-              description="Cobros efectivos a pasajeros" 
+              description="Dinero ingresado por Mercado Pago" 
               color="emerald" 
+            />
+            <StatCard 
+              title="Credito Aplicado" 
+              value={`ARS ${totalCreditApplied.toLocaleString()}`} 
+              description="Saldo a favor usado en checkouts" 
+              color="blue" 
+            />
+            <StatCard 
+              title="Credito Generado" 
+              value={`ARS ${totalCreditGranted.toLocaleString()}`} 
+              description="Saldo a favor otorgado por ajustes" 
+              color="amber" 
             />
             <StatCard 
               title="Total Liquidado" 
@@ -120,7 +148,6 @@ export default async function AdminHomePage() {
         </section>
 
         <div className="grid gap-8 lg:grid-cols-2">
-          {/* Recent Transactions */}
           <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-slate-900">Ultimos Cobros</h3>
@@ -132,34 +159,59 @@ export default async function AdminHomePage() {
                   <div>
                     <p className="font-bold text-slate-900">{charge.reservationId}</p>
                     <p className="text-xs text-slate-500">{charge.processedAt?.toLocaleDateString()} - {charge.status}</p>
+                    <p className="text-xs text-slate-500">Credito aplicado: ARS {charge.creditApplied.toNumber().toFixed(2)}</p>
                   </div>
-                  <p className="font-bold text-slate-900">ARS {charge.effectivePrice?.toNumber().toFixed(2) || charge.maxPrice.toNumber().toFixed(2)}</p>
+                  <div className="text-right">
+                    <p className="font-bold text-slate-900">ARS {charge.amountCharged.toNumber().toFixed(2)}</p>
+                    <p className="text-xs text-slate-500">Final: {charge.finalTripPrice !== null ? `ARS ${charge.finalTripPrice.toNumber().toFixed(2)}` : "Pendiente"}</p>
+                  </div>
                 </div>
               ))}
               {recentCharges.length === 0 && <p className="py-4 text-center text-sm text-slate-500">Sin movimientos recientes.</p>}
             </div>
           </section>
 
-          {/* Recent Settlements */}
           <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-slate-900">Ultimas Liquidaciones</h3>
-              <Link href="/admin/settlements" className="text-xs font-bold text-blue-600 hover:underline">Ver todos</Link>
+              <h3 className="text-lg font-bold text-slate-900">Ultimos Procesos T-1h</h3>
             </div>
             <div className="space-y-4">
-              {recentSettlements.map(settlement => (
-                <div key={settlement.id} className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm">
+              {recentFinalizationJobs.map((job) => (
+                <div key={job.id} className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm">
                   <div>
-                    <p className="font-bold text-slate-900">Pool: {settlement.poolId}</p>
-                    <p className="text-xs text-slate-500">{settlement.settledAt?.toLocaleDateString()} - {settlement.status}</p>
+                    <p className="font-bold text-slate-900">Pool: {job.poolId}</p>
+                    <p className="text-xs text-slate-500">{job.startedAt.toLocaleDateString()} - {job.status}</p>
+                    <p className="text-xs text-slate-500">Motivo: {job.reason}</p>
                   </div>
-                  <p className="font-bold text-slate-900">ARS {settlement.amount.toNumber().toFixed(2)}</p>
+                  <div className="text-right">
+                    <p className="font-bold text-slate-900">Final: {job.finalPrice !== null ? `ARS ${job.finalPrice.toNumber().toFixed(2)}` : "N/D"}</p>
+                    <p className="text-xs text-slate-500">Base: ARS {job.basePrice.toNumber().toFixed(2)}</p>
+                  </div>
                 </div>
               ))}
-              {recentSettlements.length === 0 && <p className="py-4 text-center text-sm text-slate-500">Sin movimientos recientes.</p>}
+              {recentFinalizationJobs.length === 0 && <p className="py-4 text-center text-sm text-slate-500">Sin procesos recientes.</p>}
             </div>
           </section>
         </div>
+
+        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-slate-900">Ultimas Liquidaciones</h3>
+            <Link href="/admin/settlements" className="text-xs font-bold text-blue-600 hover:underline">Ver todas</Link>
+          </div>
+          <div className="space-y-4">
+            {recentSettlements.map(settlement => (
+              <div key={settlement.id} className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm">
+                <div>
+                  <p className="font-bold text-slate-900">Pool: {settlement.poolId}</p>
+                  <p className="text-xs text-slate-500">{settlement.settledAt?.toLocaleDateString()} - {settlement.status}</p>
+                </div>
+                <p className="font-bold text-slate-900">ARS {settlement.amount.toNumber().toFixed(2)}</p>
+              </div>
+            ))}
+            {recentSettlements.length === 0 && <p className="py-4 text-center text-sm text-slate-500">Sin liquidaciones recientes.</p>}
+          </div>
+        </section>
 
         <section className="grid gap-4 md:grid-cols-3">
           <Link href="/admin/pricing-rules" className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-slate-900">
@@ -168,7 +220,7 @@ export default async function AdminHomePage() {
           </Link>
           <Link href="/admin/transactions" className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-slate-900">
             <h4 className="font-bold text-slate-900">Auditar Transacciones</h4>
-            <p className="mt-2 text-xs text-slate-600">Reporte detallado de cobros y descuentos.</p>
+            <p className="mt-2 text-xs text-slate-600">Reporte detallado de cobros, credito aplicado y precio final.</p>
           </Link>
           <Link href="/admin/settlements" className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-slate-900">
             <h4 className="font-bold text-slate-900">Control de Liquidaciones</h4>

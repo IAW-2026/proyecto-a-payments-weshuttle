@@ -1,16 +1,9 @@
-import type { PaymentMethod } from "@prisma/client";
 import { payment } from "./mercadopago";
-
-type SimulatedChargeInput = {
-  paymentMethod: PaymentMethod | null;
-  amount: number;
-  currency: string;
-};
 
 type SimulatedPaidCharge = {
   status: "PAID";
   transactionId: string;
-  effectivePrice: number;
+  amountCharged: number;
   currency: string;
   processedAt: Date;
 };
@@ -23,37 +16,113 @@ type SimulatedDeniedCharge = {
   processedAt: Date;
 };
 
-export type SimulatedChargeResult = SimulatedPaidCharge | SimulatedDeniedCharge;
+type SimulatedCanceledCheckout = {
+  status: "CANCELED";
+  transactionId: string;
+  currency: string;
+  processedAt: Date;
+};
 
-/**
- * Processes a payment charge using Mercado Pago SDK in Sandbox mode.
- * In a real scenario, this would use the card token stored in providerToken.
- */
-export async function simulatePaymentCharge(input: SimulatedChargeInput): Promise<SimulatedChargeResult> {
+type SimulatedExpiredCheckout = {
+  status: "EXPIRED";
+  transactionId: string;
+  currency: string;
+  processedAt: Date;
+};
+
+export type CheckoutPaymentResult =
+  | SimulatedPaidCharge
+  | SimulatedDeniedCharge
+  | SimulatedCanceledCheckout
+  | SimulatedExpiredCheckout;
+
+export type ProcessCheckoutPaymentInput = {
+  amount: number;
+  currency: string;
+  passengerUserId: string;
+  paymentToken?: string;
+  paymentMethodId?: string;
+  payerEmail?: string;
+  mockOutcome?: "PAID" | "DENIED" | "CANCELED" | "EXPIRED";
+};
+
+function buildTransactionId(prefix: string) {
+  return `${prefix}_${crypto.randomUUID()}`;
+}
+
+export async function processCheckoutPayment(
+  input: ProcessCheckoutPaymentInput,
+): Promise<CheckoutPaymentResult> {
   const processedAt = new Date();
 
-  if (!input.paymentMethod) {
+  if (input.amount <= 0) {
+    return {
+      status: "PAID",
+      transactionId: buildTransactionId("credit_only"),
+      amountCharged: 0,
+      currency: input.currency,
+      processedAt,
+    };
+  }
+
+  if (input.mockOutcome === "CANCELED") {
+    return {
+      status: "CANCELED",
+      transactionId: buildTransactionId("canceled"),
+      currency: input.currency,
+      processedAt,
+    };
+  }
+
+  if (input.mockOutcome === "EXPIRED") {
+    return {
+      status: "EXPIRED",
+      transactionId: buildTransactionId("expired"),
+      currency: input.currency,
+      processedAt,
+    };
+  }
+
+  if (input.mockOutcome === "DENIED") {
     return {
       status: "DENIED",
-      transactionId: `failed_${crypto.randomUUID()}`,
-      rejectionReason: "PAYMENT_METHOD_NOT_FOUND",
+      transactionId: buildTransactionId("denied"),
+      rejectionReason: "INSUFFICIENT_FUNDS",
+      currency: input.currency,
+      processedAt,
+    };
+  }
+
+  if (!input.paymentToken && input.mockOutcome !== "PAID") {
+    return {
+      status: "DENIED",
+      transactionId: buildTransactionId("denied"),
+      rejectionReason: "PAYMENT_TOKEN_NOT_PROVIDED",
+      currency: input.currency,
+      processedAt,
+    };
+  }
+
+  if (input.mockOutcome === "PAID") {
+    return {
+      status: "PAID",
+      transactionId: buildTransactionId("sandbox"),
+      amountCharged: input.amount,
       currency: input.currency,
       processedAt,
     };
   }
 
   try {
-    // Mercado Pago Payment Creation
-    // In Sandbox, we use the providerToken which should be a test card token.
     const mpResponse = await payment.create({
       body: {
         transaction_amount: input.amount,
-        token: input.paymentMethod.providerToken,
-        description: `WeShuttle Ride Charge - ${input.paymentMethod.clerkUserId}`,
+        token: input.paymentToken,
+        description: `WeShuttle Checkout - ${input.passengerUserId}`,
         installments: 1,
-        payment_method_id: input.paymentMethod.cardBrand.toLowerCase(), // e.g., 'visa', 'master'
+        payment_method_id: input.paymentMethodId ?? "visa",
         payer: {
-          email: `${input.paymentMethod.clerkUserId}@mock-iaw.com`, // Simulated email from Clerk ID
+          email: input.payerEmail ?? `${input.passengerUserId}@mock-iaw.com`,
         },
       },
     });
@@ -61,28 +130,29 @@ export async function simulatePaymentCharge(input: SimulatedChargeInput): Promis
     if (mpResponse.status === "approved") {
       return {
         status: "PAID",
-        transactionId: mpResponse.id?.toString() || `mp_${crypto.randomUUID()}`,
-        effectivePrice: mpResponse.transaction_amount || input.amount,
+        transactionId: mpResponse.id?.toString() || buildTransactionId("mp"),
+        amountCharged: mpResponse.transaction_amount || input.amount,
         currency: mpResponse.currency_id || input.currency,
         processedAt: mpResponse.date_approved ? new Date(mpResponse.date_approved) : processedAt,
       };
-    } else {
-      return {
-        status: "DENIED",
-        transactionId: mpResponse.id?.toString() || `mp_failed_${crypto.randomUUID()}`,
-        rejectionReason: mpResponse.status_detail || "PAYMENT_REJECTED",
-        currency: input.currency,
-        processedAt,
-      };
     }
-  } catch (error: any) {
-    console.error("Mercado Pago Error:", error);
-    
-    // Handle specific MP error scenarios if needed
+
     return {
       status: "DENIED",
-      transactionId: `error_${crypto.randomUUID()}`,
-      rejectionReason: error.message || "GATEWAY_ERROR",
+      transactionId: mpResponse.id?.toString() || buildTransactionId("mp_failed"),
+      rejectionReason: mpResponse.status_detail || "PAYMENT_REJECTED",
+      currency: input.currency,
+      processedAt,
+    };
+  } catch (error: unknown) {
+    console.error("Mercado Pago Error:", error);
+
+    const message = error instanceof Error ? error.message : "GATEWAY_ERROR";
+
+    return {
+      status: "DENIED",
+      transactionId: buildTransactionId("gateway_error"),
+      rejectionReason: message,
       currency: input.currency,
       processedAt,
     };

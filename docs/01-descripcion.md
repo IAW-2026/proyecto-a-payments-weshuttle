@@ -8,7 +8,7 @@
 ## Actores del sistema
 | Actor | Descripción | Apps donde interactúa |
 |-------|-------------|----------------------|
-| **Pasajero (Rider)** | Reserva su lugar en pools, visualiza precios estimados y recibe el cobro automático 1 hora antes del viaje. Al finalizar su viaje puede realizar una reseña al conductor | Rider, Payments, Feedback |
+| **Pasajero (Rider)** | Reserva su lugar en pools, visualiza precios estimados, paga el precio máximo al momento de reservar y recibe saldo a favor si el precio final del viaje resulta menor por la ocupación del pool. Al finalizar su viaje puede realizar una reseña al conductor. | Rider, Payments, Feedback |
 | **Conductor (Driver)** | Acepta viajes del marketplace, actualiza el estado del recorrido, recibe su liquidación y puede realizar una reseña a cada pasajero. | Driver, Payments, Feedback |
 | **Administrador** | Gestiona los datos principales de cada app y visualiza listados y reportes | Rider, Driver, Payments, Feedback y posteriormente Control Plane|
 
@@ -18,11 +18,19 @@
 
 #### Estados de la reserva en Rider App
 
-- `PENDING_DRIVER`: la reserva fue creada por el pasajero, pero el pool todavía no tiene conductor asignado.
-- `CONFIRMED`: el pool ya tiene conductor asignado.
-- `PAID`: el cobro automático de la reserva fue exitoso.
-- `DENIED`: el cobro automático de la reserva fue rechazado.
+- `PENDING_PAYMENT`: la reserva fue creada, pero todavía no tiene pago exitoso.
+- `PENDING_DRIVER`: la reserva ya fue pagada, pero el pool todavía no tiene conductor asignado.
+- `CONFIRMED`: la reserva ya fue pagada y el pool tiene conductor asignado.
 - `CANCELED`: la reserva fue cancelada.
+
+#### Estados de pago de la reserva
+
+- `UNPAID`: la reserva todavía no fue pagada.
+- `PENDING`: el pago fue iniciado pero todavía no fue confirmado.
+- `PAID`: el pago fue exitoso.
+- `DENIED`: el pago fue rechazado.
+- `CANCELED`: el checkout fue cancelado por el usuario.
+- `EXPIRED`: el checkout venció sin pago exitoso.
 
 #### Estados del pool en Driver App
 
@@ -43,20 +51,18 @@
 
 ## 1. Solicitud de viaje y cotización
 
-Antes de poder solicitar un viaje, el pasajero debe ser redirigido a la **Payments App** para cargar su cuenta de Mercado Pago, que será utilizada para el cobro automático del viaje.
-
-Luego, el pasajero solicita un viaje desde la **Rider App**. La brecha horaria permitida para reservar un viaje es desde 24 horas hasta 1 hora antes de la partida.
+El pasajero solicita un viaje desde la **Rider App**. La brecha horaria permitida para reservar un viaje es desde 24 horas hasta 1 hora antes de la partida.
 
 El usuario selecciona el destino y el horario del viaje. Luego, la **Rider App** consulta a la **Driver App** si ya existe un pool creado para ese destino y horario.
 
 - Si existe un pool, la **Driver App** devuelve la cantidad de pasajeros actuales y el `pool_id` correspondiente.
 - Si no existe un pool, la **Driver App** devuelve ocupación `0` y `pool_id = NULL`.
 
-Con esta información, la **Rider App** consulta a la **Payments App** el precio máximo y el precio estimado del viaje, enviando el destino, el origen y la ocupación actual del pool.
+Con esta información, la **Rider App** consulta a la **Payments App** el precio máximo que el usuario va a pagar y el precio estimado del viaje(la diferencia a favor del usuario luego sera devuelta en forma de credito para proximos viajes), enviando el destino, el origen y la ocupación actual del pool.
 
 La **Payments App** devuelve:
 
-- el precio máximo que el pasajero podría llegar a pagar;
+- el precio máximo que el pasajero va a pagar;
 - el precio estimado según la ocupación actual del pool.
 
 Con estos datos, el pasajero puede visualizar los posibles costos del viaje antes de confirmar la reserva.
@@ -65,19 +71,33 @@ Si al momento de solicitar el viaje ya existe un pool para ese destino y horario
 
 Para esto, la **Rider App** obtiene la información del conductor desde la **Driver App** y su promedio de estrellas desde la **Feedback App**.
 
+Antes de confirmar definitivamente la reserva, el pasajero será redirigido a la **Payments App** para realizar el pago del viaje.
+
+La **Payments App** cobrará el precio máximo informado para la reserva. Si el pasajero tiene saldo a favor disponible, este se aplicará primero. Si el saldo no alcanza para cubrir el precio máximo, se cobrará la diferencia mediante Mercado Pago.
+
 ---
 
 ## 2. Reserva e inmutabilidad
 
-Cuando el pasajero confirma la reserva, la **Rider App** crea una reserva en estado `PENDING_DRIVER` o `CONFIRMED` dependiendo de si el pool asociado tiene un conductor asignado o no.
+Cuando el pasajero decide reservar, la **Rider App** crea una reserva en estado `PENDING_PAYMENT` y con `payment_status = UNPAID`.
+
+Esta reserva todavía no incrementa la ocupación del pool.
+
+Luego, la **Rider App** redirige al pasajero a la **Payments App** para realizar el pago del precio máximo.
+
+Cuando la **Payments App** confirma el pago exitoso, notifica a la **Rider App**. En ese momento:
+
+- la reserva actualiza `payment_status = PAID`;
+- la reserva pasa a `PENDING_DRIVER` o `CONFIRMED`, según si el pool tiene conductor asignado o no;
+- la **Rider App** notifica a la **Driver App** que debe sumar esa reserva al pool.
 
 La **Rider App** guarda un snapshot comercial e inmutable de la reserva, que incluye:
 
 - destino;
 - horario;
-- precio máximo que el pasajero podría llegar a pagar.
+- precio máximo que el pasajero termino pagando.
 
-El precio máximo guardado representa el límite superior del cobro. El precio final nunca puede superar ese valor; a lo sumo, puede ser igual.
+El precio máximo guardado representa el límite superior del cobro que termina pagando el usuario. El precio final del viaje nunca puede superar ese valor; a lo sumo, puede ser igual.
 
 Si el usuario requiere un cambio posterior en el destino, horario u otra información relevante de la reserva, debe cancelar la reserva actual y crear una nueva.
 
@@ -86,7 +106,7 @@ Una vez creada la reserva:
 - si el pool ya existía, la **Rider App** notifica a la **Driver App** que debe incrementar en 1 la ocupación del pool;
 - si el pool no existía, la **Rider App** le solicita a la **Driver App** la creación de un nuevo pool y recibe el `pool_id` correspondiente.
 
-Cuando un pasajero cancela su reserva, la **Rider App** actualiza la reserva al estado `CANCELED` y notifica a la **Driver App**.
+Cuando un pasajero cancela su reserva, la **Rider App** actualiza la reserva al estado `CANCELED` y notifica a la **Driver App**. El viaje pagado queda como saldo a favor para la persona en futuros viajes. 
 
 La **Driver App** decrementa la ocupación del pool. Si el pool queda vacío, lo elimina o lo marca como `CANCELED`, según corresponda.
 
@@ -117,55 +137,35 @@ Si llega el momento de cierre del pool y ningún conductor aceptó el viaje, el 
 
 En ese caso:
 
-- las reservas asociadas al pool pasan a estado `CANCELED`;
+- las reservas pagadas asociadas al pool pasan a estado `CANCELED`;
 - la **Rider App** notifica a los pasajeros que el viaje fue cancelado por falta de conductor;
-- no se ejecutan cobros automáticos;
-- la **Payments App** no procesa ningún pago para ese pool.
+- la **Driver App** solicita a la **Payments App** que genere el ajuste de crédito correspondiente;
+- la **Payments App** acredita a cada pasajero el monto pagado como saldo a favor para próximos viajes.
 
 ---
 
-## 5. Cierre y cobro automático (T-1h)
+## 5. Cierre del pool y cálculo de saldo a favor (T-1h)
 
 Una hora antes de la partida, la **Driver App** cierra el pool cambiando su estado a `LOCKED`.
 
-El estado `LOCKED` bloquea nuevas reservas y cancelaciones voluntarias por parte de los usuarios. Sin embargo, no impide ajustes internos del sistema, como modificaciones de ocupación por pagos rechazados.
+El estado `LOCKED` bloquea nuevas reservas y cancelaciones voluntarias por parte de los usuarios.
 
-Al bloquear el pool, la **Driver App** le informa a la **Payments App** que debe procesar el cobro automático para ese pool.
+En este momento ya no se realizan cobros automáticos, porque las reservas fueron pagadas al momento de crearse.
 
-La **Payments App** utiliza el `pool_id` para solicitarle a la **Rider App** el manifiesto de pasajeros asociado al pool.
+Al bloquear el pool, la **Driver App** solicita a la **Payments App** que calcule los ajustes de crédito correspondientes al pool.
 
-El precio final real se define en este momento, al ejecutar el cobro automático. Este precio depende de la ocupación del pool al momento T-1h.
+La **Payments App** utiliza el `pool_id` para solicitarle a la **Rider App** el manifiesto de pasajeros pagados asociado al pool.
 
-Si se sumaron más pasajeros después de que un usuario hizo su reserva, no se realiza ningún ajuste inmediato sobre su reserva. El cálculo definitivo se realiza únicamente al momento del cierre y cobro automático.
+El precio final real se define en este momento y depende de la ocupación del pool al momento T-1h.
 
-El precio final:
+La **Payments App** compara, para cada reserva pagada:
 
-- depende de la ocupación del pool al momento T-1h;
-- puede ser menor o igual al precio máximo informado inicialmente y guardado en el snapshot de la reserva.
+- el precio máximo pagado al momento de reservar;
+- el precio final calculado según la ocupación del pool.
 
-Cuando un pago es exitoso, la **Payments App** notifica a la **Rider App** para que actualice la reserva correspondiente al estado `PAID`.
+Si el precio final es menor que el precio máximo pagado, la diferencia se acredita como saldo a favor para próximos viajes.
 
-En esa misma notificación, la **Payments App** informa el precio efectivamente cobrado al pasajero luego de aplicar descuentos, promociones o ajustes correspondientes.
-
-La **Rider App** guarda ese valor en el atributo `effective_price` de la reserva. Este valor será utilizado para mostrarle al pasajero cuánto pagó realmente por el viaje, tanto al momento de confirmarse el cobro como en el resumen e historial de viajes.
-
-Adicionalmente, el usuario desde la **Payments App** puede consultar el detalle del pago de una reserva.
-
-Cuando un pago es rechazado, la **Payments App** notifica a la **Rider App** para que actualice la reserva correspondiente al estado `DENIED`. Además, notifica a la **Driver App** para que baje la ocupación del pool.
-
-Si algunos pagos son rechazados, no se recalcula el precio para el resto de los pasajeros por simplicidad del sistema. Esta mejora podrá evaluarse en futuras etapas.
-
-Si, luego de procesar los pagos rechazados, el pool queda vacío, el viaje se cancela.
-
-Los pasajeros con reservas en estado `DENIED`:
-
-- no forman parte del manifiesto final del viaje;
-- no aparecen en el recorrido del conductor;
-- no reciben seguimiento del viaje;
-- no pueden reseñar ese viaje;
-- deben visualizar en la **Rider App** que su reserva fue rechazada por un problema en el pago.
-
----
+Luego, la **Payments App** notifica a la **Rider App** el resultado del ajuste para que pueda actualizar la reserva y mostrar una notificación al pasajero indicando que tiene saldo a favor.
 
 ## 6. Ejecución y seguimiento del viaje
 
@@ -229,7 +229,7 @@ Cuando el pool pasa a `COMPLETED`, la **Driver App** notifica a la **Payments Ap
 
 Al detectar el estado `COMPLETED`, la **Rider App** muestra un resumen del viaje finalizado a cada uno de los pasajeros.
 
-El resumen del viaje muestra los datos principales de la reserva, incluyendo destino, horario, conductor, vehículo, estado final del viaje y `effective_price`, es decir, el precio efectivamente pagado por el pasajero (este mismo valor también queda disponible para el historial de viajes del usuario dentro de la **Rider App**).
+El resumen del viaje muestra los datos principales de la reserva, incluyendo destino, horario, conductor, vehiculo, estado final del viaje, `amount_charged`, `credit_applied`, `final_trip_price` y `credit_granted`.
 
 La **Feedback App** cambia el estado de las reseñas asociadas al pool de `PRECREATED` a `PENDING`. A partir de este momento, las reseñas quedan visibles y disponibles para los usuarios.
 

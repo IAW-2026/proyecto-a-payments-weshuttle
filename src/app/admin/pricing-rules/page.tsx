@@ -72,7 +72,7 @@ export default async function AdminPricingRulesPage({ searchParams }: PageProps)
       role="admin"
       clerkUserId={authContext.clerkUserId}
       title="Reglas de precio"
-      description="Persisti y ajusta reglas de pricing para cotizaciones y cobros automaticos."
+      description="Persisti y ajusta reglas de pricing para cotizaciones, checkouts y precio final del viaje."
     >
       <div className="flex flex-col gap-8">
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
@@ -162,12 +162,13 @@ export default async function AdminPricingRulesPage({ searchParams }: PageProps)
                   <button type="submit" className="rounded-full bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-700">
                     Guardar
                   </button>
-                  <form action={deletePricingRuleAction}>
-                    <input type="hidden" name="id" value={rule.id} />
-                    <button type="submit" className="rounded-full border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100">
-                      Eliminar
-                    </button>
-                  </form>
+                  <button
+                    type="submit"
+                    formAction={deletePricingRuleAction}
+                    className="rounded-full border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
+                  >
+                    Eliminar
+                  </button>
                 </div>
               </form>
             ))}

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireApiRole } from "@/lib/auth";
-import { startAutoChargeForPool } from "@/lib/payments/auto-charge";
+import { calculateCreditAdjustments } from "@/lib/payments/credit-adjustments";
 
 export const runtime = "nodejs";
 
@@ -47,24 +47,20 @@ export async function POST(request: Request, context: RouteContext) {
     );
   }
 
-  const departureTime =
-    typeof (body as { departure_time?: unknown }).departure_time === "string"
-      ? (body as { departure_time: string }).departure_time
-      : null;
+  const reason = typeof (body as { reason?: unknown }).reason === "string"
+    ? (body as { reason: "POOL_LOCKED" | "NO_DRIVER_ASSIGNED" }).reason
+    : null;
+  const departureTime = typeof (body as { departure_time?: unknown }).departure_time === "string"
+    ? (body as { departure_time: string }).departure_time
+    : null;
   const currentPassengersValue = (body as { current_passengers?: unknown }).current_passengers;
-  const currentPassengers =
-    typeof currentPassengersValue === "number" ? currentPassengersValue : null;
+  const currentPassengers = typeof currentPassengersValue === "number" ? currentPassengersValue : null;
 
-  if (
-    !isValidDate(departureTime) ||
-    currentPassengers === null ||
-    !Number.isInteger(currentPassengers) ||
-    currentPassengers < 1
-  ) {
+  if ((reason !== "POOL_LOCKED" && reason !== "NO_DRIVER_ASSIGNED") || !isValidDate(departureTime) || currentPassengers === null || !Number.isInteger(currentPassengers) || currentPassengers < 0) {
     return NextResponse.json(
       {
         error: "INVALID_BODY",
-        message: "departure_time y current_passengers son obligatorios.",
+        message: "reason, departure_time y current_passengers son obligatorios.",
       },
       { status: 400 },
     );
@@ -73,8 +69,9 @@ export async function POST(request: Request, context: RouteContext) {
   const validatedDepartureTime = departureTime as string;
 
   try {
-    const result = await startAutoChargeForPool({
+    const result = await calculateCreditAdjustments({
       poolId: poolId.trim(),
+      reason,
       departureTime: validatedDepartureTime,
       currentPassengers,
     });
@@ -89,19 +86,26 @@ export async function POST(request: Request, context: RouteContext) {
       );
     }
 
-    return NextResponse.json(
-      {
-        pool_id: result.data.poolId,
-        auto_charge_status: result.data.autoChargeStatus,
-        message: result.data.message,
-      },
-      { status: 202 },
-    );
+    return NextResponse.json({
+      pool_id: result.data.poolId,
+      reason: result.data.reason,
+      final_price: result.data.finalPrice,
+      processed_reservations: result.data.processedReservations,
+      currency: result.data.currency,
+      credits_generated: result.data.creditsGenerated.map((entry) => ({
+        reservation_id: entry.reservationId,
+        passenger_user_id: entry.passengerUserId,
+        max_price_paid: entry.maxPricePaid,
+        final_price: entry.finalPrice,
+        credit_granted: entry.creditGranted,
+        credit_balance_after: entry.creditBalanceAfter,
+      })),
+    });
   } catch {
     return NextResponse.json(
       {
-        error: "AUTO_CHARGE_INTERNAL_ERROR",
-        message: "Ocurrio un error interno al iniciar el proceso de cobro.",
+        error: "POOL_PRICE_FINALIZATION_INTERNAL_ERROR",
+        message: "Ocurrio un error interno al calcular los ajustes de credito.",
       },
       { status: 500 },
     );
