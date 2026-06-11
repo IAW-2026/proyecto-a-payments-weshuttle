@@ -61,6 +61,17 @@ export async function settlePool(input: SettlePoolInput): Promise<SettlePoolResu
     };
   }
 
+  const chargesWithoutFinalPrice = charges.filter((charge) => charge.finalTripPrice === null);
+
+  if (chargesWithoutFinalPrice.length > 0) {
+    return {
+      ok: false,
+      status: 409,
+      error: "POOL_PRICE_NOT_FINALIZED",
+      message: "El pool todavia no tiene precio final calculado para todas las reservas pagadas.",
+    };
+  }
+
   const payoutAccount = await prisma.payoutAccount.findFirst({
     where: {
       driverUserId: input.driverUserId,
@@ -78,7 +89,10 @@ export async function settlePool(input: SettlePoolInput): Promise<SettlePoolResu
     };
   }
 
-  const amount = charges.reduce((total, charge) => total + decimalToNumber(charge.effectivePrice), 0);
+  const amount = charges.reduce(
+    (total, charge) => total + decimalToNumber(charge.finalTripPrice),
+    0,
+  );
   const currency = charges[0]?.currency ?? "ARS";
   const settlement = await prisma.settlement.create({
     data: {
