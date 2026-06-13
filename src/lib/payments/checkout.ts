@@ -1,6 +1,10 @@
 import { Prisma } from "@prisma/client";
 import { notifyReservationPaymentResult } from "@/lib/external-apis";
-import { processCheckoutPayment } from "@/lib/payments/provider";
+import {
+  getPaymentClient,
+  getPreferenceClient,
+  isMercadoPagoConfigured,
+} from "@/lib/payments/mercadopago";
 import { prisma } from "@/lib/prisma";
 
 type CreateCheckoutInput = {
@@ -11,30 +15,69 @@ type CreateCheckoutInput = {
   currency: string;
   successUrl: string;
   failureUrl: string;
-  paymentToken?: string;
-  paymentMethodId?: string;
-  payerEmail?: string;
-  mockPaymentStatus?: "PAID" | "DENIED" | "CANCELED" | "EXPIRED";
+  pendingUrl: string;
+  appBaseUrl: string;
   expiresAt?: string;
 };
+
+type CheckoutStatus = "CREATED" | "PENDING" | "PAID" | "DENIED" | "CANCELED" | "EXPIRED";
+type ChargeStatus = "PENDING" | "PAID" | "DENIED" | "CANCELED";
+type DemoCheckoutStatus = "PAID" | "DENIED" | "CANCELED" | "EXPIRED";
+type ReturnRouteKind = "success" | "failure" | "pending";
 
 type CheckoutResponseData = {
   checkoutId: string;
   reservationId: string;
   poolId: string;
   passengerUserId: string;
-  paymentUrl: string | null;
+  checkoutUrl: string | null;
   maxPrice: number;
   availableCredit: number;
   creditApplied: number;
   amountToCharge: number;
   currency: string;
-  checkoutStatus: "CREATED" | "PENDING" | "PAID" | "DENIED" | "CANCELED" | "EXPIRED";
+  checkoutStatus: CheckoutStatus;
+  isDemoMode: boolean;
 };
 
 type CreateCheckoutResult =
   | { ok: true; status: number; data: CheckoutResponseData }
   | { ok: false; status: number; error: string; message: string };
+
+type CheckoutSummary = {
+  id: string;
+  reservationId: string;
+  poolId: string;
+  passengerUserId: string;
+  maxPrice: number;
+  availableCreditAtCreation: number;
+  creditApplied: number;
+  amountToCharge: number;
+  currency: string;
+  status: CheckoutStatus;
+  checkoutUrl: string | null;
+  mercadoPagoPreferenceId: string | null;
+  mercadoPagoInitPoint: string | null;
+  expiresAt: string | null;
+};
+
+type CheckoutPageData = {
+  checkout: CheckoutSummary;
+  isDemoMode: boolean;
+};
+
+type ReconcileCheckoutReturnInput = {
+  checkoutId: string;
+  routeKind: ReturnRouteKind;
+  paymentId?: string;
+  status?: string;
+  externalReference?: string;
+  merchantOrderId?: string;
+};
+
+type ReconcileCheckoutReturnResult =
+  | { ok: true; data: CheckoutPageData }
+  | { ok: false; error: string; message: string; data?: CheckoutPageData };
 
 function toDecimal(value: number) {
   return new Prisma.Decimal(value.toFixed(2));
@@ -44,18 +87,107 @@ function decimalToNumber(value: Prisma.Decimal | null) {
   return value ? value.toNumber() : 0;
 }
 
-function createPaymentUrl(input: {
-  reservationId: string;
-  successUrl: string;
-  failureUrl: string;
-}) {
-  const search = new URLSearchParams({
-    reservation_id: input.reservationId,
-    success_url: input.successUrl,
-    failure_url: input.failureUrl,
-  });
+function normalizeBaseUrl(value: string) {
+  return value.endsWith("/") ? value.slice(0, -1) : value;
+}
 
-  return `https://sandbox.mercadopago.com/checkout/mock?${search.toString()}`;
+function buildCheckoutUrl(appBaseUrl: string, checkoutId: string) {
+  return `${normalizeBaseUrl(appBaseUrl)}/checkout/${checkoutId}`;
+}
+
+function buildCheckoutBackUrl(input: {
+  appBaseUrl: string;
+  checkoutId: string;
+  kind: ReturnRouteKind;
+  returnUrl: string;
+}) {
+  const url = new URL(buildCheckoutUrl(input.appBaseUrl, input.checkoutId));
+  url.pathname = `${url.pathname}/${input.kind}`;
+  url.searchParams.set("return_url", input.returnUrl);
+
+  return url.toString();
+}
+
+function buildDemoTransactionId(prefix: string) {
+  return `${prefix}_${crypto.randomUUID()}`;
+}
+
+function buildProcessedAt(dateValue?: string) {
+  if (!dateValue) {
+    return new Date();
+  }
+
+  const date = new Date(dateValue);
+
+  return Number.isNaN(date.getTime()) ? new Date() : date;
+}
+
+function getDefaultStatusForRoute(routeKind: ReturnRouteKind): CheckoutStatus {
+  if (routeKind === "success") {
+    return "PAID";
+  }
+
+  if (routeKind === "pending") {
+    return "PENDING";
+  }
+
+  return "CANCELED";
+}
+
+function mapMercadoPagoStatus(rawStatus: string | undefined, routeKind: ReturnRouteKind): CheckoutStatus {
+  switch (rawStatus) {
+    case "approved":
+      return "PAID";
+    case "pending":
+    case "in_process":
+      return "PENDING";
+    case "rejected":
+      return "DENIED";
+    case "cancelled":
+      return "CANCELED";
+    default:
+      return getDefaultStatusForRoute(routeKind);
+  }
+}
+
+function shouldNotifyRider(status: CheckoutStatus) {
+  return status === "PAID" || status === "DENIED" || status === "CANCELED" || status === "EXPIRED";
+}
+
+function buildCheckoutSummary(
+  checkout: {
+    id: string;
+    reservationId: string;
+    poolId: string;
+    passengerUserId: string;
+    maxPrice: Prisma.Decimal;
+    availableCreditAtCreation: Prisma.Decimal;
+    creditApplied: Prisma.Decimal;
+    amountToCharge: Prisma.Decimal;
+    currency: string;
+    status: CheckoutStatus;
+    checkoutUrl: string | null;
+    mercadoPagoPreferenceId: string | null;
+    mercadoPagoInitPoint: string | null;
+    expiresAt: Date | null;
+  },
+): CheckoutSummary {
+  return {
+    id: checkout.id,
+    reservationId: checkout.reservationId,
+    poolId: checkout.poolId,
+    passengerUserId: checkout.passengerUserId,
+    maxPrice: decimalToNumber(checkout.maxPrice),
+    availableCreditAtCreation: decimalToNumber(checkout.availableCreditAtCreation),
+    creditApplied: decimalToNumber(checkout.creditApplied),
+    amountToCharge: decimalToNumber(checkout.amountToCharge),
+    currency: checkout.currency,
+    status: checkout.status,
+    checkoutUrl: checkout.checkoutUrl,
+    mercadoPagoPreferenceId: checkout.mercadoPagoPreferenceId,
+    mercadoPagoInitPoint: checkout.mercadoPagoInitPoint,
+    expiresAt: checkout.expiresAt?.toISOString() ?? null,
+  };
 }
 
 async function ensureCreditAccount(userId: string, currency: string) {
@@ -76,46 +208,114 @@ async function ensureCreditAccount(userId: string, currency: string) {
   });
 }
 
-async function finalizeSuccessfulCheckout(input: {
+async function getCheckoutById(checkoutId: string) {
+  return prisma.checkoutSession.findUnique({
+    where: { id: checkoutId },
+  });
+}
+
+async function upsertCharge(
+  tx: Prisma.TransactionClient,
+  input: {
+    checkout: NonNullable<Awaited<ReturnType<typeof getCheckoutById>>>;
+    transactionId: string;
+    status: ChargeStatus;
+    amountCharged: number;
+    processedAt: Date;
+    rejectionReason?: string;
+  },
+) {
+  return tx.charge.upsert({
+    where: { transactionId: input.transactionId },
+    update: {
+      checkoutSessionId: input.checkout.id,
+      poolId: input.checkout.poolId,
+      reservationId: input.checkout.reservationId,
+      passengerUserId: input.checkout.passengerUserId,
+      maxPrice: input.checkout.maxPrice,
+      creditApplied: toDecimal(input.status === "PAID" ? decimalToNumber(input.checkout.creditApplied) : 0),
+      amountCharged: toDecimal(input.amountCharged),
+      currency: input.checkout.currency,
+      status: input.status,
+      provider: "MERCADO_PAGO",
+      rejectionReason: input.rejectionReason ?? null,
+      processedAt: input.processedAt,
+    },
+    create: {
+      transactionId: input.transactionId,
+      checkoutSessionId: input.checkout.id,
+      poolId: input.checkout.poolId,
+      reservationId: input.checkout.reservationId,
+      passengerUserId: input.checkout.passengerUserId,
+      maxPrice: input.checkout.maxPrice,
+      creditApplied: toDecimal(input.status === "PAID" ? decimalToNumber(input.checkout.creditApplied) : 0),
+      amountCharged: toDecimal(input.amountCharged),
+      finalTripPrice: null,
+      creditGranted: toDecimal(0),
+      currency: input.checkout.currency,
+      status: input.status,
+      provider: "MERCADO_PAGO",
+      rejectionReason: input.rejectionReason,
+      processedAt: input.processedAt,
+    },
+  });
+}
+
+async function applyCheckoutOutcome(input: {
   checkoutId: string;
-  reservationId: string;
-  poolId: string;
-  passengerUserId: string;
-  maxPrice: number;
-  creditApplied: number;
-  amountCharged: number;
-  currency: string;
-  transactionId: string;
+  targetStatus: CheckoutStatus;
+  transactionId?: string;
+  amountCharged?: number;
+  rejectionReason?: string;
   processedAt: Date;
 }) {
+  const checkout = await prisma.checkoutSession.findUnique({
+    where: { id: input.checkoutId },
+  });
+
+  if (!checkout) {
+    throw new Error("CHECKOUT_NOT_FOUND");
+  }
+
+  const statusChanged = checkout.status !== input.targetStatus;
+  const shouldCreateCharge =
+    input.targetStatus === "PAID" ||
+    input.targetStatus === "DENIED" ||
+    (input.targetStatus === "PENDING" && Boolean(input.transactionId)) ||
+    (input.targetStatus === "CANCELED" && Boolean(input.transactionId));
+
   await prisma.$transaction(async (tx) => {
     await tx.checkoutSession.update({
-      where: { id: input.checkoutId },
-      data: { status: "PAID" },
+      where: { id: checkout.id },
+      data: { status: input.targetStatus },
     });
 
-    await tx.charge.create({
-      data: {
+    let chargeId: string | null = null;
+
+    if (shouldCreateCharge && input.transactionId) {
+      const chargeStatus: ChargeStatus = input.targetStatus === "PAID"
+        ? "PAID"
+        : input.targetStatus === "DENIED"
+          ? "DENIED"
+          : input.targetStatus === "PENDING"
+            ? "PENDING"
+            : "CANCELED";
+
+      const charge = await upsertCharge(tx, {
+        checkout,
         transactionId: input.transactionId,
-        checkoutSessionId: input.checkoutId,
-        poolId: input.poolId,
-        reservationId: input.reservationId,
-        passengerUserId: input.passengerUserId,
-        maxPrice: toDecimal(input.maxPrice),
-        creditApplied: toDecimal(input.creditApplied),
-        amountCharged: toDecimal(input.amountCharged),
-        finalTripPrice: null,
-        creditGranted: toDecimal(0),
-        currency: input.currency,
-        status: "PAID",
-        provider: "MERCADO_PAGO",
+        status: chargeStatus,
+        amountCharged: input.amountCharged ?? 0,
         processedAt: input.processedAt,
-      },
-    });
+        rejectionReason: input.rejectionReason,
+      });
 
-    if (input.creditApplied > 0) {
+      chargeId = charge.id;
+    }
+
+    if (input.targetStatus === "PAID" && statusChanged && decimalToNumber(checkout.creditApplied) > 0) {
       const creditAccount = await tx.creditAccount.findUnique({
-        where: { userId: input.passengerUserId },
+        where: { userId: checkout.passengerUserId },
       });
 
       if (!creditAccount) {
@@ -126,93 +326,115 @@ async function finalizeSuccessfulCheckout(input: {
         where: { id: creditAccount.id },
         data: {
           balance: {
-            decrement: toDecimal(input.creditApplied),
+            decrement: checkout.creditApplied,
           },
         },
       });
 
-      const createdCharge = await tx.charge.findUniqueOrThrow({
-        where: { transactionId: input.transactionId },
-        select: { id: true },
-      });
-
-      await tx.creditMovement.create({
-        data: {
-          creditAccountId: creditAccount.id,
-          userId: input.passengerUserId,
-          type: "CREDIT_APPLIED",
-          amount: toDecimal(input.creditApplied),
-          currency: input.currency,
-          reservationId: input.reservationId,
-          poolId: input.poolId,
-          chargeId: createdCharge.id,
-          description: "Saldo a favor aplicado en checkout.",
-        },
-      });
+      if (chargeId) {
+        await tx.creditMovement.create({
+          data: {
+            creditAccountId: creditAccount.id,
+            userId: checkout.passengerUserId,
+            type: "CREDIT_APPLIED",
+            amount: checkout.creditApplied,
+            currency: checkout.currency,
+            reservationId: checkout.reservationId,
+            poolId: checkout.poolId,
+            chargeId,
+            description: "Saldo a favor aplicado en checkout.",
+          },
+        });
+      }
     }
   });
 
-  await notifyReservationPaymentResult({
-    reservationId: input.reservationId,
-    paymentStatus: "PAID",
-    transactionId: input.transactionId,
-    maxPrice: input.maxPrice,
-    creditApplied: input.creditApplied,
-    amountCharged: input.amountCharged,
-    currency: input.currency,
-    processedAt: input.processedAt.toISOString(),
-  });
+  if (statusChanged && shouldNotifyRider(input.targetStatus)) {
+    await notifyReservationPaymentResult({
+      reservationId: checkout.reservationId,
+      paymentStatus: input.targetStatus,
+      transactionId: input.transactionId ?? buildDemoTransactionId("checkout_result"),
+      maxPrice: decimalToNumber(checkout.maxPrice),
+      creditApplied: input.targetStatus === "PAID" ? decimalToNumber(checkout.creditApplied) : undefined,
+      amountCharged: input.targetStatus === "PAID" ? input.amountCharged ?? 0 : undefined,
+      currency: checkout.currency,
+      rejectionReason: input.rejectionReason,
+      processedAt: input.processedAt.toISOString(),
+    });
+  }
 }
 
-async function finalizeNonSuccessfulCheckout(input: {
+async function createMercadoPagoPreference(input: {
   checkoutId: string;
   reservationId: string;
   poolId: string;
   passengerUserId: string;
-  maxPrice: number;
+  amountToCharge: number;
   currency: string;
-  transactionId: string;
-  processedAt: Date;
-  status: "DENIED" | "CANCELED" | "EXPIRED";
-  rejectionReason?: string;
+  appBaseUrl: string;
+  successUrl: string;
+  failureUrl: string;
+  pendingUrl: string;
+  expiresAt: Date;
 }) {
-  await prisma.$transaction(async (tx) => {
-    await tx.checkoutSession.update({
-      where: { id: input.checkoutId },
-      data: { status: input.status },
-    });
+  const preference = getPreferenceClient();
 
-    if (input.status === "DENIED") {
-      await tx.charge.create({
-        data: {
-          transactionId: input.transactionId,
-          checkoutSessionId: input.checkoutId,
-          poolId: input.poolId,
-          reservationId: input.reservationId,
-          passengerUserId: input.passengerUserId,
-          maxPrice: toDecimal(input.maxPrice),
-          creditApplied: toDecimal(0),
-          amountCharged: toDecimal(0),
-          finalTripPrice: null,
-          creditGranted: toDecimal(0),
-          currency: input.currency,
-          status: "DENIED",
-          provider: "MERCADO_PAGO",
-          rejectionReason: input.rejectionReason ?? "PAYMENT_REJECTED",
-          processedAt: input.processedAt,
+  const response = await preference.create({
+    body: {
+      items: [
+        {
+          id: input.checkoutId,
+          title: `Reserva ${input.reservationId}`,
+          description: `Checkout WeShuttle para la reserva ${input.reservationId}`,
+          quantity: 1,
+          currency_id: input.currency,
+          unit_price: input.amountToCharge,
         },
-      });
-    }
+      ],
+      back_urls: {
+        success: buildCheckoutBackUrl({
+          appBaseUrl: input.appBaseUrl,
+          checkoutId: input.checkoutId,
+          kind: "success",
+          returnUrl: input.successUrl,
+        }),
+        failure: buildCheckoutBackUrl({
+          appBaseUrl: input.appBaseUrl,
+          checkoutId: input.checkoutId,
+          kind: "failure",
+          returnUrl: input.failureUrl,
+        }),
+        pending: buildCheckoutBackUrl({
+          appBaseUrl: input.appBaseUrl,
+          checkoutId: input.checkoutId,
+          kind: "pending",
+          returnUrl: input.pendingUrl,
+        }),
+      },
+      auto_return: "approved",
+      expires: true,
+      expiration_date_to: input.expiresAt.toISOString(),
+      external_reference: input.checkoutId,
+      metadata: {
+        checkoutId: input.checkoutId,
+        reservationId: input.reservationId,
+        poolId: input.poolId,
+        passengerUserId: input.passengerUserId,
+      },
+    },
   });
 
-  await notifyReservationPaymentResult({
-    reservationId: input.reservationId,
-    paymentStatus: input.status,
-    transactionId: input.transactionId,
-    currency: input.currency,
-    rejectionReason: input.rejectionReason,
-    processedAt: input.processedAt.toISOString(),
-  });
+  const mercadoPagoPreferenceId = response.id?.trim();
+  const mercadoPagoInitPoint = response.sandbox_init_point?.trim() || response.init_point?.trim() || null;
+
+  if (!mercadoPagoPreferenceId || !mercadoPagoInitPoint) {
+    throw new Error("MERCADOPAGO_PREFERENCE_INCOMPLETE");
+  }
+
+  return {
+    mercadoPagoPreferenceId,
+    mercadoPagoInitPoint,
+  };
 }
 
 export async function createCheckoutSession(
@@ -241,24 +463,7 @@ export async function createCheckoutSession(
   const availableCredit = decimalToNumber(creditAccount.balance);
   const creditApplied = Math.min(availableCredit, input.maxPrice);
   const amountToCharge = Math.max(input.maxPrice - creditApplied, 0);
-
-  if (amountToCharge > 0 && !input.mockPaymentStatus) {
-    return {
-      ok: false,
-      status: 400,
-      error: "MOCK_PAYMENT_STATUS_REQUIRED",
-      message:
-        "En esta etapa demo, los checkouts con monto a cobrar requieren mockPaymentStatus para resolver el resultado del pago.",
-    };
-  }
-
-  const paymentUrl = amountToCharge > 0
-    ? createPaymentUrl({
-        reservationId: input.reservationId,
-        successUrl: input.successUrl,
-        failureUrl: input.failureUrl,
-      })
-    : null;
+  const expiresAt = input.expiresAt ? new Date(input.expiresAt) : new Date(Date.now() + 60 * 60 * 1000);
 
   const checkoutSession = await prisma.checkoutSession.create({
     data: {
@@ -270,92 +475,254 @@ export async function createCheckoutSession(
       creditApplied: toDecimal(creditApplied),
       amountToCharge: toDecimal(amountToCharge),
       currency: input.currency,
-      status: amountToCharge === 0 && !input.mockPaymentStatus ? "PAID" : "CREATED",
+      status: "CREATED",
       provider: "MERCADO_PAGO",
-      paymentUrl,
-      providerCheckoutReference: `chk_${crypto.randomUUID()}`,
-      expiresAt: input.expiresAt ? new Date(input.expiresAt) : new Date(Date.now() + 60 * 60 * 1000),
+      checkoutUrl: null,
+      mercadoPagoPreferenceId: null,
+      mercadoPagoInitPoint: null,
+      expiresAt,
     },
   });
 
-  let checkoutStatus: CheckoutResponseData["checkoutStatus"] = checkoutSession.status;
+  const checkoutUrl = buildCheckoutUrl(input.appBaseUrl, checkoutSession.id);
+  const isDemoMode = !isMercadoPagoConfigured();
 
-  if (amountToCharge === 0 && !input.mockPaymentStatus) {
-    const transactionId = `credit_only_${crypto.randomUUID()}`;
-    const processedAt = new Date();
+  try {
+    if (amountToCharge > 0 && !isDemoMode) {
+      const preferenceData = await createMercadoPagoPreference({
+        checkoutId: checkoutSession.id,
+        reservationId: input.reservationId,
+        poolId: input.poolId,
+        passengerUserId: input.passengerUserId,
+        amountToCharge,
+        currency: input.currency,
+        appBaseUrl: input.appBaseUrl,
+        successUrl: input.successUrl,
+        failureUrl: input.failureUrl,
+        pendingUrl: input.pendingUrl,
+        expiresAt,
+      });
 
-    await finalizeSuccessfulCheckout({
-      checkoutId: checkoutSession.id,
-      reservationId: input.reservationId,
-      poolId: input.poolId,
-      passengerUserId: input.passengerUserId,
-      maxPrice: input.maxPrice,
-      creditApplied,
-      amountCharged: 0,
-      currency: input.currency,
-      transactionId,
+      await prisma.checkoutSession.update({
+        where: { id: checkoutSession.id },
+        data: {
+          checkoutUrl,
+          mercadoPagoPreferenceId: preferenceData.mercadoPagoPreferenceId,
+          mercadoPagoInitPoint: preferenceData.mercadoPagoInitPoint,
+        },
+      });
+    } else {
+      await prisma.checkoutSession.update({
+        where: { id: checkoutSession.id },
+        data: { checkoutUrl },
+      });
+    }
+
+    let checkoutStatus: CheckoutStatus = "CREATED";
+
+    if (amountToCharge === 0) {
+      await applyCheckoutOutcome({
+        checkoutId: checkoutSession.id,
+        targetStatus: "PAID",
+        transactionId: buildDemoTransactionId("credit_only"),
+        amountCharged: 0,
+        processedAt: new Date(),
+      });
+
+      checkoutStatus = "PAID";
+    }
+
+    return {
+      ok: true,
+      status: 201,
+      data: {
+        checkoutId: checkoutSession.id,
+        reservationId: input.reservationId,
+        poolId: input.poolId,
+        passengerUserId: input.passengerUserId,
+        checkoutUrl,
+        maxPrice: input.maxPrice,
+        availableCredit,
+        creditApplied,
+        amountToCharge,
+        currency: input.currency,
+        checkoutStatus,
+        isDemoMode,
+      },
+    };
+  } catch (error) {
+    await prisma.checkoutSession.delete({
+      where: { id: checkoutSession.id },
+    });
+
+    const message = error instanceof Error ? error.message : "No se pudo crear la preferencia de Mercado Pago.";
+
+    return {
+      ok: false,
+      status: 500,
+      error: "CHECKOUT_CREATION_FAILED",
+      message,
+    };
+  }
+}
+
+export async function getCheckoutPageData(checkoutId: string): Promise<CheckoutPageData | null> {
+  const checkout = await getCheckoutById(checkoutId);
+
+  if (!checkout) {
+    return null;
+  }
+
+  return {
+    checkout: buildCheckoutSummary(checkout),
+    isDemoMode: !isMercadoPagoConfigured(),
+  };
+}
+
+export async function resolveDemoCheckout(checkoutId: string, status: DemoCheckoutStatus) {
+  const checkout = await getCheckoutById(checkoutId);
+
+  if (!checkout) {
+    throw new Error("CHECKOUT_NOT_FOUND");
+  }
+
+  if (isMercadoPagoConfigured()) {
+    throw new Error("DEMO_MODE_DISABLED");
+  }
+
+  if (checkout.amountToCharge.toNumber() <= 0) {
+    return;
+  }
+
+  const processedAt = new Date();
+
+  if (status === "PAID") {
+    await applyCheckoutOutcome({
+      checkoutId,
+      targetStatus: "PAID",
+      transactionId: buildDemoTransactionId("demo_paid"),
+      amountCharged: checkout.amountToCharge.toNumber(),
       processedAt,
     });
 
-    checkoutStatus = "PAID";
-  } else if (input.mockPaymentStatus) {
-    const paymentResult = await processCheckoutPayment({
-      amount: amountToCharge,
-      currency: input.currency,
-      passengerUserId: input.passengerUserId,
-      paymentToken: input.paymentToken,
-      paymentMethodId: input.paymentMethodId,
-      payerEmail: input.payerEmail,
-      mockOutcome: input.mockPaymentStatus,
+    return;
+  }
+
+  if (status === "DENIED") {
+    await applyCheckoutOutcome({
+      checkoutId,
+      targetStatus: "DENIED",
+      transactionId: buildDemoTransactionId("demo_denied"),
+      amountCharged: 0,
+      rejectionReason: "MOCK_PAYMENT_DENIED",
+      processedAt,
     });
 
-    checkoutStatus = paymentResult.status;
+    return;
+  }
 
-    if (paymentResult.status === "PAID") {
-      await finalizeSuccessfulCheckout({
-        checkoutId: checkoutSession.id,
-        reservationId: input.reservationId,
-        poolId: input.poolId,
-        passengerUserId: input.passengerUserId,
-        maxPrice: input.maxPrice,
-        creditApplied,
-        amountCharged: paymentResult.amountCharged,
-        currency: paymentResult.currency,
-        transactionId: paymentResult.transactionId,
-        processedAt: paymentResult.processedAt,
+  if (status === "CANCELED") {
+    await applyCheckoutOutcome({
+      checkoutId,
+      targetStatus: "CANCELED",
+      processedAt,
+    });
+
+    return;
+  }
+
+  await applyCheckoutOutcome({
+    checkoutId,
+    targetStatus: "EXPIRED",
+    processedAt,
+  });
+}
+
+export async function reconcileCheckoutReturn(
+  input: ReconcileCheckoutReturnInput,
+): Promise<ReconcileCheckoutReturnResult> {
+  const checkout = await getCheckoutById(input.checkoutId);
+
+  if (!checkout) {
+    return {
+      ok: false,
+      error: "CHECKOUT_NOT_FOUND",
+      message: "No se encontro el checkout solicitado.",
+    };
+  }
+
+  if (input.externalReference && input.externalReference !== checkout.id) {
+    return {
+      ok: false,
+      error: "INVALID_EXTERNAL_REFERENCE",
+      message: "La referencia externa devuelta por Mercado Pago no coincide con el checkout.",
+      data: {
+        checkout: buildCheckoutSummary(checkout),
+        isDemoMode: !isMercadoPagoConfigured(),
+      },
+    };
+  }
+
+  let mercadoPagoStatus = input.status;
+  let paymentId = input.paymentId;
+  let processedAt = new Date();
+  let rejectionReason: string | undefined;
+  let amountCharged = checkout.amountToCharge.toNumber();
+
+  if (input.paymentId && isMercadoPagoConfigured()) {
+    try {
+      const paymentResponse = await getPaymentClient().get({
+        id: input.paymentId,
       });
-    } else {
-      await finalizeNonSuccessfulCheckout({
-        checkoutId: checkoutSession.id,
-        reservationId: input.reservationId,
-        poolId: input.poolId,
-        passengerUserId: input.passengerUserId,
-        maxPrice: input.maxPrice,
-        currency: paymentResult.currency,
-        transactionId: paymentResult.transactionId,
-        processedAt: paymentResult.processedAt,
-        status: paymentResult.status,
-        rejectionReason:
-          paymentResult.status === "DENIED" ? paymentResult.rejectionReason : undefined,
-      });
+
+      if (paymentResponse.external_reference && paymentResponse.external_reference !== checkout.id) {
+        return {
+          ok: false,
+          error: "INVALID_PAYMENT_REFERENCE",
+          message: "El pago recuperado desde Mercado Pago no pertenece a este checkout.",
+          data: {
+            checkout: buildCheckoutSummary(checkout),
+            isDemoMode: false,
+          },
+        };
+      }
+
+      mercadoPagoStatus = paymentResponse.status ?? mercadoPagoStatus;
+      paymentId = paymentResponse.id?.toString() ?? paymentId;
+      rejectionReason = paymentResponse.status_detail ?? undefined;
+      amountCharged = paymentResponse.transaction_amount ?? amountCharged;
+      processedAt = buildProcessedAt(paymentResponse.date_approved ?? paymentResponse.date_created);
+    } catch {
+      // Si la consulta falla, continuamos con los query params para no bloquear la demo del retorno.
     }
+  }
+
+  const targetStatus = mapMercadoPagoStatus(mercadoPagoStatus, input.routeKind);
+
+  await applyCheckoutOutcome({
+    checkoutId: checkout.id,
+    targetStatus,
+    transactionId: paymentId,
+    amountCharged: targetStatus === "PAID" || targetStatus === "PENDING" ? amountCharged : 0,
+    rejectionReason,
+    processedAt,
+  });
+
+  const updatedCheckout = await getCheckoutById(checkout.id);
+
+  if (!updatedCheckout) {
+    return {
+      ok: false,
+      error: "CHECKOUT_NOT_FOUND",
+      message: "No se encontro el checkout solicitado.",
+    };
   }
 
   return {
     ok: true,
-    status: 201,
     data: {
-      checkoutId: checkoutSession.id,
-      reservationId: input.reservationId,
-      poolId: input.poolId,
-      passengerUserId: input.passengerUserId,
-      paymentUrl,
-      maxPrice: input.maxPrice,
-      availableCredit,
-      creditApplied,
-      amountToCharge,
-      currency: input.currency,
-      checkoutStatus,
+      checkout: buildCheckoutSummary(updatedCheckout),
+      isDemoMode: !isMercadoPagoConfigured(),
     },
   };
 }

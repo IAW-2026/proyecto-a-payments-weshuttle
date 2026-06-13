@@ -1,12 +1,38 @@
-import { MercadoPagoConfig, Payment } from "mercadopago";
+import { MercadoPagoConfig, Payment, Preference } from "mercadopago";
 
-if (!process.env.MERCADOPAGO_ACCESS_TOKEN) {
-  console.warn("MERCADOPAGO_ACCESS_TOKEN is not defined. Mercado Pago integration will not work.");
+let mercadoPagoClient: MercadoPagoConfig | null = null;
+
+function getAccessToken() {
+  const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN?.trim();
+
+  return accessToken ? accessToken : null;
 }
 
-export const client = new MercadoPagoConfig({
-  accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN || "TEST-MOCK-TOKEN",
-  options: { timeout: 5000 },
-});
+export function isMercadoPagoConfigured() {
+  return getAccessToken() !== null;
+}
 
-export const payment = new Payment(client);
+function getMercadoPagoClient() {
+  const accessToken = getAccessToken();
+
+  if (!accessToken) {
+    throw new Error("MERCADOPAGO_ACCESS_TOKEN is not defined.");
+  }
+
+  if (!mercadoPagoClient) {
+    mercadoPagoClient = new MercadoPagoConfig({
+      accessToken,
+      options: { timeout: 5000 },
+    });
+  }
+
+  return mercadoPagoClient;
+}
+
+export function getPreferenceClient() {
+  return new Preference(getMercadoPagoClient());
+}
+
+export function getPaymentClient() {
+  return new Payment(getMercadoPagoClient());
+}

@@ -127,7 +127,7 @@ Crea una instancia de checkout para una reserva.
 3. Aplica el saldo disponible sobre el precio máximo.
 4. Calcula cuánto debe cobrarse mediante Mercado Pago.
 5. Crea una `checkout_session`.
-6. Devuelve una `payment_url` para redirigir al pasajero.
+6. Devuelve una `checkout_url` interna de Payments App para redirigir al pasajero.
 
 Este endpoint reemplaza la idea de dejar un método de pago cargado para cobro automático.
 

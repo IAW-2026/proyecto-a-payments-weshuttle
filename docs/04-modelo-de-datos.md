@@ -490,16 +490,20 @@ Esta entidad permite registrar el saldo a favor disponible al momento de iniciar
 | `amount_to_charge` | number | Monto que debe cobrarse por Mercado Pago luego de aplicar saldo a favor. |
 | `currency` | string | Moneda del pago. Ejemplo: `ARS`. |
 | `status` | string | Estado del checkout. |
-| `payment_url` | string, nullable | URL a la pantalla de pago generada por Payments App o Mercado Pago. |
+| `checkout_url` | string, nullable | URL interna de Payments App donde se muestra el resumen del checkout. |
+| `mercado_pago_preference_id` | string, nullable | Identificador de la preferencia creada en Mercado Pago Checkout Pro. |
+| `mercado_pago_init_point` | string, nullable | URL externa de Mercado Pago Checkout Pro usada por Payments App para redirigir al usuario. |
 | `created_at` | datetime | Fecha de creación del checkout. |
 
 Estados sugeridos de `status`:
 
 ```text
 CREATED
+PENDING
 PAID
 DENIED
 CANCELED
+EXPIRED
 ```
 
 Relaciones:
@@ -512,7 +516,8 @@ Relaciones:
 Notas:
 
 - Si `amount_to_charge = 0`, el pago puede completarse usando únicamente saldo a favor.
-- Si `amount_to_charge > 0`, la Payments App genera una instancia de pago mediante Mercado Pago.
+- Si `amount_to_charge > 0`, la Payments App genera una preferencia de Mercado Pago Checkout Pro.
+- `checkout_url` siempre apunta a Payments App; la URL externa de Mercado Pago se conserva aparte en `mercado_pago_init_point`.
 - El checkout no reemplaza al cobro; solo representa la preparación del pago.
 
 

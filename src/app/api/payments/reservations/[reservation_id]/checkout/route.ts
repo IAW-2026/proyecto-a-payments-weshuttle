@@ -75,31 +75,21 @@ export async function POST(request: Request, context: RouteContext) {
   const failureUrl = typeof (body as { failure_url?: unknown }).failure_url === "string"
     ? (body as { failure_url: string }).failure_url.trim()
     : "";
+  const pendingUrl = typeof (body as { pending_url?: unknown }).pending_url === "string"
+    ? (body as { pending_url: string }).pending_url.trim()
+    : "";
 
   const isPassengerUserIdMissing = role === "rider" ? !passengerUserId : false;
 
-  if (!poolId || isPassengerUserIdMissing || maxPrice === null || maxPrice < 0 || !currency || !isValidUrl(successUrl) || !isValidUrl(failureUrl)) {
+  if (!poolId || isPassengerUserIdMissing || maxPrice === null || maxPrice < 0 || !currency || !isValidUrl(successUrl) || !isValidUrl(failureUrl) || !isValidUrl(pendingUrl)) {
     return NextResponse.json(
       {
         error: "INVALID_BODY",
-        message: "pool_id, passenger_user_id, max_price, currency, success_url y failure_url son obligatorios.",
+        message: "pool_id, passenger_user_id, max_price, currency, success_url, failure_url y pending_url son obligatorios.",
       },
       { status: 400 },
     );
   }
-
-  const paymentToken = typeof (body as { payment_token?: unknown }).payment_token === "string"
-    ? (body as { payment_token: string }).payment_token.trim()
-    : undefined;
-  const paymentMethodId = typeof (body as { payment_method_id?: unknown }).payment_method_id === "string"
-    ? (body as { payment_method_id: string }).payment_method_id.trim()
-    : undefined;
-  const payerEmail = typeof (body as { payer_email?: unknown }).payer_email === "string"
-    ? (body as { payer_email: string }).payer_email.trim()
-    : undefined;
-  const mockPaymentStatus = typeof (body as { mock_payment_status?: unknown }).mock_payment_status === "string"
-    ? (body as { mock_payment_status: "PAID" | "DENIED" | "CANCELED" | "EXPIRED" }).mock_payment_status
-    : undefined;
   const expiresAt = typeof (body as { expires_at?: unknown }).expires_at === "string"
     ? (body as { expires_at: string }).expires_at
     : undefined;
@@ -126,10 +116,8 @@ export async function POST(request: Request, context: RouteContext) {
     currency,
     successUrl,
     failureUrl,
-    paymentToken,
-    paymentMethodId,
-    payerEmail,
-    mockPaymentStatus,
+    pendingUrl,
+    appBaseUrl: new URL(request.url).origin,
     expiresAt,
   });
 
@@ -149,13 +137,14 @@ export async function POST(request: Request, context: RouteContext) {
       reservation_id: result.data.reservationId,
       pool_id: result.data.poolId,
       passenger_user_id: result.data.passengerUserId,
-      payment_url: result.data.paymentUrl,
+      checkout_url: result.data.checkoutUrl,
       max_price: result.data.maxPrice,
       available_credit: result.data.availableCredit,
       credit_applied: result.data.creditApplied,
       amount_to_charge: result.data.amountToCharge,
       currency: result.data.currency,
       checkout_status: result.data.checkoutStatus,
+      is_demo_mode: result.data.isDemoMode,
     },
     { status: result.status },
   );

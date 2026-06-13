@@ -117,8 +117,9 @@ model CheckoutSession {
   currency                  String
   status                    CheckoutSessionStatus
   provider                  PaymentProvider
-  paymentUrl                String?               @map("payment_url")
-  providerCheckoutReference String?               @map("provider_checkout_reference")
+  checkoutUrl               String?               @map("checkout_url")
+  mercadoPagoPreferenceId   String?               @map("mercado_pago_preference_id")
+  mercadoPagoInitPoint      String?               @map("mercado_pago_init_point")
   expiresAt                 DateTime?             @map("expires_at")
   createdAt                 DateTime              @default(now()) @map("created_at")
   updatedAt                 DateTime              @updatedAt @map("updated_at")

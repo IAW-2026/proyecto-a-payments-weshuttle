@@ -1006,7 +1006,8 @@ Luego, la **Payments App** devuelve una URL de pago para que la **Rider App** re
   "max_price": 5000,
   "currency": "ARS",
   "success_url": "https://rider-app.com/reservations/res_123/success",
-  "failure_url": "https://rider-app.com/reservations/res_123/failure"
+  "failure_url": "https://rider-app.com/reservations/res_123/failure",
+  "pending_url": "https://rider-app.com/reservations/res_123/pending"
 }
 ```
 
@@ -1018,8 +1019,9 @@ Luego, la **Payments App** devuelve una URL de pago para que la **Rider App** re
 | `passenger_user_id` | string | Sí | Identificador del pasajero en Clerk. |
 | `max_price` | number | Sí | Precio máximo que debe pagar el pasajero por la reserva. |
 | `currency` | string | Sí | Moneda del pago. Ejemplo: `ARS`. |
-| `success_url` | string | Sí | URL a la que se redirige al usuario si el pago fue exitoso. |
-| `failure_url` | string | Sí | URL a la que se redirige al usuario si el pago fue rechazado o cancelado. |
+| `success_url` | string | Sí | URL final de Rider App para un pago exitoso. Payments App la preserva durante el retorno desde Mercado Pago. |
+| `failure_url` | string | Sí | URL final de Rider App para un pago rechazado o cancelado. Payments App la preserva durante el retorno desde Mercado Pago. |
+| `pending_url` | string | Sí | URL final de Rider App para un pago pendiente. Payments App la preserva durante el retorno desde Mercado Pago. |
 
 ### Response `201 Created`
 
@@ -1029,7 +1031,7 @@ Luego, la **Payments App** devuelve una URL de pago para que la **Rider App** re
   "reservation_id": "res_123",
   "pool_id": "pool_abc123",
   "passenger_user_id": "user_abc123",
-  "payment_url": "https://payments-app.com/checkout/checkout_123",
+  "checkout_url": "https://payments-app.com/checkout/checkout_123",
   "max_price": 5000,
   "available_credit": 1200,
   "credit_applied": 1200,
@@ -1047,7 +1049,9 @@ Luego, la **Payments App** devuelve una URL de pago para que la **Rider App** re
 - Si el usuario tiene saldo a favor, este se aplica primero.
 - Si el saldo a favor cubre todo el precio máximo, `amount_to_charge` puede ser `0`.
 - Si `amount_to_charge = 0`, la **Payments App** puede marcar el pago como exitoso sin redirigir a Mercado Pago.
-- Si `amount_to_charge > 0`, la **Payments App** genera una instancia de pago y devuelve `payment_url`.
+- Si `amount_to_charge > 0`, la **Payments App** crea una preferencia de Mercado Pago Checkout Pro y devuelve `checkout_url`.
+- La **Rider App** redirige al usuario a `checkout_url`, no directamente a Mercado Pago.
+- Desde `checkout_url`, la **Payments App** muestra el resumen del pago y luego deriva al usuario a Mercado Pago Checkout Pro.
 - La reserva recien se considera pagada cuando la **Payments App** notifica a la **Rider App** mediante `PATCH /api/reservations/:reservation_id/payment-result` con `payment_status = PAID`.
 - Si el pago es rechazado, Rider App mantiene `reservation_status = PENDING_PAYMENT` y puede permitir reintento.
 - Si el usuario cancela el checkout o este expira, Rider App debe dejar `reservation_status = CANCELED`.

@@ -113,9 +113,9 @@ export default async function RiderPage({ searchParams }: PageProps) {
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Rider Payments</p>
               <h2 className="mt-2 text-3xl font-bold text-slate-900">Checkouts y saldo a favor</h2>
-              <p className="mt-3 max-w-2xl text-sm text-slate-600">
-                Esta vista permite simular el resultado del checkout de una reserva y consultar el detalle financiero ya persistido en Payments App.
-              </p>
+               <p className="mt-3 max-w-2xl text-sm text-slate-600">
+                 Esta vista permite crear un checkout interno de Payments App, redirigir al usuario a su resumen y revisar el detalle financiero ya persistido.
+                </p>
               <p className="mt-3 text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
                 Usuario autenticado: {authContext.clerkUserId}
               </p>
@@ -186,7 +186,7 @@ export default async function RiderPage({ searchParams }: PageProps) {
             <div id="checkout-demo">
               <InfoCard title="Simular checkout de una reserva">
                 <p className="mb-4 text-sm text-slate-600">
-                  Si el checkout tiene un monto pendiente de cobro, en esta etapa demo debes elegir un resultado simulado para cerrar el intento de pago.
+                  Rider App debe redirigir al usuario a la URL interna del checkout. Desde alli, Payments App deriva a Mercado Pago Checkout Pro o permite simulacion demo si falta el token.
                 </p>
                 <form action={createDemoCheckoutAction} className="grid gap-4 rounded-3xl border border-slate-200 bg-slate-50 p-5 sm:grid-cols-2">
                   <Field label="Reservation ID" name="reservationId" defaultValue={reservationId || "res_demo_new_001"} placeholder="res_demo_new_001" />
@@ -195,21 +195,10 @@ export default async function RiderPage({ searchParams }: PageProps) {
                   <Field label="Currency" name="currency" defaultValue="ARS" placeholder="ARS" />
                   <Field label="Success URL" name="successUrl" defaultValue="https://rider-app.local/success" placeholder="https://rider-app.local/success" />
                   <Field label="Failure URL" name="failureUrl" defaultValue="https://rider-app.local/failure" placeholder="https://rider-app.local/failure" />
-                  <Field label="Payment token (optional)" name="paymentToken" defaultValue="tok_test_mock_001" placeholder="tok_test_mock_001" />
-                  <Field label="Payment method id (optional)" name="paymentMethodId" defaultValue="visa" placeholder="visa" />
-                  <Field label="Payer email (optional)" name="payerEmail" defaultValue={`${authContext.clerkUserId}@mock-iaw.com`} placeholder="user@mock-iaw.com" />
-                  <label className="flex flex-col gap-2 text-sm text-slate-700">
-                    <span className="font-medium">Resultado simulado</span>
-                    <select name="mockPaymentStatus" defaultValue="PAID" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none transition focus:border-slate-900">
-                      <option value="PAID">PAID</option>
-                      <option value="DENIED">DENIED</option>
-                      <option value="CANCELED">CANCELED</option>
-                      <option value="EXPIRED">EXPIRED</option>
-                    </select>
-                  </label>
+                  <Field label="Pending URL" name="pendingUrl" defaultValue="https://rider-app.local/pending" placeholder="https://rider-app.local/pending" />
                   <div className="sm:col-span-2">
                     <button type="submit" className="w-full rounded-full bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-700">
-                      Crear checkout demo
+                      Crear checkout interno
                     </button>
                   </div>
                 </form>
@@ -237,12 +226,13 @@ export default async function RiderPage({ searchParams }: PageProps) {
                         <dl className="mt-3 grid gap-4 text-sm text-slate-600 sm:grid-cols-2">
                           <div><dt className="font-semibold text-slate-900">Checkout ID</dt><dd className="mt-1 break-all">{latestCheckout.id}</dd></div>
                           <div><dt className="font-semibold text-slate-900">Estado</dt><dd className="mt-1">{latestCheckout.status}</dd></div>
-                          <div><dt className="font-semibold text-slate-900">Precio maximo</dt><dd className="mt-1"><Money amount={latestCheckout.maxPrice.toString()} currency={latestCheckout.currency} /></dd></div>
-                          <div><dt className="font-semibold text-slate-900">Cobro previsto</dt><dd className="mt-1"><Money amount={latestCheckout.amountToCharge.toString()} currency={latestCheckout.currency} /></dd></div>
-                          <div><dt className="font-semibold text-slate-900">Credito aplicado</dt><dd className="mt-1"><Money amount={latestCheckout.creditApplied.toString()} currency={latestCheckout.currency} /></dd></div>
-                          <div><dt className="font-semibold text-slate-900">Expira</dt><dd className="mt-1">{latestCheckout.expiresAt ? latestCheckout.expiresAt.toISOString() : "No definido"}</dd></div>
-                        </dl>
-                      </div>
+                           <div><dt className="font-semibold text-slate-900">Precio maximo</dt><dd className="mt-1"><Money amount={latestCheckout.maxPrice.toString()} currency={latestCheckout.currency} /></dd></div>
+                           <div><dt className="font-semibold text-slate-900">Cobro previsto</dt><dd className="mt-1"><Money amount={latestCheckout.amountToCharge.toString()} currency={latestCheckout.currency} /></dd></div>
+                           <div><dt className="font-semibold text-slate-900">Credito aplicado</dt><dd className="mt-1"><Money amount={latestCheckout.creditApplied.toString()} currency={latestCheckout.currency} /></dd></div>
+                           <div><dt className="font-semibold text-slate-900">Checkout URL</dt><dd className="mt-1 break-all">{latestCheckout.checkoutUrl ?? "No definido"}</dd></div>
+                            <div><dt className="font-semibold text-slate-900">Expira</dt><dd className="mt-1">{latestCheckout.expiresAt ? latestCheckout.expiresAt.toISOString() : "No definido"}</dd></div>
+                         </dl>
+                       </div>
                     ) : null}
 
                     {latestCharge ? (
