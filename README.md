@@ -98,6 +98,8 @@ La aplicación utiliza Mercado Pago Checkout Pro en modo Sandbox para simular pa
 
 El flujo de pago se realiza mediante una sesión de checkout asociada a una reserva. Rider App crea el checkout llamando al backend de Payments App y recibe una `checkout_url` interna. Desde esa pantalla, Payments App muestra el resumen del cobro, aplica el saldo a favor disponible del pasajero y luego redirige a Mercado Pago Checkout Pro.
 
+La variable `MERCADOPAGO_TEST_BUYER_EMAIL` es opcional y se usa solo para pruebas Sandbox con tarjeta dentro de Checkout Pro. Si está definida, Payments App la envía como `payer.email` al crear la `Preference`. Esta variable no reemplaza `MERCADOPAGO_ACCESS_TOKEN` y nunca se expone al frontend.
+
 El resultado del checkout se informa a Rider App reutilizando:
 
 ```http

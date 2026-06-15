@@ -452,53 +452,68 @@ async function createMercadoPagoPreference(input: {
   expiresAt: Date;
 }) {
   const preference = getPreferenceClient();
+  const testBuyerEmail = process.env.MERCADOPAGO_TEST_BUYER_EMAIL?.trim();
+  const preferenceBody = {
+    items: [
+      {
+        id: input.checkoutId,
+        title: `Reserva ${input.reservationId}`,
+        description: `Checkout WeShuttle para la reserva ${input.reservationId}`,
+        quantity: 1,
+        currency_id: input.currency,
+        unit_price: input.amountToCharge,
+      },
+    ],
+    back_urls: {
+      success: buildCheckoutBackUrl({
+        appBaseUrl: input.appBaseUrl,
+        checkoutId: input.checkoutId,
+        kind: "success",
+        returnUrl: input.successUrl,
+      }),
+      failure: buildCheckoutBackUrl({
+        appBaseUrl: input.appBaseUrl,
+        checkoutId: input.checkoutId,
+        kind: "failure",
+        returnUrl: input.failureUrl,
+      }),
+      pending: buildCheckoutBackUrl({
+        appBaseUrl: input.appBaseUrl,
+        checkoutId: input.checkoutId,
+        kind: "pending",
+        returnUrl: input.pendingUrl,
+      }),
+    },
+    auto_return: "approved",
+    expires: true,
+    expiration_date_to: input.expiresAt.toISOString(),
+    external_reference: input.checkoutId,
+    metadata: {
+      checkoutId: input.checkoutId,
+      reservationId: input.reservationId,
+      poolId: input.poolId,
+      passengerUserId: input.passengerUserId,
+    },
+    ...(testBuyerEmail
+      ? {
+          payer: {
+            email: testBuyerEmail,
+          },
+        }
+      : {}),
+  };
+
+  console.info("MercadoPago preference using test buyer email", {
+    checkoutId: input.checkoutId,
+    reservationId: input.reservationId,
+    usingTestBuyerEmail: Boolean(testBuyerEmail),
+  });
 
   let response;
 
   try {
     response = await preference.create({
-      body: {
-        items: [
-          {
-            id: input.checkoutId,
-            title: `Reserva ${input.reservationId}`,
-            description: `Checkout WeShuttle para la reserva ${input.reservationId}`,
-            quantity: 1,
-            currency_id: input.currency,
-            unit_price: input.amountToCharge,
-          },
-        ],
-        back_urls: {
-          success: buildCheckoutBackUrl({
-            appBaseUrl: input.appBaseUrl,
-            checkoutId: input.checkoutId,
-            kind: "success",
-            returnUrl: input.successUrl,
-          }),
-          failure: buildCheckoutBackUrl({
-            appBaseUrl: input.appBaseUrl,
-            checkoutId: input.checkoutId,
-            kind: "failure",
-            returnUrl: input.failureUrl,
-          }),
-          pending: buildCheckoutBackUrl({
-            appBaseUrl: input.appBaseUrl,
-            checkoutId: input.checkoutId,
-            kind: "pending",
-            returnUrl: input.pendingUrl,
-          }),
-        },
-        auto_return: "approved",
-        expires: true,
-        expiration_date_to: input.expiresAt.toISOString(),
-        external_reference: input.checkoutId,
-        metadata: {
-          checkoutId: input.checkoutId,
-          reservationId: input.reservationId,
-          poolId: input.poolId,
-          passengerUserId: input.passengerUserId,
-        },
-      },
+      body: preferenceBody,
     });
   } catch (error) {
     const errorSummary = summarizeMercadoPagoError(error);
