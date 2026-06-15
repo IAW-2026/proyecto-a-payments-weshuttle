@@ -71,8 +71,12 @@ type ReconcileCheckoutReturnInput = {
   routeKind: ReturnRouteKind;
   paymentId?: string;
   status?: string;
+  collectionStatus?: string;
   externalReference?: string;
   merchantOrderId?: string;
+  preferenceId?: string;
+  paymentType?: string;
+  processingMode?: string;
 };
 
 type ReconcileCheckoutReturnResult =
@@ -120,6 +124,76 @@ function buildProcessedAt(dateValue?: string) {
   const date = new Date(dateValue);
 
   return Number.isNaN(date.getTime()) ? new Date() : date;
+}
+
+function truncateForLog(value: string, max = 500) {
+  return value.length > max ? `${value.slice(0, max)}...` : value;
+}
+
+function stringifyForLog(value: unknown) {
+  try {
+    return truncateForLog(JSON.stringify(value));
+  } catch {
+    return truncateForLog(String(value));
+  }
+}
+
+function toLogRecord(value: unknown) {
+  return value && typeof value === "object" ? value as Record<string, unknown> : null;
+}
+
+function summarizeMercadoPagoError(error: unknown) {
+  if (error instanceof Error) {
+    const errorRecord = toLogRecord(error);
+    const status = typeof errorRecord?.status === "number"
+      ? errorRecord.status
+      : typeof toLogRecord(errorRecord?.api_response)?.status === "number"
+        ? toLogRecord(errorRecord?.api_response)?.status as number
+        : null;
+    const body = error.cause !== undefined
+      ? { cause: error.cause }
+      : errorRecord
+        ? {
+            error: errorRecord.error,
+            cause: errorRecord.cause,
+            status: errorRecord.status,
+            statusText: errorRecord.statusText,
+          }
+        : null;
+
+    return {
+      message: error.message,
+      status,
+      bodySummary: body ? stringifyForLog(body) : null,
+    };
+  }
+
+  const errorRecord = toLogRecord(error);
+  const status = typeof errorRecord?.status === "number"
+    ? errorRecord.status
+    : typeof toLogRecord(errorRecord?.api_response)?.status === "number"
+      ? toLogRecord(errorRecord?.api_response)?.status as number
+      : null;
+  const message = typeof errorRecord?.message === "string"
+    ? errorRecord.message
+    : typeof errorRecord?.error === "string"
+      ? errorRecord.error
+      : "Unknown Mercado Pago error";
+  const body = errorRecord
+    ? {
+        error: errorRecord.error,
+        cause: errorRecord.cause,
+        status: errorRecord.status,
+        statusText: errorRecord.statusText,
+        message: errorRecord.message,
+      }
+    : { value: error };
+
+  return {
+    message,
+    status,
+    bodySummary: stringifyForLog(body),
+  };
 }
 
 function getDefaultStatusForRoute(routeKind: ReturnRouteKind): CheckoutStatus {
@@ -379,50 +453,68 @@ async function createMercadoPagoPreference(input: {
 }) {
   const preference = getPreferenceClient();
 
-  const response = await preference.create({
-    body: {
-      items: [
-        {
-          id: input.checkoutId,
-          title: `Reserva ${input.reservationId}`,
-          description: `Checkout WeShuttle para la reserva ${input.reservationId}`,
-          quantity: 1,
-          currency_id: input.currency,
-          unit_price: input.amountToCharge,
+  let response;
+
+  try {
+    response = await preference.create({
+      body: {
+        items: [
+          {
+            id: input.checkoutId,
+            title: `Reserva ${input.reservationId}`,
+            description: `Checkout WeShuttle para la reserva ${input.reservationId}`,
+            quantity: 1,
+            currency_id: input.currency,
+            unit_price: input.amountToCharge,
+          },
+        ],
+        back_urls: {
+          success: buildCheckoutBackUrl({
+            appBaseUrl: input.appBaseUrl,
+            checkoutId: input.checkoutId,
+            kind: "success",
+            returnUrl: input.successUrl,
+          }),
+          failure: buildCheckoutBackUrl({
+            appBaseUrl: input.appBaseUrl,
+            checkoutId: input.checkoutId,
+            kind: "failure",
+            returnUrl: input.failureUrl,
+          }),
+          pending: buildCheckoutBackUrl({
+            appBaseUrl: input.appBaseUrl,
+            checkoutId: input.checkoutId,
+            kind: "pending",
+            returnUrl: input.pendingUrl,
+          }),
         },
-      ],
-      back_urls: {
-        success: buildCheckoutBackUrl({
-          appBaseUrl: input.appBaseUrl,
+        auto_return: "approved",
+        expires: true,
+        expiration_date_to: input.expiresAt.toISOString(),
+        external_reference: input.checkoutId,
+        metadata: {
           checkoutId: input.checkoutId,
-          kind: "success",
-          returnUrl: input.successUrl,
-        }),
-        failure: buildCheckoutBackUrl({
-          appBaseUrl: input.appBaseUrl,
-          checkoutId: input.checkoutId,
-          kind: "failure",
-          returnUrl: input.failureUrl,
-        }),
-        pending: buildCheckoutBackUrl({
-          appBaseUrl: input.appBaseUrl,
-          checkoutId: input.checkoutId,
-          kind: "pending",
-          returnUrl: input.pendingUrl,
-        }),
+          reservationId: input.reservationId,
+          poolId: input.poolId,
+          passengerUserId: input.passengerUserId,
+        },
       },
-      auto_return: "approved",
-      expires: true,
-      expiration_date_to: input.expiresAt.toISOString(),
-      external_reference: input.checkoutId,
-      metadata: {
-        checkoutId: input.checkoutId,
-        reservationId: input.reservationId,
-        poolId: input.poolId,
-        passengerUserId: input.passengerUserId,
-      },
-    },
-  });
+    });
+  } catch (error) {
+    const errorSummary = summarizeMercadoPagoError(error);
+
+    console.error("MercadoPago preference creation failed", {
+      reservationId: input.reservationId,
+      checkoutId: input.checkoutId,
+      amountToCharge: input.amountToCharge,
+      currency: input.currency,
+      message: errorSummary.message,
+      status: errorSummary.status,
+      bodySummary: errorSummary.bodySummary,
+    });
+
+    throw error;
+  }
 
   const mercadoPagoPreferenceId = response.id?.trim();
   const mercadoPagoInitPoint = response.sandbox_init_point?.trim() || response.init_point?.trim() || null;
@@ -641,6 +733,18 @@ export async function resolveDemoCheckout(checkoutId: string, status: DemoChecko
 export async function reconcileCheckoutReturn(
   input: ReconcileCheckoutReturnInput,
 ): Promise<ReconcileCheckoutReturnResult> {
+  console.info("MercadoPago checkout return", {
+    checkoutId: input.checkoutId,
+    payment_id: input.paymentId,
+    status: input.status,
+    collection_status: input.collectionStatus,
+    merchant_order_id: input.merchantOrderId,
+    external_reference: input.externalReference,
+    preference_id: input.preferenceId,
+    payment_type: input.paymentType,
+    processing_mode: input.processingMode,
+  });
+
   const checkout = await getCheckoutById(input.checkoutId);
 
   if (!checkout) {
@@ -675,6 +779,15 @@ export async function reconcileCheckoutReturn(
         id: input.paymentId,
       });
 
+      console.info("MercadoPago payment details", {
+        payment_id: paymentResponse.id?.toString() ?? input.paymentId,
+        status: paymentResponse.status,
+        status_detail: paymentResponse.status_detail,
+        payment_method_id: paymentResponse.payment_method_id,
+        payment_type_id: paymentResponse.payment_type_id,
+        external_reference: paymentResponse.external_reference,
+      });
+
       if (paymentResponse.external_reference && paymentResponse.external_reference !== checkout.id) {
         return {
           ok: false,
@@ -692,7 +805,17 @@ export async function reconcileCheckoutReturn(
       rejectionReason = paymentResponse.status_detail ?? undefined;
       amountCharged = paymentResponse.transaction_amount ?? amountCharged;
       processedAt = buildProcessedAt(paymentResponse.date_approved ?? paymentResponse.date_created);
-    } catch {
+    } catch (error) {
+      const errorSummary = summarizeMercadoPagoError(error);
+
+      console.warn("MercadoPago payment lookup failed", {
+        checkoutId: input.checkoutId,
+        payment_id: input.paymentId,
+        message: errorSummary.message,
+        status: errorSummary.status,
+        bodySummary: errorSummary.bodySummary,
+      });
+
       // Si la consulta falla, continuamos con los query params para no bloquear la demo del retorno.
     }
   }

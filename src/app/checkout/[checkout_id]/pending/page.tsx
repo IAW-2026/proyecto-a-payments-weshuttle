@@ -14,8 +14,12 @@ type PageProps = {
   searchParams: Promise<{
     payment_id?: string;
     status?: string;
+    collection_status?: string;
     merchant_order_id?: string;
     external_reference?: string;
+    preference_id?: string;
+    payment_type?: string;
+    processing_mode?: string;
     return_url?: string;
   }>;
 };
@@ -30,8 +34,12 @@ export default async function CheckoutPendingPage({ params, searchParams }: Page
     routeKind: "pending",
     paymentId: query.payment_id,
     status: query.status,
+    collectionStatus: query.collection_status,
     merchantOrderId: query.merchant_order_id,
     externalReference: query.external_reference,
+    preferenceId: query.preference_id,
+    paymentType: query.payment_type,
+    processingMode: query.processing_mode,
   });
 
   const data = result.ok ? result.data : result.data;
