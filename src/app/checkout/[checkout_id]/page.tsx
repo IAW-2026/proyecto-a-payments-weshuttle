@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AlertBanner } from "@/components/ui/alert-banner";
+import { SectionCard } from "@/components/ui/section-card";
 import { requirePageRole } from "@/lib/auth";
 import { getCheckoutPageData } from "@/lib/payments/checkout";
 import { resolveDemoCheckoutAction } from "./actions";
@@ -33,22 +35,33 @@ export default async function CheckoutPage({ params }: PageProps) {
   return (
     <CheckoutLayout
       title="Resumen del checkout"
-      description="Payments App intermedia el flujo: aqui se revisa el resumen y luego se deriva a Mercado Pago Checkout Pro."
+      description="Antes de ir a Mercado Pago, esta pantalla muestra cuanto se cubre con credito, cuanto falta pagar y cual es el estado actual del checkout."
     >
       <CheckoutSummaryCard data={data} />
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+      <SectionCard>
         <h2 className="text-xl font-semibold text-slate-900">Siguiente paso</h2>
+        <p className="mt-2 text-sm text-slate-600">
+          Elige la accion correspondiente segun el estado actual del checkout. No se modifica el flujo funcional de Mercado Pago.
+        </p>
 
         {data.checkout.amountToCharge === 0 ? (
-          <p className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-            Este checkout se cubrio por completo con saldo a favor y ya quedo marcado como pagado.
-          </p>
+          <div className="mt-4 space-y-4">
+            <AlertBanner tone="success" title="Pago cubierto con saldo a favor">
+              Este checkout se resolvio sin pasar por Mercado Pago porque el credito disponible alcanzo para cubrir el total.
+            </AlertBanner>
+            <Link
+              href={`/rider?payment=success&checkout_id=${checkoutId}`}
+              className="inline-flex items-center justify-center rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800"
+            >
+              Volver a Rider
+            </Link>
+          </div>
         ) : data.isDemoMode ? (
           <div className="mt-4 space-y-4">
-            <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              Mercado Pago no esta configurado en este entorno. Puedes resolver el checkout en modo demo desde Payments App.
-            </p>
+            <AlertBanner tone="warning" title="Herramientas de demo habilitadas">
+              Mercado Pago no esta configurado en este entorno. Puedes resolver el checkout desde Payments App para mostrar los distintos resultados.
+            </AlertBanner>
             <div className="grid gap-3 sm:grid-cols-2">
               <form action={resolveDemoCheckoutAction.bind(null, checkoutId, "PAID")}>
                 <button type="submit" className="w-full rounded-full bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500">
@@ -77,19 +90,35 @@ export default async function CheckoutPage({ params }: PageProps) {
             <p className="text-sm text-slate-600">
               Al continuar, Payments App te redirige a Mercado Pago Checkout Pro en modo Sandbox.
             </p>
-            <Link
-              href={data.checkout.mercadoPagoInitPoint!}
-              className="inline-flex items-center justify-center rounded-full bg-sky-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-500"
-            >
-              Pagar con Mercado Pago
-            </Link>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Link
+                href={data.checkout.mercadoPagoInitPoint!}
+                className="inline-flex items-center justify-center rounded-full bg-sky-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-500"
+              >
+                Pagar con Mercado Pago
+              </Link>
+              <Link
+                href="/rider"
+                className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-medium text-slate-700 shadow-sm hover:border-slate-900 hover:text-slate-900"
+              >
+                Volver a Rider
+              </Link>
+            </div>
           </div>
         ) : (
-          <p className="mt-4 text-sm text-slate-600">
-            Este checkout ya fue procesado o aun no tiene una preferencia activa para redirigir al usuario.
-          </p>
+          <div className="mt-4 space-y-4">
+            <AlertBanner tone="info" title="No hay una accion de pago disponible">
+              Este checkout ya fue procesado o todavia no tiene una preferencia activa para redirigir al usuario.
+            </AlertBanner>
+            <Link
+              href="/rider"
+              className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-medium text-slate-700 shadow-sm hover:border-slate-900 hover:text-slate-900"
+            >
+              Volver a Rider
+            </Link>
+          </div>
         )}
-      </section>
+      </SectionCard>
     </CheckoutLayout>
   );
 }

@@ -1,4 +1,9 @@
 import Link from "next/link";
+import { AlertBanner } from "@/components/ui/alert-banner";
+import { EmptyState } from "@/components/ui/empty-state";
+import { formatDateTime, formatMoney, humanizeStatus } from "@/components/ui/format";
+import { SectionCard } from "@/components/ui/section-card";
+import { StatusBadge } from "@/components/ui/status-badge";
 
 type CheckoutStatus = "CREATED" | "PENDING" | "PAID" | "DENIED" | "CANCELED" | "EXPIRED";
 type CheckoutResultKind = "success" | "failure" | "pending";
@@ -23,47 +28,43 @@ export type CheckoutViewData = {
   isDemoMode: boolean;
 };
 
-function formatMoney(amount: number, currency: string) {
-  return `${currency} ${amount.toFixed(2)}`;
-}
-
 function statusCopy(status: CheckoutStatus) {
   switch (status) {
     case "PAID":
       return {
         title: "Pago acreditado",
-        description: "El pago fue confirmado y la reserva ya fue informada a Rider App.",
-        tone: "border-emerald-200 bg-emerald-50 text-emerald-800",
+        description: "La operacion ya fue confirmada y el viaje puede continuar sin pasos adicionales.",
+        tone: "success" as const,
       };
     case "PENDING":
       return {
         title: "Pago pendiente",
-        description: "Mercado Pago informo una operacion pendiente. La reserva sigue a la espera de confirmacion.",
-        tone: "border-amber-200 bg-amber-50 text-amber-800",
+        description: "La operacion sigue en revision. Vuelve mas tarde para confirmar el resultado final del cobro.",
+        tone: "warning" as const,
       };
     case "DENIED":
       return {
         title: "Pago rechazado",
-        description: "El cobro fue rechazado. La reserva sigue en estado pendiente de pago.",
-        tone: "border-rose-200 bg-rose-50 text-rose-800",
+        description: "El cobro no pudo acreditarse. Revisa el detalle y vuelve a intentarlo desde Rider si hace falta.",
+        tone: "danger" as const,
       };
     case "CANCELED":
       return {
         title: "Checkout cancelado",
-        description: "El usuario abandono o cancelo el checkout. La reserva fue informada como cancelada.",
-        tone: "border-slate-200 bg-slate-100 text-slate-800",
+        description: "El flujo de pago se interrumpio antes de completarse.",
+        tone: "info" as const,
       };
     case "EXPIRED":
       return {
         title: "Checkout expirado",
-        description: "El checkout expiro sin pago exitoso. Este estado se usa solo en modo demo.",
-        tone: "border-slate-200 bg-slate-100 text-slate-800",
+        description: "La ventana de pago caduco sin una confirmacion exitosa. Este estado se usa en modo demo.",
+        tone: "info" as const,
       };
     default:
       return {
-        title: "Checkout listo para pagar",
-        description: "Revisa el resumen y luego continua con Mercado Pago Checkout Pro.",
-        tone: "border-sky-200 bg-sky-50 text-sky-800",
+        title: "Listo para pagar",
+        description: "Revisa el resumen y continua con Mercado Pago Checkout Pro cuando quieras avanzar.",
+        tone: "info" as const,
       };
   }
 }
@@ -78,13 +79,13 @@ export function CheckoutLayout({
   children: React.ReactNode;
 }) {
   return (
-    <main className="min-h-screen bg-slate-100 px-4 py-10 text-slate-950 sm:px-6 lg:px-8">
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">WeShuttle Payments</p>
-          <h1 className="mt-3 text-3xl font-bold text-slate-900">{title}</h1>
-          <p className="mt-3 text-sm text-slate-600">{description}</p>
-        </div>
+    <main className="min-h-screen px-4 py-10 text-slate-950 sm:px-6 lg:px-8">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
+        <SectionCard className="overflow-hidden bg-linear-to-br from-white via-white to-sky-50/70">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-700">WeShuttle Payments</p>
+          <h1 className="mt-3 text-3xl font-bold text-slate-900 sm:text-4xl">{title}</h1>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">{description}</p>
+        </SectionCard>
         {children}
       </div>
     </main>
@@ -95,55 +96,62 @@ export function CheckoutSummaryCard({ data }: { data: CheckoutViewData }) {
   const copy = statusCopy(data.checkout.status);
 
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-      <div className={`rounded-2xl border px-4 py-3 text-sm ${copy.tone}`}>
-        <p className="font-semibold">{copy.title}</p>
-        <p className="mt-1">{copy.description}</p>
+    <SectionCard>
+      <AlertBanner tone={copy.tone} title={copy.title}>
+        {copy.description}
+      </AlertBanner>
+
+      <div className="mt-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 className="text-2xl font-bold text-slate-900">Reserva {data.checkout.reservationId}</h2>
+            <StatusBadge value={data.checkout.status} label={humanizeStatus(data.checkout.status)} />
+          </div>
+          <p className="mt-2 text-sm text-slate-600">Pool {data.checkout.poolId}</p>
+        </div>
+
+        {data.isDemoMode ? (
+          <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
+            Modo demo
+          </span>
+        ) : null}
       </div>
 
-      <dl className="mt-6 grid gap-4 text-sm text-slate-700 sm:grid-cols-2">
+      <div className="mt-6 grid gap-4 md:grid-cols-3">
+        <div className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-5">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">Precio maximo</p>
+          <p className="mt-3 text-2xl font-bold text-slate-900">{formatMoney(data.checkout.maxPrice, data.checkout.currency)}</p>
+        </div>
+        <div className="rounded-[24px] border border-sky-100 bg-linear-to-br from-sky-50 to-white p-5">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700">Credito aplicado</p>
+          <p className="mt-3 text-2xl font-bold text-slate-900">{formatMoney(data.checkout.creditApplied, data.checkout.currency)}</p>
+          <p className="mt-2 text-sm text-slate-700">Saldo disponible al crear: {formatMoney(data.checkout.availableCreditAtCreation, data.checkout.currency)}</p>
+        </div>
+        <div className="rounded-[24px] border border-emerald-100 bg-linear-to-br from-emerald-50 to-white p-5">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Total a pagar</p>
+          <p className="mt-3 text-2xl font-bold text-slate-900">{formatMoney(data.checkout.amountToCharge, data.checkout.currency)}</p>
+        </div>
+      </div>
+
+      <div className="mt-6 grid gap-4 rounded-[24px] border border-slate-200 bg-slate-50/80 p-5 text-sm text-slate-600 sm:grid-cols-2">
         <div>
           <dt className="font-semibold text-slate-900">Checkout ID</dt>
           <dd className="mt-1 break-all">{data.checkout.id}</dd>
-        </div>
-        <div>
-          <dt className="font-semibold text-slate-900">Estado</dt>
-          <dd className="mt-1">{data.checkout.status}</dd>
-        </div>
-        <div>
-          <dt className="font-semibold text-slate-900">Reserva</dt>
-          <dd className="mt-1">{data.checkout.reservationId}</dd>
-        </div>
-        <div>
-          <dt className="font-semibold text-slate-900">Pool</dt>
-          <dd className="mt-1">{data.checkout.poolId}</dd>
-        </div>
-        <div>
-          <dt className="font-semibold text-slate-900">Precio maximo</dt>
-          <dd className="mt-1">{formatMoney(data.checkout.maxPrice, data.checkout.currency)}</dd>
-        </div>
-        <div>
-          <dt className="font-semibold text-slate-900">Saldo disponible al crear</dt>
-          <dd className="mt-1">{formatMoney(data.checkout.availableCreditAtCreation, data.checkout.currency)}</dd>
-        </div>
-        <div>
-          <dt className="font-semibold text-slate-900">Credito aplicado</dt>
-          <dd className="mt-1">{formatMoney(data.checkout.creditApplied, data.checkout.currency)}</dd>
-        </div>
-        <div>
-          <dt className="font-semibold text-slate-900">Monto a cobrar</dt>
-          <dd className="mt-1">{formatMoney(data.checkout.amountToCharge, data.checkout.currency)}</dd>
         </div>
         <div>
           <dt className="font-semibold text-slate-900">Preference ID</dt>
           <dd className="mt-1 break-all">{data.checkout.mercadoPagoPreferenceId ?? "No disponible"}</dd>
         </div>
         <div>
-          <dt className="font-semibold text-slate-900">Expira</dt>
-          <dd className="mt-1">{data.checkout.expiresAt ?? "No definido"}</dd>
+          <dt className="font-semibold text-slate-900">Expiracion</dt>
+          <dd className="mt-1">{formatDateTime(data.checkout.expiresAt)}</dd>
         </div>
-      </dl>
-    </section>
+        <div>
+          <dt className="font-semibold text-slate-900">Canal de pago</dt>
+          <dd className="mt-1">{data.isDemoMode ? "Simulacion interna de demo" : "Mercado Pago Checkout Pro"}</dd>
+        </div>
+      </div>
+    </SectionCard>
   );
 }
 
@@ -161,20 +169,36 @@ export function CheckoutResultActions({
   const demoRiderUrl = `/rider?payment=${paymentResult}&checkout_id=${checkoutId}`;
 
   return (
-    <div className="flex flex-col gap-3 sm:flex-row">
-      <Link
-        href={demoRiderUrl}
-        className="inline-flex items-center justify-center rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-900 hover:text-slate-900"
-      >
-        Volver a demo Rider en Payments
-      </Link>
-      {riderAppUrl ? (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-xl font-semibold text-slate-900">Siguientes pasos</h2>
+        <p className="mt-2 text-sm text-slate-600">
+          Vuelve a la vista Rider para continuar la demo o regresa a la aplicacion del pasajero si esta configurada.
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
         <Link
-          href={riderAppUrl}
-          className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
+          href={demoRiderUrl}
+          className="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm hover:border-slate-900 hover:text-slate-900 sm:w-auto"
         >
-          Volver a Rider App
+          Volver a Rider en Payments
         </Link>
+        {riderAppUrl ? (
+          <Link
+            href={riderAppUrl}
+            className="inline-flex w-full items-center justify-center rounded-full bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800 sm:w-auto"
+          >
+            Volver a Rider App
+          </Link>
+        ) : null}
+      </div>
+
+      {!riderAppUrl ? (
+        <EmptyState
+          title="Rider App externa no configurada"
+          description="La demo seguira dentro de Payments App. Si luego defines NEXT_PUBLIC_RIDER_APP_URL, aqui aparecera el retorno externo."
+        />
       ) : null}
     </div>
   );

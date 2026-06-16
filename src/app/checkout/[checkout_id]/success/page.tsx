@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import { AlertBanner } from "@/components/ui/alert-banner";
+import { SectionCard } from "@/components/ui/section-card";
 import { requirePageRole } from "@/lib/auth";
 import { getCheckoutPageData, reconcileCheckoutReturn } from "@/lib/payments/checkout";
 import {
@@ -62,18 +64,21 @@ export default async function CheckoutSuccessPage({ params, searchParams }: Page
 
   return (
     <CheckoutLayout
-      title="Resultado del checkout"
-      description="Payments App recibio el retorno de Mercado Pago y actualizo el estado interno del checkout."
+      title="Pago confirmado"
+      description="Payments App recibio el retorno de Mercado Pago y actualizo el estado interno del checkout para que puedas continuar la demo con claridad."
     >
       {errorMessage ? (
-        <section className="rounded-3xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-800 shadow-sm">
-          {errorMessage}
-        </section>
+        <AlertBanner tone="danger">{errorMessage}</AlertBanner>
       ) : null}
       <CheckoutSummaryCard data={data} />
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+      <SectionCard>
+        <AlertBanner tone="success" title="El pago fue acreditado">
+          El usuario ya puede volver a Rider con el resultado aplicado sobre su reserva.
+        </AlertBanner>
+        <div className="mt-6">
         <CheckoutResultActions checkoutId={checkoutId} paymentResult="success" />
-      </section>
+        </div>
+      </SectionCard>
     </CheckoutLayout>
   );
 }

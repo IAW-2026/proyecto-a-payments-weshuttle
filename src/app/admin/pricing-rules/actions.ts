@@ -133,11 +133,11 @@ export async function deletePricingRuleAction(formData: FormData) {
     await prisma.pricingRule.delete({
       where: { id },
     });
-
-    revalidatePath("/admin/pricing-rules");
-    redirect("/admin/pricing-rules?message=Regla%20eliminada%20permanentemente");
   } catch (error) {
     console.error("Delete Pricing Rule Error:", error);
     fail("No se pudo eliminar la regla. Asegurate de que no este siendo referenciada.");
   }
+
+  revalidatePath("/admin/pricing-rules");
+  redirect("/admin/pricing-rules?message=Regla%20eliminada%20permanentemente");
 }
