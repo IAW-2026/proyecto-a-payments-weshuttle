@@ -1,5 +1,8 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAuthDiagnostics } from "@/lib/auth";
+import { AlertBanner } from "@/components/ui/alert-banner";
+import { SectionCard } from "@/components/ui/section-card";
 
 export default async function PostLoginPage() {
   const authContext = await getAuthDiagnostics();
@@ -21,56 +24,65 @@ export default async function PostLoginPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#F7F9FB] px-6 py-10 text-[#0A192F]">
+    <main className="min-h-screen px-6 py-10 text-slate-950">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
-        <section className="rounded-3xl border border-[#D8DADC] bg-white p-8 shadow-sm">
-          <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#4B5563]">
-            Diagnostico Clerk
+        <SectionCard className="overflow-hidden bg-linear-to-br from-white via-white to-amber-50/70">
+          <p className="text-sm font-bold uppercase tracking-[0.2em] text-amber-700">Acceso incompleto</p>
+          <h1 className="mt-3 text-3xl font-bold text-slate-900">La sesion se inicio, pero falta un rol valido.</h1>
+          <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-600">
+            Para entrar a la demo, el usuario debe tener un rol aplicable en Clerk: `rider`, `driver` o `admin`.
           </p>
-          <h1 className="mt-3 text-3xl font-bold text-[#0A192F]">
-            La sesion se inicio, pero no se detecto un rol aplicable.
-          </h1>
-          <p className="mt-4 text-sm leading-6 text-[#4B5563]">
-            Verifica en Clerk que el usuario tenga `publicMetadata.role` con uno de estos valores exactos: `rider`, `driver` o `admin`.
-          </p>
-        </section>
 
-        <section className="rounded-3xl border border-[#D8DADC] bg-white p-8 shadow-sm">
-          <dl className="grid gap-4 text-sm text-[#4B5563] sm:grid-cols-2">
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <Link
+              href="/"
+              className="inline-flex items-center justify-center rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800"
+            >
+              Volver al inicio
+            </Link>
+          </div>
+        </SectionCard>
+
+        <AlertBanner tone="warning" title="Diagnostico de autenticacion">
+          Esta informacion se mantiene visible para resolver configuraciones de Clerk sin tocar la logica funcional de la app.
+        </AlertBanner>
+
+        <SectionCard>
+          <dl className="grid gap-4 text-sm text-slate-600 sm:grid-cols-2">
             <div>
-              <dt className="font-semibold text-[#0A192F]">clerk_user_id</dt>
+              <dt className="font-semibold text-slate-900">Clerk user ID</dt>
               <dd className="mt-1 break-all">{authContext.clerkUserId}</dd>
             </div>
             <div>
-              <dt className="font-semibold text-[#0A192F]">role detectado</dt>
+              <dt className="font-semibold text-slate-900">Rol detectado</dt>
               <dd className="mt-1 break-all">{String(authContext.role)}</dd>
             </div>
             <div>
-              <dt className="font-semibold text-[#0A192F]">sessionClaims.role</dt>
+              <dt className="font-semibold text-slate-900">sessionClaims.role</dt>
               <dd className="mt-1 break-all">{String(authContext.diagnostics?.sessionRole)}</dd>
             </div>
             <div>
-              <dt className="font-semibold text-[#0A192F]">sessionClaims.metadata.role</dt>
+              <dt className="font-semibold text-slate-900">sessionClaims.metadata.role</dt>
               <dd className="mt-1 break-all">{String(authContext.diagnostics?.sessionMetadataRole)}</dd>
             </div>
             <div>
-              <dt className="font-semibold text-[#0A192F]">sessionClaims.publicMetadata.role</dt>
+              <dt className="font-semibold text-slate-900">sessionClaims.publicMetadata.role</dt>
               <dd className="mt-1 break-all">{String(authContext.diagnostics?.sessionPublicMetadataRole)}</dd>
             </div>
             <div>
-              <dt className="font-semibold text-[#0A192F]">sessionClaims.unsafeMetadata.role</dt>
+              <dt className="font-semibold text-slate-900">sessionClaims.unsafeMetadata.role</dt>
               <dd className="mt-1 break-all">{String(authContext.diagnostics?.sessionUnsafeMetadataRole)}</dd>
             </div>
             <div>
-              <dt className="font-semibold text-[#0A192F]">currentUser.publicMetadata.role</dt>
+              <dt className="font-semibold text-slate-900">currentUser.publicMetadata.role</dt>
               <dd className="mt-1 break-all">{String(authContext.diagnostics?.userPublicMetadataRole)}</dd>
             </div>
             <div>
-              <dt className="font-semibold text-[#0A192F]">currentUser.unsafeMetadata.role</dt>
+              <dt className="font-semibold text-slate-900">currentUser.unsafeMetadata.role</dt>
               <dd className="mt-1 break-all">{String(authContext.diagnostics?.userUnsafeMetadataRole)}</dd>
             </div>
           </dl>
-        </section>
+        </SectionCard>
       </div>
     </main>
   );

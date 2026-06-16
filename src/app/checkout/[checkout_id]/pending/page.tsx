@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import { AlertBanner } from "@/components/ui/alert-banner";
+import { SectionCard } from "@/components/ui/section-card";
 import { requirePageRole } from "@/lib/auth";
 import { reconcileCheckoutReturn } from "@/lib/payments/checkout";
 import {
@@ -53,18 +55,21 @@ export default async function CheckoutPendingPage({ params, searchParams }: Page
 
   return (
     <CheckoutLayout
-      title="Resultado del checkout"
-      description="Payments App recibio el retorno de Mercado Pago y actualizo el estado interno del checkout."
+      title="Pago pendiente"
+      description="Payments App recibio el retorno del checkout y dejo registrado que la operacion sigue en revision."
     >
       {!result.ok ? (
-        <section className="rounded-3xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-800 shadow-sm">
-          {result.message}
-        </section>
+        <AlertBanner tone="danger">{result.message}</AlertBanner>
       ) : null}
       <CheckoutSummaryCard data={data} />
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+      <SectionCard>
+        <AlertBanner tone="warning" title="La acreditacion puede demorar">
+          Mientras el pago siga pendiente, lo recomendable es volver a Rider y revisar el estado nuevamente mas tarde.
+        </AlertBanner>
+        <div className="mt-6">
         <CheckoutResultActions checkoutId={checkoutId} paymentResult="pending" />
-      </section>
+        </div>
+      </SectionCard>
     </CheckoutLayout>
   );
 }

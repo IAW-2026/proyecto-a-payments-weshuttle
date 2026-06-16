@@ -2,6 +2,10 @@ import { Prisma } from "@prisma/client";
 import { AppShell } from "@/components/app-shell";
 import { Pagination } from "@/components/pagination";
 import { Search } from "@/components/search";
+import { EmptyState } from "@/components/ui/empty-state";
+import { formatDateTime, formatMoney, humanizeStatus } from "@/components/ui/format";
+import { SectionCard } from "@/components/ui/section-card";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { requirePageRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -17,17 +21,6 @@ type PageProps = {
 function parsePage(value: string | undefined) {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
-}
-
-function StatusBadge({ value }: { value: string }) {
-  const colors =
-    value === "PAID"
-      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-      : value === "PENDING"
-        ? "border-amber-200 bg-amber-50 text-amber-700"
-        : "border-rose-200 bg-rose-50 text-rose-700";
-
-  return <span className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] ${colors}`}>{value}</span>;
 }
 
 export default async function AdminTransactionsPage({ searchParams }: PageProps) {
@@ -60,13 +53,13 @@ export default async function AdminTransactionsPage({ searchParams }: PageProps)
       role="admin"
       clerkUserId={authContext.clerkUserId}
       title="Transacciones"
-      description="Visualiza cobros individuales, credito aplicado, precio final y su trazabilidad operativa."
+      description="Vista detallada de cobros para explicar que paso en cada reserva sin entrar en ruido innecesario."
     >
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+      <SectionCard>
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <h2 className="text-xl font-semibold text-slate-900">Cobros registrados</h2>
-            <p className="mt-2 text-sm text-slate-600">Busqueda por `pool_id`, `reservation_id` o `passenger_user_id`.</p>
+            <p className="mt-2 text-sm text-slate-600">Busca por pool, reserva o pasajero para encontrar rapidamente una transaccion puntual.</p>
           </div>
           <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">
             {totalCharges} registros
@@ -77,56 +70,82 @@ export default async function AdminTransactionsPage({ searchParams }: PageProps)
           <Search placeholder="Buscar por pool, reserva o pasajero..." />
         </div>
 
-        <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
-            <thead className="bg-slate-50 text-left text-slate-600">
-              <tr>
-                <th className="px-4 py-3 font-semibold">Reserva</th>
-                <th className="px-4 py-3 font-semibold">Pasajero</th>
-                <th className="px-4 py-3 font-semibold">Montos</th>
-                <th className="px-4 py-3 font-semibold">Estado</th>
-                <th className="px-4 py-3 font-semibold">Checkout / Ajuste</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200 bg-white text-slate-700">
+        {charges.length === 0 ? (
+          <div className="mt-6">
+            <EmptyState title="No hay transacciones para este filtro" description="Prueba con otro termino de busqueda o vuelve a la lista completa para revisar el historial." />
+          </div>
+        ) : (
+          <>
+            <div className="mt-6 space-y-3 lg:hidden">
               {charges.map((charge) => (
-                <tr key={charge.id}>
-                  <td className="px-4 py-3 align-top">
-                    <p className="font-medium text-slate-900">{charge.reservationId}</p>
-                    <p className="mt-1 text-xs text-slate-500">Pool: {charge.poolId}</p>
-                    <p className="mt-1 text-xs text-slate-500">Txn: {charge.transactionId}</p>
-                  </td>
-                  <td className="px-4 py-3 align-top">{charge.passengerUserId}</td>
-                  <td className="px-4 py-3 align-top">
-                    <p>Max: {charge.currency} {charge.maxPrice.toNumber().toFixed(2)}</p>
-                    <p className="mt-1 text-xs text-slate-500">Cobrado: {charge.currency} {charge.amountCharged.toNumber().toFixed(2)}</p>
-                    <p className="mt-1 text-xs text-slate-500">Credito aplicado: {charge.currency} {charge.creditApplied.toNumber().toFixed(2)}</p>
-                    <p className="mt-1 text-xs text-slate-500">Precio final: {charge.finalTripPrice !== null ? `${charge.currency} ${charge.finalTripPrice.toNumber().toFixed(2)}` : "Pendiente"}</p>
-                    <p className="mt-1 text-xs text-slate-500">Credito generado: {charge.currency} {charge.creditGranted.toNumber().toFixed(2)}</p>
-                  </td>
-                  <td className="px-4 py-3 align-top">
-                    <StatusBadge value={charge.status} />
-                    <p className="mt-2 text-xs text-slate-500">{charge.processedAt ? charge.processedAt.toISOString() : "Pendiente"}</p>
-                    <p className="mt-1 text-xs text-slate-500">{charge.rejectionReason ?? "Sin rechazo"}</p>
-                  </td>
-                  <td className="px-4 py-3 align-top">
-                    <p>Checkout: {charge.checkoutSessionId ?? "No aplica"}</p>
-                    <p className="mt-1 text-xs text-slate-500">Finalizacion: {charge.poolPriceFinalizationJobId ?? "Pendiente"}</p>
-                    <p className="mt-1 text-xs text-slate-500">Proveedor: {charge.provider}</p>
-                  </td>
-                </tr>
+                <article key={charge.id} className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-slate-900">Reserva {charge.reservationId}</p>
+                      <p className="mt-1 text-xs text-slate-500">Pool {charge.poolId}</p>
+                    </div>
+                    <StatusBadge value={charge.status} label={humanizeStatus(charge.status)} />
+                  </div>
+                  <div className="mt-4 grid gap-2 text-sm text-slate-600">
+                    <p>Monto cobrado: <span className="font-semibold text-slate-900">{formatMoney(charge.amountCharged.toNumber(), charge.currency)}</span></p>
+                    <p>Credito aplicado: {formatMoney(charge.creditApplied.toNumber(), charge.currency)}</p>
+                    <p>Precio final: {charge.finalTripPrice !== null ? formatMoney(charge.finalTripPrice.toNumber(), charge.currency) : "Pendiente"}</p>
+                    <p>Procesado: {formatDateTime(charge.processedAt)}</p>
+                  </div>
+                </article>
               ))}
-              {charges.length === 0 ? (
-                <tr><td colSpan={5} className="px-4 py-6 text-center text-slate-500">No hay transacciones para los filtros actuales.</td></tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
+            </div>
+
+            <div className="mt-6 hidden overflow-x-auto rounded-2xl border border-slate-200 lg:block">
+              <table className="min-w-full divide-y divide-slate-200 text-sm">
+                <caption className="sr-only">Cobros registrados</caption>
+                <thead className="bg-slate-50 text-left text-slate-600">
+                  <tr>
+                    <th className="px-4 py-3 font-semibold">Reserva</th>
+                    <th className="px-4 py-3 font-semibold">Pasajero</th>
+                    <th className="px-4 py-3 font-semibold">Montos</th>
+                    <th className="px-4 py-3 font-semibold">Estado</th>
+                    <th className="px-4 py-3 font-semibold">Trazabilidad</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 bg-white text-slate-700">
+                  {charges.map((charge) => (
+                    <tr key={charge.id}>
+                      <td className="px-4 py-4 align-top">
+                        <p className="font-medium text-slate-900">{charge.reservationId}</p>
+                        <p className="mt-1 text-xs text-slate-500">Pool {charge.poolId}</p>
+                        <p className="mt-1 text-xs text-slate-500">Txn {charge.transactionId}</p>
+                      </td>
+                      <td className="px-4 py-4 align-top text-sm text-slate-600">{charge.passengerUserId}</td>
+                      <td className="px-4 py-4 align-top">
+                        <p className="font-medium text-slate-900">Cobrado: {formatMoney(charge.amountCharged.toNumber(), charge.currency)}</p>
+                        <p className="mt-1 text-xs text-slate-500">Maximo: {formatMoney(charge.maxPrice.toNumber(), charge.currency)}</p>
+                        <p className="mt-1 text-xs text-slate-500">Credito aplicado: {formatMoney(charge.creditApplied.toNumber(), charge.currency)}</p>
+                        <p className="mt-1 text-xs text-slate-500">Precio final: {charge.finalTripPrice !== null ? formatMoney(charge.finalTripPrice.toNumber(), charge.currency) : "Pendiente"}</p>
+                        <p className="mt-1 text-xs text-slate-500">Credito generado: {formatMoney(charge.creditGranted.toNumber(), charge.currency)}</p>
+                      </td>
+                      <td className="px-4 py-4 align-top">
+                        <StatusBadge value={charge.status} label={humanizeStatus(charge.status)} />
+                        <p className="mt-2 text-xs text-slate-500">{formatDateTime(charge.processedAt)}</p>
+                        <p className="mt-1 text-xs text-slate-500">{charge.rejectionReason ?? "Sin rechazo"}</p>
+                      </td>
+                      <td className="px-4 py-4 align-top text-xs text-slate-500">
+                        <p>Checkout: {charge.checkoutSessionId ?? "No aplica"}</p>
+                        <p className="mt-1">Finalizacion: {charge.poolPriceFinalizationJobId ?? "Pendiente"}</p>
+                        <p className="mt-1">Proveedor: {charge.provider}</p>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
 
         <div className="mt-5 flex items-center justify-between gap-4 text-sm text-slate-600">
           <Pagination totalPages={totalPages} />
         </div>
-      </section>
+      </SectionCard>
     </AppShell>
   );
 }

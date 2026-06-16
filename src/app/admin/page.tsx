@@ -1,24 +1,12 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { EmptyState } from "@/components/ui/empty-state";
+import { formatDateTime, formatMoney, humanizeStatus } from "@/components/ui/format";
+import { MetricCard } from "@/components/ui/metric-card";
+import { SectionCard } from "@/components/ui/section-card";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { requirePageRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-
-function StatCard({ title, value, description, color = "blue" }: { title: string; value: string; description?: string; color?: "blue" | "emerald" | "rose" | "amber" }) {
-  const colorClasses = {
-    blue: "text-blue-600 bg-blue-50 border-blue-100",
-    emerald: "text-emerald-600 bg-emerald-50 border-emerald-100",
-    rose: "text-rose-600 bg-rose-50 border-rose-100",
-    amber: "text-amber-600 bg-amber-50 border-amber-100",
-  };
-
-  return (
-    <div className={`rounded-2xl border p-6 shadow-sm ${colorClasses[color]}`}>
-      <p className="text-xs font-bold uppercase tracking-wider opacity-80">{title}</p>
-      <h3 className="mt-2 text-3xl font-bold">{value}</h3>
-      {description && <p className="mt-2 text-xs opacity-70">{description}</p>}
-    </div>
-  );
-}
 
 export default async function AdminHomePage() {
   const authContext = await requirePageRole(["admin"]);
@@ -81,150 +69,160 @@ export default async function AdminHomePage() {
   const pendingCount = pendingSettlementsData._count.id || 0;
 
   const totalCharges = chargeStats.reduce((acc, curr) => acc + curr._count.id, 0);
-  const paidCharges = chargeStats.find(s => s.status === "PAID")?._count.id || 0;
+  const paidCharges = chargeStats.find((s) => s.status === "PAID")?._count.id || 0;
   const successRate = totalCharges > 0 ? (paidCharges / totalCharges) * 100 : 0;
 
   return (
     <AppShell
       role="admin"
       clerkUserId={authContext.clerkUserId}
-      title="Dashboard Financiero Global"
-      description="Vista analitica de recaudacion, liquidaciones y salud operativa del sistema de pagos."
+      title="Control financiero"
+      description="Vista ejecutiva para entender recaudacion, creditos, liquidaciones y salud operativa del sistema durante la demo."
     >
       <div className="flex flex-col gap-8">
-        <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-sm font-bold uppercase tracking-[0.2em] text-slate-500">Admin Payments</p>
-              <h2 className="mt-2 text-3xl font-bold text-slate-900">Dashboard Financiero</h2>
-              <p className="mt-3 max-w-2xl text-sm text-slate-600 font-medium">
-                Admin: {authContext.clerkUserId}
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="h-3 w-3 animate-pulse rounded-full bg-emerald-500"></span>
-              <span className="text-sm font-semibold text-emerald-700">Sistema en linea</span>
-            </div>
-          </div>
+        <SectionCard>
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-700">Admin Demo</p>
+                <h2 className="mt-2 text-3xl font-bold text-slate-900 sm:text-4xl">
+                  Panorama rapido del negocio de pagos.
+                </h2>
+                <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">
+                  Esta pantalla resume cuanto se cobro, cuanto se liquido y que areas requieren atencion inmediata antes de entrar al detalle operativo.
+                </p>
+              </div>
 
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            <StatCard 
-              title="Total Recaudado" 
-              value={`ARS ${totalCollected.toLocaleString()}`} 
-              description="Dinero ingresado por Mercado Pago" 
-              color="emerald" 
-            />
-            <StatCard 
-              title="Credito Aplicado" 
-              value={`ARS ${totalCreditApplied.toLocaleString()}`} 
-              description="Saldo a favor usado en checkouts" 
-              color="blue" 
-            />
-            <StatCard 
-              title="Credito Generado" 
-              value={`ARS ${totalCreditGranted.toLocaleString()}`} 
-              description="Saldo a favor otorgado por ajustes" 
-              color="amber" 
-            />
-            <StatCard 
-              title="Total Liquidado" 
-              value={`ARS ${totalSettled.toLocaleString()}`} 
-              description="Fondos transferidos a conductores" 
-              color="blue" 
-            />
-            <StatCard 
-              title="Liquidaciones Pendientes" 
-              value={pendingCount.toString()} 
-              description={`Monto: ARS ${pendingAmount.toLocaleString()}`} 
-              color="amber" 
-            />
-            <StatCard 
-              title="Tasa de Exito" 
-              value={`${successRate.toFixed(1)}%`} 
-              description={`${paidCharges} de ${totalCharges} cobros exitosos`} 
-              color={successRate > 90 ? "emerald" : successRate > 70 ? "amber" : "rose"} 
-            />
+              <div className="flex items-center gap-3 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
+                <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-500"></span>
+                Sistema en linea
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <MetricCard title="Total recaudado" value={formatMoney(totalCollected, "ARS")} description="Cobros acreditados por el flujo de pagos." tone="emerald" />
+              <MetricCard title="Credito aplicado" value={formatMoney(totalCreditApplied, "ARS")} description="Saldo a favor usado por riders en checkouts." tone="sky" />
+              <MetricCard title="Credito generado" value={formatMoney(totalCreditGranted, "ARS")} description="Ajustes y devoluciones convertidos en saldo." tone="amber" />
+              <MetricCard title="Total liquidado" value={formatMoney(totalSettled, "ARS")} description="Fondos ya derivados a conductores." tone="sky" />
+              <MetricCard title="Liquidaciones pendientes" value={String(pendingCount)} description={`Monto pendiente: ${formatMoney(pendingAmount, "ARS")}`} tone="amber" />
+              <MetricCard title="Tasa de exito" value={`${successRate.toFixed(1)}%`} description={`${paidCharges} de ${totalCharges} cobros terminaron en pagado.`} tone={successRate > 90 ? "emerald" : successRate > 70 ? "amber" : "rose"} />
+            </div>
           </div>
-        </section>
+        </SectionCard>
 
         <div className="grid gap-8 lg:grid-cols-2">
-          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-slate-900">Ultimos Cobros</h3>
-              <Link href="/admin/transactions" className="text-xs font-bold text-blue-600 hover:underline">Ver todos</Link>
+          <SectionCard>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-semibold text-slate-900">Ultimos cobros</h3>
+                <p className="mt-2 text-sm text-slate-600">Reservas cobradas recientemente con foco en monto y credito aplicado.</p>
+              </div>
+              <Link href="/admin/transactions" className="text-sm font-semibold text-sky-700 hover:underline">
+                Ver transacciones
+              </Link>
             </div>
-            <div className="space-y-4">
-              {recentCharges.map(charge => (
-                <div key={charge.id} className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm">
-                  <div>
-                    <p className="font-bold text-slate-900">{charge.reservationId}</p>
-                    <p className="text-xs text-slate-500">{charge.processedAt?.toLocaleDateString()} - {charge.status}</p>
-                    <p className="text-xs text-slate-500">Credito aplicado: ARS {charge.creditApplied.toNumber().toFixed(2)}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-slate-900">ARS {charge.amountCharged.toNumber().toFixed(2)}</p>
-                    <p className="text-xs text-slate-500">Final: {charge.finalTripPrice !== null ? `ARS ${charge.finalTripPrice.toNumber().toFixed(2)}` : "Pendiente"}</p>
-                  </div>
-                </div>
-              ))}
-              {recentCharges.length === 0 && <p className="py-4 text-center text-sm text-slate-500">Sin movimientos recientes.</p>}
-            </div>
-          </section>
 
-          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-slate-900">Ultimos Procesos T-1h</h3>
-            </div>
-            <div className="space-y-4">
-              {recentFinalizationJobs.map((job) => (
-                <div key={job.id} className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm">
-                  <div>
-                    <p className="font-bold text-slate-900">Pool: {job.poolId}</p>
-                    <p className="text-xs text-slate-500">{job.startedAt.toLocaleDateString()} - {job.status}</p>
-                    <p className="text-xs text-slate-500">Motivo: {job.reason}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-slate-900">Final: {job.finalPrice !== null ? `ARS ${job.finalPrice.toNumber().toFixed(2)}` : "N/D"}</p>
-                    <p className="text-xs text-slate-500">Base: ARS {job.basePrice.toNumber().toFixed(2)}</p>
+            <div className="mt-6 space-y-3">
+              {recentCharges.map((charge) => (
+                <div key={charge.id} className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="font-semibold text-slate-900">Reserva {charge.reservationId}</p>
+                      <p className="mt-1 text-xs text-slate-500">Pool {charge.poolId}</p>
+                      <p className="mt-2 text-sm text-slate-600">Credito aplicado: {formatMoney(charge.creditApplied.toNumber(), charge.currency)}</p>
+                    </div>
+                    <div className="flex flex-col items-start gap-2 sm:items-end">
+                      <StatusBadge value={charge.status} label={humanizeStatus(charge.status)} />
+                      <p className="text-sm font-semibold text-slate-900">{formatMoney(charge.amountCharged.toNumber(), charge.currency)}</p>
+                      <p className="text-xs text-slate-500">{formatDateTime(charge.processedAt)}</p>
+                    </div>
                   </div>
                 </div>
               ))}
-              {recentFinalizationJobs.length === 0 && <p className="py-4 text-center text-sm text-slate-500">Sin procesos recientes.</p>}
+              {recentCharges.length === 0 ? (
+                <EmptyState title="Sin cobros recientes" description="Cuando ingresen pagos nuevos apareceran aqui para una lectura ejecutiva rapida." />
+              ) : null}
             </div>
-          </section>
+          </SectionCard>
+
+          <SectionCard>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-semibold text-slate-900">Procesos T-1h</h3>
+                <p className="mt-2 text-sm text-slate-600">Revision operativa de finalizacion de precio por pool.</p>
+              </div>
+            </div>
+
+            <div className="mt-6 space-y-3">
+              {recentFinalizationJobs.map((job) => (
+                <div key={job.id} className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="font-semibold text-slate-900">Pool {job.poolId}</p>
+                      <p className="mt-1 text-xs text-slate-500">{job.reason}</p>
+                      <p className="mt-2 text-sm text-slate-600">Base: {formatMoney(job.basePrice.toNumber(), "ARS")}</p>
+                    </div>
+                    <div className="text-left sm:text-right">
+                      <StatusBadge value={job.status} />
+                      <p className="mt-2 text-sm font-semibold text-slate-900">
+                        Final: {job.finalPrice !== null ? formatMoney(job.finalPrice.toNumber(), "ARS") : "No disponible"}
+                      </p>
+                      <p className="text-xs text-slate-500">{formatDateTime(job.startedAt)}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {recentFinalizationJobs.length === 0 ? (
+                <EmptyState title="Sin procesos recientes" description="Cuando se ejecute una finalizacion T-1h se mostrara aqui su resultado." />
+              ) : null}
+            </div>
+          </SectionCard>
         </div>
 
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-slate-900">Ultimas Liquidaciones</h3>
-            <Link href="/admin/settlements" className="text-xs font-bold text-blue-600 hover:underline">Ver todas</Link>
+        <SectionCard>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h3 className="text-xl font-semibold text-slate-900">Ultimas liquidaciones</h3>
+              <p className="mt-2 text-sm text-slate-600">Transferencias recientes hacia conductores.</p>
+            </div>
+            <Link href="/admin/settlements" className="text-sm font-semibold text-sky-700 hover:underline">
+              Ver liquidaciones
+            </Link>
           </div>
-          <div className="space-y-4">
-            {recentSettlements.map(settlement => (
-              <div key={settlement.id} className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm">
-                <div>
-                  <p className="font-bold text-slate-900">Pool: {settlement.poolId}</p>
-                  <p className="text-xs text-slate-500">{settlement.settledAt?.toLocaleDateString()} - {settlement.status}</p>
+
+          <div className="mt-6 space-y-3">
+            {recentSettlements.map((settlement) => (
+              <div key={settlement.id} className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="font-semibold text-slate-900">Pool {settlement.poolId}</p>
+                    <p className="mt-1 text-xs text-slate-500">{formatDateTime(settlement.settledAt)}</p>
+                  </div>
+                  <div className="flex flex-col items-start gap-2 sm:items-end">
+                    <StatusBadge value={settlement.status} label={humanizeStatus(settlement.status)} />
+                    <p className="text-sm font-semibold text-slate-900">{formatMoney(settlement.amount.toNumber(), settlement.currency)}</p>
+                  </div>
                 </div>
-                <p className="font-bold text-slate-900">ARS {settlement.amount.toNumber().toFixed(2)}</p>
               </div>
             ))}
-            {recentSettlements.length === 0 && <p className="py-4 text-center text-sm text-slate-500">Sin liquidaciones recientes.</p>}
+            {recentSettlements.length === 0 ? (
+              <EmptyState title="Sin liquidaciones recientes" description="Las proximas liquidaciones completadas se resumiran en este bloque." />
+            ) : null}
           </div>
-        </section>
+        </SectionCard>
 
         <section className="grid gap-4 md:grid-cols-3">
-          <Link href="/admin/pricing-rules" className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-slate-900">
-            <h4 className="font-bold text-slate-900">Configurar Precios</h4>
-            <p className="mt-2 text-xs text-slate-600">ABM de reglas por destino y capacidad.</p>
+          <Link href="/admin/pricing-rules" className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm transition hover:border-sky-300 hover:bg-sky-50/30">
+            <h4 className="font-semibold text-slate-900">Configurar precios</h4>
+            <p className="mt-2 text-sm text-slate-600">Gestiona reglas de pricing para cotizaciones, topes y descuentos.</p>
           </Link>
-          <Link href="/admin/transactions" className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-slate-900">
-            <h4 className="font-bold text-slate-900">Auditar Transacciones</h4>
-            <p className="mt-2 text-xs text-slate-600">Reporte detallado de cobros, credito aplicado y precio final.</p>
+          <Link href="/admin/transactions" className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm transition hover:border-sky-300 hover:bg-sky-50/30">
+            <h4 className="font-semibold text-slate-900">Auditar transacciones</h4>
+            <p className="mt-2 text-sm text-slate-600">Explora cobros, creditos aplicados y resultado de cada reserva.</p>
           </Link>
-          <Link href="/admin/settlements" className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-slate-900">
-            <h4 className="font-bold text-slate-900">Control de Liquidaciones</h4>
-            <p className="mt-2 text-xs text-slate-600">Gestion de fondos transferidos a conductores.</p>
+          <Link href="/admin/settlements" className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm transition hover:border-sky-300 hover:bg-sky-50/30">
+            <h4 className="font-semibold text-slate-900">Controlar liquidaciones</h4>
+            <p className="mt-2 text-sm text-slate-600">Sigue el estado de las transferencias hacia conductores.</p>
           </Link>
         </section>
       </div>

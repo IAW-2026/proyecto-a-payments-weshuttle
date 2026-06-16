@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import { AlertBanner } from "@/components/ui/alert-banner";
+import { SectionCard } from "@/components/ui/section-card";
 import { requirePageRole } from "@/lib/auth";
 import { getCheckoutPageData, reconcileCheckoutReturn } from "@/lib/payments/checkout";
 import {
@@ -62,18 +64,21 @@ export default async function CheckoutFailurePage({ params, searchParams }: Page
 
   return (
     <CheckoutLayout
-      title="Resultado del checkout"
-      description="Payments App recibio el retorno de Mercado Pago y actualizo el estado interno del checkout."
+      title="Pago no completado"
+      description="Payments App recibio el retorno del checkout y guardo el estado resultante para que puedas decidir el siguiente paso."
     >
       {errorMessage ? (
-        <section className="rounded-3xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-800 shadow-sm">
-          {errorMessage}
-        </section>
+        <AlertBanner tone="danger">{errorMessage}</AlertBanner>
       ) : null}
       <CheckoutSummaryCard data={data} />
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+      <SectionCard>
+        <AlertBanner tone="danger" title="La operacion no se acredito">
+          Puedes volver a Rider para reintentar el flujo o revisar por que el checkout quedo rechazado, cancelado o expirado.
+        </AlertBanner>
+        <div className="mt-6">
         <CheckoutResultActions checkoutId={checkoutId} paymentResult="failure" />
-      </section>
+        </div>
+      </SectionCard>
     </CheckoutLayout>
   );
 }
