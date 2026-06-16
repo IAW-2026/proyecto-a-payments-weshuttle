@@ -94,9 +94,13 @@ El flujo actualizado establece que el pasajero paga el precio máximo al momento
 ## 5. Notas o comentarios para la corrección
 ### Integración de Mercado Pago Sandbox
 
-La aplicación utiliza Mercado Pago en modo Sandbox para simular pagos sin dinero real.
+La aplicación utiliza Mercado Pago Checkout Pro en modo Sandbox para simular pagos sin dinero real.
 
-El flujo de pago se realiza mediante una sesión de checkout asociada a una reserva. Si el pasajero tiene saldo a favor disponible, Payments App lo aplica antes de cobrar la diferencia mediante Mercado Pago.
+El flujo de pago se realiza mediante una sesión de checkout asociada a una reserva. Rider App crea el checkout llamando al backend de Payments App y recibe una `checkout_url` interna. Desde esa pantalla, Payments App muestra el resumen del cobro, aplica el saldo a favor disponible del pasajero y luego redirige a Mercado Pago Checkout Pro.
+
+La variable `MERCADOPAGO_TEST_BUYER_EMAIL` es opcional y se usa solo para pruebas Sandbox con tarjeta dentro de Checkout Pro. Si está definida, Payments App la envía como `payer.email` al crear la `Preference`. Esta variable no reemplaza `MERCADOPAGO_ACCESS_TOKEN` y nunca se expone al frontend.
+
+La variable `NEXT_PUBLIC_RIDER_APP_URL` apunta al deploy real de Rider App. Payments App la usa para ofrecer el botón "Volver a Rider App" después del checkout. Si no está configurada, las pantallas de resultado muestran solo la opción de volver a la vista demo `/rider` dentro de Payments App.
 
 El resultado del checkout se informa a Rider App reutilizando:
 
