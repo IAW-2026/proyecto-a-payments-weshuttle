@@ -100,6 +100,8 @@ El flujo de pago se realiza mediante una sesión de checkout asociada a una rese
 
 La variable `MERCADOPAGO_TEST_BUYER_EMAIL` es opcional y se usa solo para pruebas Sandbox con tarjeta dentro de Checkout Pro. Si está definida, Payments App la envía como `payer.email` al crear la `Preference`. Esta variable no reemplaza `MERCADOPAGO_ACCESS_TOKEN` y nunca se expone al frontend.
 
+La variable `NEXT_PUBLIC_RIDER_APP_URL` apunta al deploy real de Rider App. Payments App la usa para ofrecer el botón "Volver a Rider App" después del checkout. Si no está configurada, las pantallas de resultado muestran solo la opción de volver a la vista demo `/rider` dentro de Payments App.
+
 El resultado del checkout se informa a Rider App reutilizando:
 
 ```http

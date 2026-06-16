@@ -65,6 +65,10 @@ export default async function RiderPage({ searchParams }: PageProps) {
   const authContext = await requirePageRole(["rider"]);
   const params = await searchParams;
   const reservationId = params.reservation_id?.trim() || "";
+  const riderAppUrl = process.env.NEXT_PUBLIC_RIDER_APP_URL?.trim();
+  const defaultSuccessUrl = riderAppUrl ? `${riderAppUrl.replace(/\/$/, "")}?payment=success` : "/rider?payment=success";
+  const defaultFailureUrl = riderAppUrl ? `${riderAppUrl.replace(/\/$/, "")}?payment=failure` : "/rider?payment=failure";
+  const defaultPendingUrl = riderAppUrl ? `${riderAppUrl.replace(/\/$/, "")}?payment=pending` : "/rider?payment=pending";
 
   const [creditAccount, recentMovements, recentCheckouts, latestCheckout, latestCharge] = await Promise.all([
     prisma.creditAccount.findUnique({
@@ -193,9 +197,9 @@ export default async function RiderPage({ searchParams }: PageProps) {
                   <Field label="Pool ID" name="poolId" defaultValue="pool_demo_checkout_new" placeholder="pool_demo_checkout_new" />
                   <Field label="Max price" name="maxPrice" type="number" defaultValue="5800" placeholder="5800" />
                   <Field label="Currency" name="currency" defaultValue="ARS" placeholder="ARS" />
-                  <Field label="Success URL" name="successUrl" defaultValue="https://rider-app.local/success" placeholder="https://rider-app.local/success" />
-                  <Field label="Failure URL" name="failureUrl" defaultValue="https://rider-app.local/failure" placeholder="https://rider-app.local/failure" />
-                  <Field label="Pending URL" name="pendingUrl" defaultValue="https://rider-app.local/pending" placeholder="https://rider-app.local/pending" />
+                  <Field label="Success URL" name="successUrl" defaultValue={defaultSuccessUrl} placeholder={defaultSuccessUrl} />
+                  <Field label="Failure URL" name="failureUrl" defaultValue={defaultFailureUrl} placeholder={defaultFailureUrl} />
+                  <Field label="Pending URL" name="pendingUrl" defaultValue={defaultPendingUrl} placeholder={defaultPendingUrl} />
                   <div className="sm:col-span-2">
                     <button type="submit" className="w-full rounded-full bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-700">
                       Crear checkout interno

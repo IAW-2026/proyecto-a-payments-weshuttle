@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 type CheckoutStatus = "CREATED" | "PENDING" | "PAID" | "DENIED" | "CANCELED" | "EXPIRED";
+type CheckoutResultKind = "success" | "failure" | "pending";
 
 export type CheckoutViewData = {
   checkout: {
@@ -147,23 +148,29 @@ export function CheckoutSummaryCard({ data }: { data: CheckoutViewData }) {
 }
 
 export function CheckoutResultActions({
-  returnUrl,
   checkoutId,
+  paymentResult,
 }: {
-  returnUrl?: string;
   checkoutId: string;
+  paymentResult: CheckoutResultKind;
 }) {
+  const riderAppBaseUrl = process.env.NEXT_PUBLIC_RIDER_APP_URL?.trim();
+  const riderAppUrl = riderAppBaseUrl
+    ? `${riderAppBaseUrl.replace(/\/$/, "")}?payment=${paymentResult}&checkout_id=${checkoutId}`
+    : null;
+  const demoRiderUrl = `/rider?payment=${paymentResult}&checkout_id=${checkoutId}`;
+
   return (
     <div className="flex flex-col gap-3 sm:flex-row">
       <Link
-        href={`/checkout/${checkoutId}`}
+        href={demoRiderUrl}
         className="inline-flex items-center justify-center rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-900 hover:text-slate-900"
       >
-        Volver al checkout
+        Volver a demo Rider en Payments
       </Link>
-      {returnUrl ? (
+      {riderAppUrl ? (
         <Link
-          href={returnUrl}
+          href={riderAppUrl}
           className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
         >
           Volver a Rider App

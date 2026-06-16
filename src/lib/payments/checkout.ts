@@ -103,11 +103,9 @@ function buildCheckoutBackUrl(input: {
   appBaseUrl: string;
   checkoutId: string;
   kind: ReturnRouteKind;
-  returnUrl: string;
 }) {
   const url = new URL(buildCheckoutUrl(input.appBaseUrl, input.checkoutId));
   url.pathname = `${url.pathname}/${input.kind}`;
-  url.searchParams.set("return_url", input.returnUrl);
 
   return url.toString();
 }
@@ -124,6 +122,26 @@ function buildProcessedAt(dateValue?: string) {
   const date = new Date(dateValue);
 
   return Number.isNaN(date.getTime()) ? new Date() : date;
+}
+
+function normalizeMercadoPagoQueryParam(value?: string) {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const normalizedValue = value.trim();
+
+  if (!normalizedValue) {
+    return undefined;
+  }
+
+  const lowerCasedValue = normalizedValue.toLowerCase();
+
+  if (lowerCasedValue === "null" || lowerCasedValue === "undefined") {
+    return undefined;
+  }
+
+  return normalizedValue;
 }
 
 function truncateForLog(value: string, max = 500) {
@@ -469,19 +487,16 @@ async function createMercadoPagoPreference(input: {
         appBaseUrl: input.appBaseUrl,
         checkoutId: input.checkoutId,
         kind: "success",
-        returnUrl: input.successUrl,
       }),
       failure: buildCheckoutBackUrl({
         appBaseUrl: input.appBaseUrl,
         checkoutId: input.checkoutId,
         kind: "failure",
-        returnUrl: input.failureUrl,
       }),
       pending: buildCheckoutBackUrl({
         appBaseUrl: input.appBaseUrl,
         checkoutId: input.checkoutId,
         kind: "pending",
-        returnUrl: input.pendingUrl,
       }),
     },
     auto_return: "approved",
@@ -748,16 +763,25 @@ export async function resolveDemoCheckout(checkoutId: string, status: DemoChecko
 export async function reconcileCheckoutReturn(
   input: ReconcileCheckoutReturnInput,
 ): Promise<ReconcileCheckoutReturnResult> {
+  const normalizedPaymentId = normalizeMercadoPagoQueryParam(input.paymentId);
+  const normalizedStatus = normalizeMercadoPagoQueryParam(input.status);
+  const normalizedCollectionStatus = normalizeMercadoPagoQueryParam(input.collectionStatus);
+  const normalizedExternalReference = normalizeMercadoPagoQueryParam(input.externalReference);
+  const normalizedMerchantOrderId = normalizeMercadoPagoQueryParam(input.merchantOrderId);
+  const normalizedPreferenceId = normalizeMercadoPagoQueryParam(input.preferenceId);
+  const normalizedPaymentType = normalizeMercadoPagoQueryParam(input.paymentType);
+  const normalizedProcessingMode = normalizeMercadoPagoQueryParam(input.processingMode);
+
   console.info("MercadoPago checkout return", {
     checkoutId: input.checkoutId,
-    payment_id: input.paymentId,
-    status: input.status,
-    collection_status: input.collectionStatus,
-    merchant_order_id: input.merchantOrderId,
-    external_reference: input.externalReference,
-    preference_id: input.preferenceId,
-    payment_type: input.paymentType,
-    processing_mode: input.processingMode,
+    payment_id: normalizedPaymentId,
+    status: normalizedStatus,
+    collection_status: normalizedCollectionStatus,
+    merchant_order_id: normalizedMerchantOrderId,
+    external_reference: normalizedExternalReference,
+    preference_id: normalizedPreferenceId,
+    payment_type: normalizedPaymentType,
+    processing_mode: normalizedProcessingMode,
   });
 
   const checkout = await getCheckoutById(input.checkoutId);
@@ -770,7 +794,7 @@ export async function reconcileCheckoutReturn(
     };
   }
 
-  if (input.externalReference && input.externalReference !== checkout.id) {
+  if (normalizedExternalReference && normalizedExternalReference !== checkout.id) {
     return {
       ok: false,
       error: "INVALID_EXTERNAL_REFERENCE",
@@ -782,20 +806,32 @@ export async function reconcileCheckoutReturn(
     };
   }
 
-  let mercadoPagoStatus = input.status;
-  let paymentId = input.paymentId;
+  let mercadoPagoStatus = normalizedStatus;
+  let paymentId = normalizedPaymentId;
   let processedAt = new Date();
   let rejectionReason: string | undefined;
   let amountCharged = checkout.amountToCharge.toNumber();
 
-  if (input.paymentId && isMercadoPagoConfigured()) {
+  if (!normalizedPaymentId) {
+    console.info("Mercado Pago return without payment_id", {
+      checkoutId: input.checkoutId,
+      preference_id: normalizedPreferenceId,
+      external_reference: normalizedExternalReference,
+      status: normalizedStatus,
+      collection_status: normalizedCollectionStatus,
+      merchant_order_id: normalizedMerchantOrderId,
+      processing_mode: normalizedProcessingMode,
+    });
+  }
+
+  if (normalizedPaymentId && isMercadoPagoConfigured()) {
     try {
       const paymentResponse = await getPaymentClient().get({
-        id: input.paymentId,
+        id: normalizedPaymentId,
       });
 
       console.info("MercadoPago payment details", {
-        payment_id: paymentResponse.id?.toString() ?? input.paymentId,
+        payment_id: paymentResponse.id?.toString() ?? normalizedPaymentId,
         status: paymentResponse.status,
         status_detail: paymentResponse.status_detail,
         payment_method_id: paymentResponse.payment_method_id,
@@ -825,7 +861,7 @@ export async function reconcileCheckoutReturn(
 
       console.warn("MercadoPago payment lookup failed", {
         checkoutId: input.checkoutId,
-        payment_id: input.paymentId,
+        payment_id: normalizedPaymentId,
         message: errorSummary.message,
         status: errorSummary.status,
         bodySummary: errorSummary.bodySummary,

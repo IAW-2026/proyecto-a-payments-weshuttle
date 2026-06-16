@@ -32,6 +32,10 @@ function getTrimmedValue(formData: FormData, key: string) {
   return formData.get(key)?.toString().trim() ?? "";
 }
 
+function buildDefaultRiderReturnUrl(baseUrl: string, payment: "success" | "failure" | "pending") {
+  return `${baseUrl.replace(/\/$/, "")}?payment=${payment}`;
+}
+
 export async function createDemoCheckoutAction(formData: FormData) {
   const authContext = await requirePageRole(["rider"]);
   const requestHeaders = await headers();
@@ -41,14 +45,30 @@ export async function createDemoCheckoutAction(formData: FormData) {
   const origin = requestHeaders.get("origin")
     ?? (forwardedProto && forwardedHost ? `${forwardedProto}://${forwardedHost}` : null)
     ?? (host ? `http://${host}` : null);
+  const riderAppUrl = process.env.NEXT_PUBLIC_RIDER_APP_URL?.trim();
+  const defaultSuccessUrl = riderAppUrl
+    ? buildDefaultRiderReturnUrl(riderAppUrl, "success")
+    : origin
+      ? `${origin}/rider?payment=success`
+      : "";
+  const defaultFailureUrl = riderAppUrl
+    ? buildDefaultRiderReturnUrl(riderAppUrl, "failure")
+    : origin
+      ? `${origin}/rider?payment=failure`
+      : "";
+  const defaultPendingUrl = riderAppUrl
+    ? buildDefaultRiderReturnUrl(riderAppUrl, "pending")
+    : origin
+      ? `${origin}/rider?payment=pending`
+      : "";
 
   const reservationId = getTrimmedValue(formData, "reservationId");
   const poolId = getTrimmedValue(formData, "poolId");
   const maxPrice = Number(getTrimmedValue(formData, "maxPrice"));
   const currency = getTrimmedValue(formData, "currency") || "ARS";
-  const successUrl = getTrimmedValue(formData, "successUrl") || "https://rider-app.local/success";
-  const failureUrl = getTrimmedValue(formData, "failureUrl") || "https://rider-app.local/failure";
-  const pendingUrl = getTrimmedValue(formData, "pendingUrl") || "https://rider-app.local/pending";
+  const successUrl = getTrimmedValue(formData, "successUrl") || defaultSuccessUrl;
+  const failureUrl = getTrimmedValue(formData, "failureUrl") || defaultFailureUrl;
+  const pendingUrl = getTrimmedValue(formData, "pendingUrl") || defaultPendingUrl;
 
   if (!reservationId || !poolId || !Number.isFinite(maxPrice) || maxPrice < 0 || !origin) {
     redirectWithState({

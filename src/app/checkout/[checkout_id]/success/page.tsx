@@ -20,7 +20,6 @@ type PageProps = {
     preference_id?: string;
     payment_type?: string;
     processing_mode?: string;
-    return_url?: string;
     demo_status?: string;
   }>;
 };
@@ -73,7 +72,7 @@ export default async function CheckoutSuccessPage({ params, searchParams }: Page
       ) : null}
       <CheckoutSummaryCard data={data} />
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-        <CheckoutResultActions checkoutId={checkoutId} returnUrl={query.return_url} />
+        <CheckoutResultActions checkoutId={checkoutId} paymentResult="success" />
       </section>
     </CheckoutLayout>
   );
