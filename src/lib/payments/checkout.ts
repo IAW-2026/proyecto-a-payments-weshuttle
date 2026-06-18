@@ -569,7 +569,7 @@ async function createMercadoPagoPreference(input: {
   }
 
   const mercadoPagoPreferenceId = response.id?.trim();
-  const mercadoPagoInitPoint = response.sandbox_init_point?.trim() || response.init_point?.trim() || null;
+  const mercadoPagoInitPoint =  response.init_point?.trim() || null;
 
   if (!mercadoPagoPreferenceId || !mercadoPagoInitPoint) {
     throw new Error("MERCADOPAGO_PREFERENCE_INCOMPLETE");
