@@ -27,9 +27,12 @@ type PageProps = {
 };
 
 export default async function CheckoutSuccessPage({ params, searchParams }: PageProps) {
-  const authContext = await requirePageRole(["rider", "admin"]);
-  const { checkout_id: checkoutId } = await params;
-  const query = await searchParams;
+  const [authContext, resolvedParams, query] = await Promise.all([
+    requirePageRole(["rider", "admin"]),
+    params,
+    searchParams,
+  ]);
+  const checkoutId = resolvedParams.checkout_id;
 
   let data = null;
   let errorMessage: string | null = null;
@@ -73,10 +76,10 @@ export default async function CheckoutSuccessPage({ params, searchParams }: Page
       <CheckoutSummaryCard data={data} />
       <SectionCard>
         <AlertBanner tone="success" title="El pago fue acreditado">
-          El usuario ya puede volver a Rider con el resultado aplicado sobre su reserva.
+          El usuario ya puede volver a Rider con el resultado aplicado sobre su reserva y continuar la demo desde ahi.
         </AlertBanner>
         <div className="mt-6">
-        <CheckoutResultActions checkoutId={checkoutId} paymentResult="success" />
+          <CheckoutResultActions checkoutId={checkoutId} paymentResult="success" />
         </div>
       </SectionCard>
     </CheckoutLayout>

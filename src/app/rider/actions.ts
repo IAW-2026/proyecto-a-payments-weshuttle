@@ -10,6 +10,7 @@ function redirectWithState(input: {
   message?: string;
   error?: string;
   reservationId?: string;
+  path?: string;
 }): never {
   const params = new URLSearchParams();
 
@@ -25,7 +26,7 @@ function redirectWithState(input: {
     params.set("reservation_id", input.reservationId);
   }
 
-  redirect(`/rider?${params.toString()}`);
+  redirect(`${input.path ?? "/rider"}?${params.toString()}`);
 }
 
 function getTrimmedValue(formData: FormData, key: string) {
@@ -74,6 +75,7 @@ export async function createDemoCheckoutAction(formData: FormData) {
     redirectWithState({
       error: "reservation_id, pool_id, max_price y el origen de la app son obligatorios.",
       reservationId: reservationId || undefined,
+      path: "/rider/checkout-demo",
     });
   }
 
@@ -93,12 +95,15 @@ export async function createDemoCheckoutAction(formData: FormData) {
     redirectWithState({
       error: result.message,
       reservationId,
+      path: "/rider/checkout-demo",
     });
   }
 
   const checkoutResult = result.data;
 
   revalidatePath("/rider");
+  revalidatePath("/rider/checkouts");
+  revalidatePath("/rider/reservations");
 
   if (checkoutResult.checkoutUrl) {
     redirect(checkoutResult.checkoutUrl);
@@ -107,5 +112,6 @@ export async function createDemoCheckoutAction(formData: FormData) {
   redirectWithState({
     message: `Checkout ${checkoutResult.checkoutStatus.toLowerCase()} generado correctamente.`,
     reservationId,
+    path: "/rider/checkout-demo",
   });
 }

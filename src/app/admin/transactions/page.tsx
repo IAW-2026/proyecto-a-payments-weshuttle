@@ -1,7 +1,9 @@
+import Link from "next/link";
 import { Prisma } from "@prisma/client";
 import { AppShell } from "@/components/app-shell";
 import { Pagination } from "@/components/pagination";
 import { Search } from "@/components/search";
+import { AlertBanner } from "@/components/ui/alert-banner";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatDateTime, formatMoney, humanizeStatus } from "@/components/ui/format";
 import { SectionCard } from "@/components/ui/section-card";
@@ -24,8 +26,10 @@ function parsePage(value: string | undefined) {
 }
 
 export default async function AdminTransactionsPage({ searchParams }: PageProps) {
-  const authContext = await requirePageRole(["admin"]);
-  const params = await searchParams;
+  const [authContext, params] = await Promise.all([
+    requirePageRole(["admin"]),
+    searchParams,
+  ]);
   const q = params.q?.trim() ?? "";
   const page = parsePage(params.page);
   const where: Prisma.ChargeWhereInput = q
@@ -56,6 +60,14 @@ export default async function AdminTransactionsPage({ searchParams }: PageProps)
       description="Vista detallada de cobros para explicar que paso en cada reserva sin entrar en ruido innecesario."
     >
       <SectionCard>
+        <AlertBanner tone="info" title="Ruta legacy de auditoria">
+          La entrada principal para la demo ahora vive en{" "}
+          <Link href="/admin/checkouts" className="font-semibold underline underline-offset-4">
+            Pagos / Checkouts
+          </Link>
+          . Esta vista se mantiene para auditoria detallada de cargos.
+        </AlertBanner>
+
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <h2 className="text-xl font-semibold text-slate-900">Cobros registrados</h2>

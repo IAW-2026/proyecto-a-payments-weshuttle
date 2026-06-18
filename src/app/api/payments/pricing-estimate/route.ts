@@ -15,12 +15,6 @@ function parseNumber(value: string | null) {
 }
 
 export async function GET(request: Request) {
-  const authResult = await requireApiRole(["rider", "driver", "admin"]);
-
-  if (!authResult.ok) {
-    return authResult.response;
-  }
-
   const { searchParams } = new URL(request.url);
   const originLat = parseNumber(searchParams.get("origin_lat"));
   const originLng = parseNumber(searchParams.get("origin_lng"));
@@ -42,6 +36,13 @@ export async function GET(request: Request) {
       },
       { status: 400 },
     );
+  }
+
+  // Authorize after validating sync parameters (cheap check first)
+  const authResult = await requireApiRole(["rider", "driver", "admin"]);
+
+  if (!authResult.ok) {
+    return authResult.response;
   }
 
   const rule = await findApplicablePricingRule(destinationId, currentPassengers);

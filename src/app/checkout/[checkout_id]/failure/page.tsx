@@ -27,9 +27,12 @@ type PageProps = {
 };
 
 export default async function CheckoutFailurePage({ params, searchParams }: PageProps) {
-  const authContext = await requirePageRole(["rider", "admin"]);
-  const { checkout_id: checkoutId } = await params;
-  const query = await searchParams;
+  const [authContext, resolvedParams, query] = await Promise.all([
+    requirePageRole(["rider", "admin"]),
+    params,
+    searchParams,
+  ]);
+  const checkoutId = resolvedParams.checkout_id;
 
   let data = null;
   let errorMessage: string | null = null;
@@ -73,10 +76,10 @@ export default async function CheckoutFailurePage({ params, searchParams }: Page
       <CheckoutSummaryCard data={data} />
       <SectionCard>
         <AlertBanner tone="danger" title="La operacion no se acredito">
-          Puedes volver a Rider para reintentar el flujo o revisar por que el checkout quedo rechazado, cancelado o expirado.
+          Puedes volver a Rider para reintentar el flujo o revisar por que el checkout quedo rechazado, cancelado o expirado dentro de la demo.
         </AlertBanner>
         <div className="mt-6">
-        <CheckoutResultActions checkoutId={checkoutId} paymentResult="failure" />
+          <CheckoutResultActions checkoutId={checkoutId} paymentResult="failure" />
         </div>
       </SectionCard>
     </CheckoutLayout>

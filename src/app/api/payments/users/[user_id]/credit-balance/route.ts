@@ -11,12 +11,7 @@ type RouteContext = {
 };
 
 export async function GET(_request: Request, context: RouteContext) {
-  const authResult = await requireApiRole(["rider", "driver", "admin"]);
-
-  if (!authResult.ok) {
-    return authResult.response;
-  }
-
+  const authResultPromise = requireApiRole(["rider", "driver", "admin"]);
   const { user_id: userId } = await context.params;
 
   if (!userId?.trim()) {
@@ -27,6 +22,12 @@ export async function GET(_request: Request, context: RouteContext) {
       },
       { status: 400 },
     );
+  }
+
+  const authResult = await authResultPromise;
+
+  if (!authResult.ok) {
+    return authResult.response;
   }
 
   const creditAccount = await prisma.creditAccount.findUnique({

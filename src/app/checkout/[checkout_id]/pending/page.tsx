@@ -26,9 +26,12 @@ type PageProps = {
 };
 
 export default async function CheckoutPendingPage({ params, searchParams }: PageProps) {
-  const authContext = await requirePageRole(["rider", "admin"]);
-  const { checkout_id: checkoutId } = await params;
-  const query = await searchParams;
+  const [authContext, resolvedParams, query] = await Promise.all([
+    requirePageRole(["rider", "admin"]),
+    params,
+    searchParams,
+  ]);
+  const checkoutId = resolvedParams.checkout_id;
 
   const result = await reconcileCheckoutReturn({
     checkoutId,
@@ -64,10 +67,10 @@ export default async function CheckoutPendingPage({ params, searchParams }: Page
       <CheckoutSummaryCard data={data} />
       <SectionCard>
         <AlertBanner tone="warning" title="La acreditacion puede demorar">
-          Mientras el pago siga pendiente, lo recomendable es volver a Rider y revisar el estado nuevamente mas tarde.
+          Mientras el pago siga pendiente, lo recomendable es volver a Rider and mostrar que el estado sigue en revision.
         </AlertBanner>
         <div className="mt-6">
-        <CheckoutResultActions checkoutId={checkoutId} paymentResult="pending" />
+          <CheckoutResultActions checkoutId={checkoutId} paymentResult="pending" />
         </div>
       </SectionCard>
     </CheckoutLayout>
