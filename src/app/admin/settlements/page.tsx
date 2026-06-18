@@ -4,12 +4,11 @@ import { AdminHero } from "../admin-ui";
 import { Pagination } from "@/components/pagination";
 import { Search } from "@/components/search";
 import { EmptyState } from "@/components/ui/empty-state";
-import { formatDateTime, formatMoney, humanizeStatus } from "@/components/ui/format";
 import { MetricCard } from "@/components/ui/metric-card";
 import { SectionCard } from "@/components/ui/section-card";
-import { StatusBadge } from "@/components/ui/status-badge";
 import { requirePageRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { SettlementsClient } from "./settlements-client";
 
 const PAGE_SIZE = 10;
 
@@ -44,7 +43,7 @@ export default async function AdminSettlementsPage({ searchParams }: PageProps) 
     prisma.settlement.findMany({
       where,
       include: { payoutAccount: true },
-      orderBy: [{ settledAt: "desc" }, { id: "desc" }],
+      orderBy: [{ status: "asc" }, { settledAt: "desc" }, { id: "desc" }], // Order PENDING first so they are easily visible
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),
@@ -90,82 +89,28 @@ export default async function AdminSettlementsPage({ searchParams }: PageProps) 
               <EmptyState title="No hay liquidaciones para este filtro" description="Prueba con otro término o elimina la búsqueda para ver el historial completo." />
             </div>
           ) : (
-            <>
-              <div className="mt-6 space-y-3 lg:hidden">
-                {settlements.map((settlement) => (
-                  <article key={settlement.id} className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="font-semibold text-slate-900">Pago a Chofer</p>
-                        <p className="mt-1 text-sm text-slate-600">Monto: <span className="font-semibold text-slate-900">{formatMoney(settlement.amount.toNumber(), settlement.currency)}</span></p>
-                      </div>
-                      <StatusBadge value={settlement.status} label={humanizeStatus(settlement.status)} />
-                    </div>
-                    <div className="mt-3">
-                      <details className="text-xs text-slate-400">
-                        <summary className="cursor-pointer hover:text-slate-600 outline-none select-none">Ver detalles técnicos</summary>
-                        <div className="mt-2 space-y-1 bg-white p-2.5 rounded-lg border border-slate-200 text-slate-600">
-                          <p>Chofer: <span className="font-mono">{settlement.driverUserId}</span></p>
-                          <p>ID Pool (Viaje): <span className="font-mono">{settlement.poolId}</span></p>
-                          <p>ID Liquidación: <span className="font-mono">{settlement.id}</span></p>
-                          <p>Fecha pago: {settlement.settledAt ? formatDateTime(settlement.settledAt) : "Pendiente de acreditar"}</p>
-                          <p>Cuenta de destino: {settlement.payoutAccount?.alias ?? settlement.payoutAccount?.accountReference ?? "Sin cuenta asociada"}</p>
-                        </div>
-                      </details>
-                    </div>
-                  </article>
-                ))}
-              </div>
-
-              <div className="mt-6 hidden overflow-x-auto rounded-2xl border border-slate-200 lg:block">
-                <table className="min-w-full divide-y divide-slate-200 text-sm">
-                  <caption className="sr-only">Liquidaciones registradas</caption>
-                  <thead className="bg-slate-50 text-left text-slate-600">
-                    <tr>
-                      <th className="px-4 py-3 font-semibold">Chofer / Destinatario</th>
-                      <th className="px-4 py-3 font-semibold">Monto</th>
-                      <th className="px-4 py-3 font-semibold">Estado</th>
-                      <th className="px-4 py-3 font-semibold">Cuenta de destino</th>
-                      <th className="px-4 py-3 font-semibold">Detalle Técnico</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 bg-white text-slate-700">
-                    {settlements.map((settlement) => (
-                      <tr key={settlement.id}>
-                        <td className="px-4 py-4 align-top">
-                          <p className="font-semibold text-slate-900">Chofer</p>
-                          <p className="mt-1 text-xs text-slate-500 truncate max-w-[200px]" title={settlement.driverUserId}>{settlement.driverUserId}</p>
-                        </td>
-                        <td className="px-4 py-4 align-top font-medium text-slate-900">{formatMoney(settlement.amount.toNumber(), settlement.currency)}</td>
-                        <td className="px-4 py-4 align-top">
-                          <StatusBadge value={settlement.status} label={humanizeStatus(settlement.status)} />
-                          <p className="mt-1 text-xs text-slate-500">{settlement.settledAt ? formatDateTime(settlement.settledAt) : "Pendiente de acreditar"}</p>
-                        </td>
-                        <td className="px-4 py-4 align-top text-xs text-slate-600 font-medium">
-                          {settlement.payoutAccount ? (
-                            <>
-                              <p className="text-slate-800">{settlement.payoutAccount.alias ?? "Sin alias"}</p>
-                              <p className="mt-1 text-slate-400 font-mono text-[10px] truncate max-w-[240px]">{settlement.payoutAccount.accountReference}</p>
-                            </>
-                          ) : (
-                            <span className="text-slate-400">Sin cuenta asociada</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-4 align-top text-xs text-slate-500">
-                          <details className="text-xs text-slate-400">
-                            <summary className="cursor-pointer hover:text-slate-600 outline-none select-none">Ver códigos</summary>
-                            <div className="mt-2 space-y-1 bg-slate-50 p-2 rounded border border-slate-200 text-slate-600 max-w-[240px]">
-                              <p className="truncate">ID Liquidación: {settlement.id}</p>
-                              <p className="truncate">ID Pool (Viaje): {settlement.poolId}</p>
-                            </div>
-                          </details>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
+            <SettlementsClient
+              settlements={settlements.map((s) => ({
+                id: s.id,
+                poolId: s.poolId,
+                driverUserId: s.driverUserId,
+                payoutAccountId: s.payoutAccountId,
+                amount: s.amount.toNumber(),
+                currency: s.currency,
+                status: s.status,
+                settledAt: s.settledAt ? s.settledAt.toISOString() : null,
+                payoutAccount: s.payoutAccount
+                  ? {
+                      id: s.payoutAccount.id,
+                      driverUserId: s.payoutAccount.driverUserId,
+                      provider: s.payoutAccount.provider,
+                      accountReference: s.payoutAccount.accountReference,
+                      alias: s.payoutAccount.alias,
+                      status: s.payoutAccount.status,
+                    }
+                  : null,
+              }))}
+            />
           )}
 
           <div className="mt-5 flex items-center justify-between gap-4 text-sm text-slate-600">

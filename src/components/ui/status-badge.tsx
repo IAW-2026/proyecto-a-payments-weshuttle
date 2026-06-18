@@ -12,6 +12,7 @@ function getTone(value: string) {
       return "border-slate-200 bg-slate-100 text-slate-700";
     case "DENIED":
     case "INACTIVE":
+    case "FAILED":
       return "border-rose-200 bg-rose-50 text-rose-700";
     default:
       return "border-slate-200 bg-slate-100 text-slate-700";

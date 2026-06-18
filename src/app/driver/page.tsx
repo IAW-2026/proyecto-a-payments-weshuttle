@@ -7,6 +7,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { requirePageRole } from "@/lib/auth";
 import { getDriverSummaryData } from "./driver-data";
 import { DriverHero, DriverQuickActions, DriverSummaryMetrics } from "./driver-ui";
+import { simulateTripSettlementAction } from "./actions";
 
 type PageProps = {
   searchParams: Promise<{
@@ -47,6 +48,51 @@ export default async function DriverPage({ searchParams }: PageProps) {
         {params.error ? <AlertBanner tone="danger">{params.error}</AlertBanner> : null}
 
         <DriverQuickActions />
+
+        <SectionCard className="border-sky-100 bg-sky-50/5">
+          <div>
+            <h3 className="text-xl font-semibold text-slate-900">Simulador de viajes finalizados (Demo)</h3>
+            <p className="mt-1 text-sm text-slate-600">
+              Simulá la finalización de un viaje para enviar una llamada a <code>POST /api/payments/pools/:pool_id/settle</code> y registrar una liquidación pendiente en el sistema.
+            </p>
+          </div>
+
+          <form action={simulateTripSettlementAction} className="mt-5 grid gap-4 sm:grid-cols-3 items-end">
+            <div className="flex flex-col gap-1.5 text-left">
+              <label htmlFor="poolId" className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                ID del viaje (Pool)
+              </label>
+              <input
+                id="poolId"
+                name="poolId"
+                type="text"
+                placeholder="pool_sim_12345"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:border-sky-500 focus:outline-hidden transition"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5 text-left">
+              <label htmlFor="amount" className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                Monto del viaje ($ ARS)
+              </label>
+              <input
+                id="amount"
+                name="amount"
+                type="number"
+                defaultValue="15000"
+                placeholder="15000"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:border-sky-500 focus:outline-hidden transition"
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="w-full rounded-full bg-sky-700 py-3 text-sm font-bold text-white shadow-lg hover:bg-sky-600 transition cursor-pointer"
+            >
+              Simular viaje finalizado
+            </button>
+          </form>
+        </SectionCard>
 
         <div className="grid gap-8 xl:grid-cols-[0.95fr_1.05fr]">
           <SectionCard>

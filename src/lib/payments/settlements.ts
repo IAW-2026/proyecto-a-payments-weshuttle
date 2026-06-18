@@ -13,7 +13,7 @@ type SettlePoolResult =
       data: {
         poolId: string;
         settlementId: string;
-        settlementStatus: "COMPLETED";
+        settlementStatus: "PENDING" | "COMPLETED" | "FAILED";
         driverUserId: string;
         amount: number;
         currency: string;
@@ -101,8 +101,8 @@ export async function settlePool(input: SettlePoolInput): Promise<SettlePoolResu
       payoutAccountId: payoutAccount.id,
       amount: new Prisma.Decimal(amount.toFixed(2)),
       currency,
-      status: "COMPLETED",
-      settledAt: new Date(input.completedAt),
+      status: "PENDING",
+      settledAt: null,
     },
   });
 
@@ -111,7 +111,7 @@ export async function settlePool(input: SettlePoolInput): Promise<SettlePoolResu
     data: {
       poolId: input.poolId,
       settlementId: settlement.id,
-      settlementStatus: "COMPLETED",
+      settlementStatus: settlement.status,
       driverUserId: input.driverUserId,
       amount: settlement.amount.toNumber(),
       currency: settlement.currency,
