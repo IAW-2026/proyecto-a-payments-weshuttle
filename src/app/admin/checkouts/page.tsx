@@ -17,11 +17,11 @@ export default async function AdminCheckoutsPage({ searchParams }: PageProps) {
     <AppShell
       role="admin"
       clerkUserId={authContext.clerkUserId}
-      title="Pagos / Checkouts"
-      description="Vista principal para seguir checkouts, estados de pago, cargos asociados y su relacion con reservas dentro de la demo."
+      title="Control de pagos"
+      description="Listado y control de transacciones de cobro en la plataforma."
     >
       <div className="flex flex-col gap-8">
-        <AdminHero title="Centraliza el flujo de pago y checkout." description="Esta seccion funciona como punto principal de demo para relacionar reservas, checkouts, cargos y estados de pago." />
+        <AdminHero title="Monitorea las transacciones de cobro" description="Esta sección te permite buscar y revisar el estado de los cobros, crédito aplicado y la trazabilidad de cada viaje." />
         <AdminCheckoutSessionsView searchParams={searchParams} />
       </div>
     </AppShell>

@@ -38,7 +38,7 @@ export function DriverHero({ title, description, actions }: { title: string; des
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-700">Driver Demo</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-700">Panel del conductor</p>
             <h2 className="mt-2 text-3xl font-bold text-slate-900 sm:text-4xl">{title}</h2>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">{description}</p>
           </div>
@@ -65,16 +65,16 @@ export function DriverSummaryMetrics({
 }) {
   return (
     <div className="grid gap-4 lg:grid-cols-3">
-      <MetricCard title="Total liquidado" value={settledAmount} description="Fondos ya transferidos a tu cuenta activa." tone="emerald" />
+      <MetricCard title="Total cobrado" value={settledAmount} description="Ganancias transferidas con éxito a tu cuenta." tone="emerald" />
       <div className="rounded-[24px] border border-sky-100 bg-linear-to-br from-sky-50 to-white p-5">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700">Cuenta activa</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700">Cuenta de cobro activa</p>
         <p className="mt-3 text-lg font-semibold text-slate-900">{payoutAccountLabel}</p>
         <div className="mt-3">{payoutStatus}</div>
       </div>
       <div className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-5">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Estado operativo</p>
-        <p className="mt-3 text-lg font-semibold text-slate-900">{completedSettlements} completadas, {pendingSettlements} pendientes</p>
-        <p className="mt-2 text-sm text-slate-700">Ideal para explicar rapidamente si el conductor ya cobro o sigue a la espera.</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Estado de transferencias</p>
+        <p className="mt-3 text-lg font-semibold text-slate-900">{completedSettlements} pagadas, {pendingSettlements} pendientes</p>
+        <p className="mt-2 text-sm text-slate-600">Resumen rápido de tus cobros registrados.</p>
       </div>
     </div>
   );
@@ -82,18 +82,14 @@ export function DriverSummaryMetrics({
 
 export function DriverQuickActions() {
   return (
-    <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+    <section className="grid gap-4 md:grid-cols-2">
       <Link href="/driver/account" className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm transition hover:border-sky-300 hover:bg-sky-50/30">
-        <h3 className="font-semibold text-slate-900">Cuenta de cobro</h3>
-        <p className="mt-2 text-sm text-slate-600">Explica donde deberian liquidarse los viajes del conductor.</p>
-      </Link>
-      <Link href="/driver/settlements" className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm transition hover:border-sky-300 hover:bg-sky-50/30">
-        <h3 className="font-semibold text-slate-900">Liquidaciones</h3>
-        <p className="mt-2 text-sm text-slate-600">Busca por pool y muestra si el viaje ya fue liquidado o sigue pendiente.</p>
+        <h3 className="font-semibold text-slate-900">Datos de cobro</h3>
+        <p className="mt-2 text-sm text-slate-600">Configura la cuenta de Mercado Pago o CBU/CVU donde deseas recibir tus ganancias.</p>
       </Link>
       <Link href="/driver/trips" className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm transition hover:border-sky-300 hover:bg-sky-50/30">
-        <h3 className="font-semibold text-slate-900">Pools y viajes</h3>
-        <p className="mt-2 text-sm text-slate-600">Resume el estado operativo del viaje con los datos que hoy registra Payments App.</p>
+        <h3 className="font-semibold text-slate-900">Viajes y ganancias</h3>
+        <p className="mt-2 text-sm text-slate-600">Revisa el historial de viajes completados, tarifas estimadas y cobros recibidos.</p>
       </Link>
     </section>
   );

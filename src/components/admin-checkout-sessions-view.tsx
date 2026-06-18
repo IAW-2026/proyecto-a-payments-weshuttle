@@ -81,22 +81,22 @@ export async function AdminCheckoutSessionsView({
   return (
     <div className="flex flex-col gap-8">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard title="Checkouts visibles" value={String(totalCheckoutSessions)} description="Resultados para el filtro actual." tone="sky" />
-        <MetricCard title="Creados" value={String(countByStatus.get("CREATED") ?? 0)} description="Listos para avanzar al pago." tone="amber" />
-        <MetricCard title="Pagados" value={String(countByStatus.get("PAID") ?? 0)} description="Checkouts ya acreditados." tone="emerald" />
+        <MetricCard title="Transacciones encontradas" value={String(totalCheckoutSessions)} description="Cantidad de cobros con el filtro actual." tone="sky" />
+        <MetricCard title="Pendientes de pago" value={String(countByStatus.get("CREATED") ?? 0)} description="Listos para avanzar al pago." tone="amber" />
+        <MetricCard title="Aprobados" value={String(countByStatus.get("PAID") ?? 0)} description="Transacciones acreditadas con éxito." tone="emerald" />
         <MetricCard
-          title="Con friccion"
+          title="Cancelados o rechazados"
           value={String((countByStatus.get("DENIED") ?? 0) + (countByStatus.get("CANCELED") ?? 0) + (countByStatus.get("EXPIRED") ?? 0))}
-          description="Rechazados, cancelados o expirados." tone="rose"
+          description="Pagos no completados o expirados." tone="rose"
         />
       </div>
 
       <SectionCard>
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-slate-900">Pagos y checkouts</h2>
+            <h2 className="text-xl font-semibold text-slate-900">Historial de cobros</h2>
             <p className="mt-2 text-sm text-slate-600">
-              Sigue el estado del checkout, el monto a cobrar, el credito aplicado y la relacion con el cargo final.
+              Sigue el estado del cobro, el monto a cobrar y el crédito a favor aplicado.
             </p>
           </div>
           <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">
@@ -105,15 +105,15 @@ export async function AdminCheckoutSessionsView({
         </div>
 
         <div className="mt-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <Search placeholder="Buscar por checkout, pool, reserva o pasajero..." />
+          <Search placeholder="Buscar por reserva, pasajero o código..." />
           <Link href="/admin/transactions" className="text-sm font-semibold text-sky-700 hover:underline">
-            Ver auditoria de cargos
+            Ver auditoría detallada de cargos (legacy)
           </Link>
         </div>
 
         {checkoutSessions.length === 0 ? (
           <div className="mt-6">
-            <EmptyState title="No hay checkouts para este filtro" description="Prueba con otro termino de busqueda o vuelve a la lista completa." />
+            <EmptyState title="No hay checkouts para este filtro" description="Prueba con otro término de búsqueda o vuelve a la lista completa." />
           </div>
         ) : (
           <>
@@ -125,29 +125,31 @@ export async function AdminCheckoutSessionsView({
                   <article key={checkout.id} className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="font-semibold text-slate-900">Reserva {checkout.reservationId}</p>
-                        <p className="mt-1 text-xs text-slate-500">Checkout {checkout.id}</p>
-                        <p className="mt-1 text-xs text-slate-500">Pool {checkout.poolId}</p>
+                        <p className="font-semibold text-slate-900">Cobro de Reserva</p>
+                        <p className="mt-1 text-sm text-slate-600">Monto: <span className="font-semibold text-slate-900">{formatMoney(checkout.amountToCharge.toNumber(), checkout.currency)}</span></p>
                       </div>
                       <StatusBadge value={checkout.status} label={humanizeStatus(checkout.status)} />
                     </div>
 
-                    <div className="mt-4 grid gap-2 text-sm text-slate-600">
-                      <p>Total a cobrar: <span className="font-semibold text-slate-900">{formatMoney(checkout.amountToCharge.toNumber(), checkout.currency)}</span></p>
-                      <p>Credito aplicado: {formatMoney(checkout.creditApplied.toNumber(), checkout.currency)}</p>
-                      <p>Pasajero: {checkout.passengerUserId}</p>
-                      <p>Cargo final: {charge ? humanizeStatus(charge.status) : "Sin cargo asociado"}</p>
+                    <div className="mt-3">
+                      <details className="text-xs text-slate-400">
+                        <summary className="cursor-pointer hover:text-slate-600 outline-none select-none">Ver detalles técnicos</summary>
+                        <div className="mt-2 space-y-1 bg-white p-2.5 rounded-lg border border-slate-200 text-slate-600">
+                          <p>ID Reserva: <span className="font-mono">{checkout.reservationId}</span></p>
+                          <p>ID Pasajero: <span className="font-mono">{checkout.passengerUserId}</span></p>
+                          <p>ID Pool (Viaje): <span className="font-mono">{checkout.poolId}</span></p>
+                          <p>ID Pago (Checkout): <span className="font-mono">{checkout.id}</span></p>
+                          <p>Monto máximo aceptado: {formatMoney(checkout.maxPrice.toNumber(), checkout.currency)}</p>
+                          <p>Saldo a favor aplicado: {formatMoney(checkout.creditApplied.toNumber(), checkout.currency)}</p>
+                          <p>Cargo final: {charge ? humanizeStatus(charge.status) : "Sin cargo asociado"}</p>
+                        </div>
+                      </details>
                     </div>
 
                     <div className="mt-4 flex flex-wrap gap-3 text-sm font-semibold">
                       <Link href={`/checkout/${checkout.id}`} className="text-sky-700 hover:underline">
-                        Abrir checkout
+                        Ver recibo cliente
                       </Link>
-                      {charge ? (
-                        <Link href="/admin/transactions" className="text-slate-700 hover:underline">
-                          Ver cargo asociado
-                        </Link>
-                      ) : null}
                     </div>
                   </article>
                 );
@@ -156,14 +158,14 @@ export async function AdminCheckoutSessionsView({
 
             <div className="mt-6 hidden overflow-x-auto rounded-2xl border border-slate-200 xl:block">
               <table className="min-w-full divide-y divide-slate-200 text-sm">
-                <caption className="sr-only">Checkouts registrados</caption>
+                <caption className="sr-only">Pagos registrados</caption>
                 <thead className="bg-slate-50 text-left text-slate-600">
                   <tr>
-                    <th className="px-4 py-3 font-semibold">Checkout</th>
-                    <th className="px-4 py-3 font-semibold">Pasajero</th>
+                    <th className="px-4 py-3 font-semibold">Reserva / Pasajero</th>
                     <th className="px-4 py-3 font-semibold">Montos</th>
                     <th className="px-4 py-3 font-semibold">Estado</th>
-                    <th className="px-4 py-3 font-semibold">Cargo asociado</th>
+                    <th className="px-4 py-3 font-semibold">Enlace Recibo</th>
+                    <th className="px-4 py-3 font-semibold">Detalle Técnico</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 bg-white text-slate-700">
@@ -173,33 +175,39 @@ export async function AdminCheckoutSessionsView({
                     return (
                       <tr key={checkout.id}>
                         <td className="px-4 py-4 align-top">
-                          <Link href={`/checkout/${checkout.id}`} className="font-medium text-slate-900 hover:text-sky-700 hover:underline">
-                            {checkout.id}
-                          </Link>
-                          <p className="mt-1 text-xs text-slate-500">Reserva {checkout.reservationId}</p>
-                          <p className="mt-1 text-xs text-slate-500">Pool {checkout.poolId}</p>
+                          <p className="font-semibold text-slate-900">Reserva {checkout.reservationId}</p>
+                          <p className="mt-1 text-xs text-slate-500">Usuario {checkout.passengerUserId}</p>
                         </td>
-                        <td className="px-4 py-4 align-top text-sm text-slate-600">{checkout.passengerUserId}</td>
                         <td className="px-4 py-4 align-top">
-                          <p className="font-medium text-slate-900">Cobrar: {formatMoney(checkout.amountToCharge.toNumber(), checkout.currency)}</p>
-                          <p className="mt-1 text-xs text-slate-500">Maximo: {formatMoney(checkout.maxPrice.toNumber(), checkout.currency)}</p>
-                          <p className="mt-1 text-xs text-slate-500">Credito aplicado: {formatMoney(checkout.creditApplied.toNumber(), checkout.currency)}</p>
+                          <p className="font-medium text-slate-900">Total a cobrar: {formatMoney(checkout.amountToCharge.toNumber(), checkout.currency)}</p>
+                          <p className="mt-1 text-xs text-slate-500">Saldo a favor aplicado: {formatMoney(checkout.creditApplied.toNumber(), checkout.currency)}</p>
                         </td>
                         <td className="px-4 py-4 align-top">
                           <StatusBadge value={checkout.status} label={humanizeStatus(checkout.status)} />
-                          <p className="mt-2 text-xs text-slate-500">Creado: {formatDateTime(checkout.createdAt)}</p>
-                          <p className="mt-1 text-xs text-slate-500">Expira: {formatDateTime(checkout.expiresAt)}</p>
+                          <p className="mt-1 text-xs text-slate-500">Creado: {formatDateTime(checkout.createdAt)}</p>
+                        </td>
+                        <td className="px-4 py-4 align-top">
+                          <Link href={`/checkout/${checkout.id}`} className="font-semibold text-sky-700 hover:text-sky-900 hover:underline">
+                            Ver recibo cliente
+                          </Link>
                         </td>
                         <td className="px-4 py-4 align-top text-xs text-slate-500">
-                          {charge ? (
-                            <>
-                              <p className="font-medium text-slate-900">{humanizeStatus(charge.status)}</p>
-                              <p className="mt-1">Txn {charge.transactionId}</p>
-                              <p className="mt-1">Cobrado: {formatMoney(charge.amountCharged.toNumber(), charge.currency)}</p>
-                            </>
-                          ) : (
-                            <span>Sin cargo asociado</span>
-                          )}
+                          <details className="text-xs text-slate-400">
+                            <summary className="cursor-pointer hover:text-slate-600 outline-none select-none">Ver códigos</summary>
+                            <div className="mt-2 space-y-1 bg-slate-50 p-2 rounded border border-slate-200 text-slate-600 max-w-[240px]">
+                              <p className="truncate">ID Pago: {checkout.id}</p>
+                              <p className="truncate">ID Pool: {checkout.poolId}</p>
+                              {charge ? (
+                                <>
+                                  <p>Estado Cargo: {humanizeStatus(charge.status)}</p>
+                                  <p className="truncate">Transacción: {charge.transactionId}</p>
+                                  <p>Cobrado: {formatMoney(charge.amountCharged.toNumber(), charge.currency)}</p>
+                                </>
+                              ) : (
+                                <p>Sin cargo asociado</p>
+                              )}
+                            </div>
+                          </details>
                         </td>
                       </tr>
                     );

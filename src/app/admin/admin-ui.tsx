@@ -29,30 +29,26 @@ export function AdminHero({
 
 export function AdminQuickActions() {
   return (
-    <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+    <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       <Link href="/admin/checkouts" className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm transition hover:border-sky-300 hover:bg-sky-50/30">
-        <h3 className="font-semibold text-slate-900">Pagos / Checkouts</h3>
-        <p className="mt-2 text-sm text-slate-600">Cuenta la historia completa del cobro: reserva, checkout, estado y cargo asociado.</p>
+        <h3 className="font-semibold text-slate-900">Control de pagos</h3>
+        <p className="mt-2 text-sm text-slate-600">Revisa el estado de las transacciones, cargos y reservas generadas en la plataforma.</p>
       </Link>
       <Link href="/admin/credits" className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm transition hover:border-sky-300 hover:bg-sky-50/30">
-        <h3 className="font-semibold text-slate-900">Creditos</h3>
-        <p className="mt-2 text-sm text-slate-600">Explica saldo aplicado y credito generado sin irte al detalle tecnico del backend.</p>
+        <h3 className="font-semibold text-slate-900">Saldos y créditos</h3>
+        <p className="mt-2 text-sm text-slate-600">Controla los saldos a favor aplicados a los viajes y los créditos de devolución.</p>
       </Link>
       <Link href="/admin/pricing-rules" className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm transition hover:border-sky-300 hover:bg-sky-50/30">
-        <h3 className="font-semibold text-slate-900">Reglas de precios</h3>
-        <p className="mt-2 text-sm text-slate-600">Muestra como impactan topes, descuentos y ocupacion sobre el dominio de Payments.</p>
+        <h3 className="font-semibold text-slate-900">Tarifas y reglas</h3>
+        <p className="mt-2 text-sm text-slate-600">Configura precios base, descuentos y reglas según la cantidad de pasajeros.</p>
       </Link>
       <Link href="/admin/settlements" className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm transition hover:border-sky-300 hover:bg-sky-50/30">
-        <h3 className="font-semibold text-slate-900">Liquidaciones</h3>
-        <p className="mt-2 text-sm text-slate-600">Controla transferencias a conductores y su estado de ejecucion.</p>
+        <h3 className="font-semibold text-slate-900">Pagos a choferes</h3>
+        <p className="mt-2 text-sm text-slate-600">Gestiona y audita las transferencias de ganancias derivadas a los conductores.</p>
       </Link>
       <Link href="/admin/pools" className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm transition hover:border-sky-300 hover:bg-sky-50/30">
-        <h3 className="font-semibold text-slate-900">Pools</h3>
-        <p className="mt-2 text-sm text-slate-600">Resume el cierre operativo por pool y la finalizacion de precios.</p>
-      </Link>
-      <Link href="/admin/transactions" className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm transition hover:border-sky-300 hover:bg-sky-50/30">
-        <h3 className="font-semibold text-slate-900">Auditoria legacy</h3>
-        <p className="mt-2 text-sm text-slate-600">Mantiene visible la auditoria detallada de cargos sin ser la ruta principal de la demo.</p>
+        <h3 className="font-semibold text-slate-900">Cierre de viajes</h3>
+        <p className="mt-2 text-sm text-slate-600">Consulta la liquidación final de la tarifa de cada viaje compartido al finalizar.</p>
       </Link>
     </section>
   );

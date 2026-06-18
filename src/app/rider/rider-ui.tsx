@@ -48,7 +48,7 @@ export function RiderHero({
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-700">Rider Demo</p>
+            <p className="text-sm font-bold uppercase tracking-wider text-sky-600">Mi Cuenta</p>
             <h2 className="mt-2 text-3xl font-bold text-slate-900 sm:text-4xl">{title}</h2>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">{description}</p>
           </div>
@@ -99,7 +99,7 @@ export function RiderPaymentBanner({
       <p>{description}</p>
       {checkoutId ? (
         <Link href={`/checkout/${checkoutId}`} className="mt-3 inline-flex text-sm font-semibold underline underline-offset-4">
-          Ver el detalle del checkout
+          Ver detalle del pago
         </Link>
       ) : null}
     </AlertBanner>

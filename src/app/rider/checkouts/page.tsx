@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { EmptyState } from "@/components/ui/empty-state";
-import { formatMoney, humanizeStatus } from "@/components/ui/format";
+import { formatDateTime, formatMoney, humanizeStatus } from "@/components/ui/format";
 import { SectionCard } from "@/components/ui/section-card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { requirePageRole } from "@/lib/auth";
@@ -13,28 +13,36 @@ export default async function RiderCheckoutsPage() {
   const data = await getRiderPageData(authContext.clerkUserId);
 
   return (
-    <AppShell role="rider" clerkUserId={authContext.clerkUserId} title="Checkouts recientes" description="Retoma pagos creados y muestra con claridad el estado actual de cada reserva.">
-      <div className="flex flex-col gap-8">
-        <RiderHero title="Retoma checkouts sin ruido visual." description="Cada tarjeta te lleva directo al resumen de checkout para continuar con la demo o revisar su estado." />
+    <AppShell role="rider" clerkUserId={authContext.clerkUserId} title="Mis Pagos Recientes" description="Historial de tus pagos y estado de tus viajes.">
+      <div className="flex flex-col gap-6 max-w-3xl mx-auto">
+        <RiderHero title="Consulta tu historial de pagos." description="Aquí puedes revisar el estado y el desglose de todos los viajes asociados a tu cuenta." />
 
         <SectionCard>
           <div>
-            <h3 className="text-xl font-semibold text-slate-900">Historial visible</h3>
-            <p className="mt-2 text-sm text-slate-600">Checkouts creados por tu usuario, ordenados del mas reciente al mas antiguo.</p>
+            <h3 className="text-lg font-bold text-slate-900">Historial de pagos</h3>
+            <p className="text-xs text-slate-500">Listado ordenado desde el viaje más reciente.</p>
           </div>
 
           <div className="mt-6 space-y-3">
             {data.recentCheckouts.map((checkout) => (
-              <Link key={checkout.id} href={`/checkout/${checkout.id}`} className="block rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm hover:border-sky-300 hover:bg-sky-50/40">
+              <Link key={checkout.id} href={`/checkout/${checkout.id}`} className="block rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm hover:border-sky-300 hover:bg-sky-50/20 transition-all duration-200">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <p className="font-semibold text-slate-900">Reserva {checkout.reservationId}</p>
-                    <p className="mt-1 text-xs text-slate-500">Pool {checkout.poolId}</p>
-                    <p className="mt-2 text-sm text-slate-600">Total pendiente: {formatMoney(checkout.amountToCharge.toNumber(), checkout.currency)}</p>
+                  <div className="flex gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-500 shrink-0">
+                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l2.414 2.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17h5" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-800">Viaje #{checkout.reservationId}</p>
+                      <p className="text-xs text-slate-400">Creado el {formatDateTime(checkout.createdAt)}</p>
+                      <p className="mt-1 text-sm text-slate-600">Total a pagar: <strong className="text-slate-900 font-bold">{formatMoney(checkout.amountToCharge.toNumber(), checkout.currency)}</strong></p>
+                    </div>
                   </div>
                   <div className="flex flex-col items-start gap-2 sm:items-end">
                     <StatusBadge value={checkout.status} label={humanizeStatus(checkout.status)} />
-                    <span className="text-xs font-medium text-slate-500">Abrir checkout</span>
+                    <span className="text-xs font-semibold text-sky-600">Ver recibo</span>
                   </div>
                 </div>
               </Link>

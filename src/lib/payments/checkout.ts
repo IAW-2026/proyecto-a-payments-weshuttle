@@ -456,6 +456,22 @@ async function applyCheckoutOutcome(input: {
   }
 }
 
+function ensureHttpsAndNoLocalhost(urlStr: string): string {
+  try {
+    const url = new URL(urlStr);
+    if (url.protocol === "http:") {
+      url.protocol = "https:";
+    }
+    if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
+      url.hostname = "weshuttle-mock.example.com";
+      url.port = "";
+    }
+    return url.toString();
+  } catch {
+    return urlStr;
+  }
+}
+
 async function createMercadoPagoPreference(input: {
   checkoutId: string;
   reservationId: string;
@@ -483,21 +499,27 @@ async function createMercadoPagoPreference(input: {
       },
     ],
     back_urls: {
-      success: buildCheckoutBackUrl({
-        appBaseUrl: input.appBaseUrl,
-        checkoutId: input.checkoutId,
-        kind: "success",
-      }),
-      failure: buildCheckoutBackUrl({
-        appBaseUrl: input.appBaseUrl,
-        checkoutId: input.checkoutId,
-        kind: "failure",
-      }),
-      pending: buildCheckoutBackUrl({
-        appBaseUrl: input.appBaseUrl,
-        checkoutId: input.checkoutId,
-        kind: "pending",
-      }),
+      success: ensureHttpsAndNoLocalhost(
+        buildCheckoutBackUrl({
+          appBaseUrl: input.appBaseUrl,
+          checkoutId: input.checkoutId,
+          kind: "success",
+        })
+      ),
+      failure: ensureHttpsAndNoLocalhost(
+        buildCheckoutBackUrl({
+          appBaseUrl: input.appBaseUrl,
+          checkoutId: input.checkoutId,
+          kind: "failure",
+        })
+      ),
+      pending: ensureHttpsAndNoLocalhost(
+        buildCheckoutBackUrl({
+          appBaseUrl: input.appBaseUrl,
+          checkoutId: input.checkoutId,
+          kind: "pending",
+        })
+      ),
     },
     auto_return: "approved",
     expires: true,

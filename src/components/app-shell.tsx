@@ -34,7 +34,6 @@ function MenuButton({
 
 export function AppShell({
   role,
-  clerkUserId,
   title,
   description,
   children,
@@ -72,32 +71,30 @@ export function AppShell({
     <div className="min-h-screen text-slate-950">
       <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/85 backdrop-blur">
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
-          <div className="flex min-w-0 items-start gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <div className="lg:hidden">
               <MenuButton expanded={isMobileNavOpen} onClick={() => setIsMobileNavOpen((value) => !value)} />
             </div>
 
-            <div>
-              <div className="hidden lg:block">
-                <MenuButton expanded={!isSidebarCollapsed} onClick={() => setIsSidebarCollapsed((value) => !value)} />
-              </div>
+            <div className="hidden lg:block">
+              <MenuButton expanded={!isSidebarCollapsed} onClick={() => setIsSidebarCollapsed((value) => !value)} />
             </div>
 
-            <div className="min-w-0">
-              <Link href={roleHomeHref} className="inline-flex max-w-fit flex-col">
-                <p className="text-xs font-bold uppercase tracking-[0.22em] text-sky-700">WeShuttle Payments</p>
-                <h1 className="mt-1 text-lg font-bold text-slate-900 sm:text-xl">{title}</h1>
-              </Link>
-              <p className="mt-1 max-w-2xl text-sm text-slate-600 sm:pr-4">{description}</p>
-            </div>
+            <Link href={roleHomeHref} className="flex items-center gap-2.5 hover:opacity-90 transition">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-700 text-white shadow-md shadow-sky-200">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-5 w-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125a1.125 1.125 0 0 0 1.125-1.125V9.75M3.82 14.5a2.25 2.25 0 0 1-2.07-1.35m15 1.35a2.25 2.25 0 0 1-2.07-1.35m-12.93-.15h12.93M17 14.25v-1.621a4.5 4.5 0 0 0-.818-2.562L15 7.5M8 7.5h7M4 9.75H2" />
+                </svg>
+              </div>
+              <span className="text-lg font-bold tracking-tight text-slate-900">
+                WeShuttle <span className="text-sky-700">Payments</span>
+              </span>
+            </Link>
           </div>
 
           <div className="flex flex-wrap items-center gap-3 lg:justify-end">
             <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700">
               Rol {role}
-            </span>
-            <span className="hidden rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold tracking-[0.14em] text-slate-500 sm:inline-flex">
-              {clerkUserId}
             </span>
             <UserButton />
           </div>
@@ -112,11 +109,11 @@ export function AppShell({
         }`}
       >
         <aside
-          className={`fixed inset-x-4 top-[5.5rem] z-50 -translate-y-4 opacity-0 transition-all lg:static lg:top-auto lg:z-auto lg:translate-y-0 lg:opacity-100 lg:px-0 lg:py-0 ${
+          className={`fixed inset-x-4 top-[5.5rem] z-50 -translate-y-4 opacity-0 transition-all lg:sticky lg:top-[96px] lg:self-start lg:z-auto lg:translate-y-0 lg:opacity-100 lg:px-0 lg:py-0 lg:h-fit ${
             isMobileNavOpen ? "translate-y-0 opacity-100" : "pointer-events-none lg:pointer-events-auto"
           }`}
         >
-          <SectionCard className={`overflow-hidden p-4 lg:sticky lg:top-24 ${isSidebarCollapsed ? "hidden lg:hidden" : ""}`}>
+          <SectionCard className={`overflow-hidden p-4 ${isSidebarCollapsed ? "hidden lg:hidden" : ""}`}>
             <div className="mb-4 flex items-center justify-end gap-3 lg:hidden">
               <button
                 type="button"
@@ -133,7 +130,15 @@ export function AppShell({
           </SectionCard>
         </aside>
 
-        <main className="min-w-0">{children}</main>
+        <main className="min-w-0">
+          {title && (
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl tracking-tight">{title}</h1>
+              {description && <p className="mt-1.5 text-sm text-slate-600">{description}</p>}
+            </div>
+          )}
+          {children}
+        </main>
       </div>
     </div>
   );

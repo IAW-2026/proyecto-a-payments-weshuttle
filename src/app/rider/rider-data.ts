@@ -5,20 +5,20 @@ export function paymentBanner(payment: string | undefined) {
     case "success":
       return {
         tone: "success" as const,
-        title: "Pago confirmado",
-        description: "El checkout se resolvio correctamente. Puedes revisar el detalle y ver el impacto sobre tu saldo.",
+        title: "¡Pago aprobado!",
+        description: "Tu pago se acreditó correctamente y tu viaje ya está confirmado.",
       };
     case "failure":
       return {
         tone: "danger" as const,
-        title: "Pago no completado",
-        description: "La operacion no pudo acreditarse. Revisa el estado del checkout antes de volver a intentarlo.",
+        title: "No pudimos procesar tu pago",
+        description: "Hubo un problema con la operación. Por favor, vuelve a intentarlo.",
       };
     case "pending":
       return {
         tone: "warning" as const,
-        title: "Pago en revision",
-        description: "Mercado Pago informo un estado pendiente. La confirmacion final puede demorar unos minutos.",
+        title: "Tu pago está en proceso",
+        description: "Estamos esperando la confirmación. Te avisaremos en cuanto se resuelva.",
       };
     default:
       return null;
@@ -28,9 +28,9 @@ export function paymentBanner(payment: string | undefined) {
 export function humanizeMovement(value: string) {
   switch (value) {
     case "CREDIT_GRANTED":
-      return "Credito generado";
+      return "Saldo a favor recibido";
     case "CREDIT_APPLIED":
-      return "Credito aplicado";
+      return "Saldo utilizado en viaje";
     default:
       return value;
   }

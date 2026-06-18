@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { AlertBanner } from "@/components/ui/alert-banner";
-import { EmptyState } from "@/components/ui/empty-state";
 import { formatDateTime, formatMoney, humanizeStatus } from "@/components/ui/format";
 import { SectionCard } from "@/components/ui/section-card";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -32,38 +31,38 @@ function statusCopy(status: CheckoutStatus) {
   switch (status) {
     case "PAID":
       return {
-        title: "Pago acreditado",
-        description: "La operacion ya fue confirmada y el viaje puede continuar sin pasos adicionales.",
+        title: "¡Pago aprobado!",
+        description: "Tu pago fue recibido correctamente y tu viaje ya está confirmado.",
         tone: "success" as const,
       };
     case "PENDING":
       return {
-        title: "Pago pendiente",
-        description: "La operacion sigue en revision. Vuelve mas tarde para confirmar el resultado final del cobro.",
+        title: "Pago en proceso",
+        description: "Estamos verificando la transacción. Te avisaremos en cuanto se confirme.",
         tone: "warning" as const,
       };
     case "DENIED":
       return {
-        title: "Pago rechazado",
-        description: "El cobro no pudo acreditarse. Revisa el detalle y vuelve a intentarlo desde Rider si hace falta.",
+        title: "No pudimos cobrar tu pago",
+        description: "Hubo un problema. Revisa los datos e inténtalo de nuevo.",
         tone: "danger" as const,
       };
     case "CANCELED":
       return {
-        title: "Checkout cancelado",
-        description: "El flujo de pago se interrumpio antes de completarse.",
+        title: "Pago cancelado",
+        description: "El pago se canceló antes de que pudiera completarse.",
         tone: "info" as const,
       };
     case "EXPIRED":
       return {
-        title: "Checkout expirado",
-        description: "La ventana de pago caduco sin una confirmacion exitosa. Este estado se usa en modo demo.",
+        title: "El pago expiró",
+        description: "El tiempo límite para realizar el pago caducó sin confirmarse.",
         tone: "info" as const,
       };
     default:
       return {
         title: "Listo para pagar",
-        description: "Revisa el resumen y continua con Mercado Pago Checkout Pro cuando quieras avanzar.",
+        description: "Revisa el detalle y confirma tu pago para continuar.",
         tone: "info" as const,
       };
   }
@@ -79,41 +78,23 @@ export function CheckoutLayout({
   children: React.ReactNode;
 }) {
   return (
-      <main className="min-h-screen px-4 py-6 text-slate-950 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
-        <SectionCard className="overflow-hidden bg-linear-to-br from-white via-white to-sky-50/70">
-          <div className="flex flex-col gap-6">
-            <div className="flex flex-col gap-3 text-sm sm:flex-row sm:flex-wrap sm:items-center">
-              <Link href="/rider" className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-2 font-medium text-slate-700 shadow-sm hover:border-slate-900 hover:text-slate-900">
+    <main className="min-h-screen px-4 py-6 text-slate-950 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
+      <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
+        <SectionCard className="overflow-hidden bg-linear-to-br from-white via-white to-sky-50/50">
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-wrap items-center gap-3 text-sm">
+              <Link href="/rider" className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 font-medium text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-950 transition">
                 Volver a Rider
               </Link>
-              <Link href="/rider/checkouts" className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-2 font-medium text-slate-700 shadow-sm hover:border-slate-900 hover:text-slate-900">
-                Ver checkouts
+              <Link href="/rider/checkouts" className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 font-medium text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-950 transition">
+                Ver mis pagos
               </Link>
             </div>
 
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-700">WeShuttle Payments</p>
-              <h1 className="mt-3 text-3xl font-bold text-slate-900 sm:text-4xl">{title}</h1>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">{description}</p>
-            </div>
-
-            <div className="grid gap-3 md:grid-cols-3">
-              <div className="rounded-[22px] border border-slate-200 bg-white/80 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Paso 1</p>
-                <p className="mt-2 font-semibold text-slate-900">Resumen interno</p>
-                <p className="mt-1 text-sm text-slate-600">El rider entiende cuanto se cubre con credito y cuanto queda por pagar.</p>
-              </div>
-              <div className="rounded-[22px] border border-slate-200 bg-white/80 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Paso 2</p>
-                <p className="mt-2 font-semibold text-slate-900">Checkout Pro o demo</p>
-                <p className="mt-1 text-sm text-slate-600">La app conserva el mismo flujo funcional hacia Mercado Pago o su simulacion interna.</p>
-              </div>
-              <div className="rounded-[22px] border border-slate-200 bg-white/80 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Paso 3</p>
-                <p className="mt-2 font-semibold text-slate-900">Resultado y retorno</p>
-                <p className="mt-1 text-sm text-slate-600">El usuario vuelve al rider con el estado actualizado para continuar la demo.</p>
-              </div>
+              <p className="text-xs font-bold uppercase tracking-wider text-sky-600">Mi Pago de Viaje</p>
+              <h1 className="mt-2 text-2xl font-bold text-slate-900 sm:text-3xl">{title}</h1>
+              <p className="mt-2 text-sm text-slate-600 leading-relaxed">{description}</p>
             </div>
           </div>
         </SectionCard>
@@ -132,75 +113,57 @@ export function CheckoutSummaryCard({ data }: { data: CheckoutViewData }) {
         {copy.description}
       </AlertBanner>
 
-      <div className="mt-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <div className="flex flex-wrap items-center gap-3">
-            <h2 className="text-2xl font-bold text-slate-900">Reserva {data.checkout.reservationId}</h2>
-            <StatusBadge value={data.checkout.status} label={humanizeStatus(data.checkout.status)} />
+      <div className="mt-6 flex flex-col gap-2 border-b border-slate-100 pb-4">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-xl font-bold text-slate-900">Viaje #{data.checkout.reservationId}</h2>
+          <StatusBadge value={data.checkout.status} label={humanizeStatus(data.checkout.status)} />
+        </div>
+        <p className="text-xs text-slate-400">Servicio de transporte programado</p>
+      </div>
+
+      <div className="mt-6 bg-slate-50/70 border border-slate-100 rounded-2xl p-5">
+        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Detalle del pago</h3>
+        <dl className="space-y-3.5 text-sm text-slate-600">
+          <div className="flex justify-between">
+            <dt className="font-medium text-slate-500">Monto del viaje:</dt>
+            <dd className="font-semibold text-slate-800">{formatMoney(data.checkout.maxPrice, data.checkout.currency)}</dd>
           </div>
-          <p className="mt-2 text-sm text-slate-600">Pool {data.checkout.poolId}</p>
-        </div>
-
-        {data.isDemoMode ? (
-          <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
-            Modo demo
-          </span>
-        ) : null}
+          {data.checkout.creditApplied > 0 && (
+            <div className="flex justify-between text-sky-700">
+              <dt className="font-medium">Saldo a favor aplicado:</dt>
+              <dd className="font-bold">-{formatMoney(data.checkout.creditApplied, data.checkout.currency)}</dd>
+            </div>
+          )}
+          <div className="flex justify-between border-t border-slate-200/60 pt-3 text-base">
+            <dt className="font-bold text-slate-900">Total a pagar:</dt>
+            <dd className="font-extrabold text-slate-950 text-lg">{formatMoney(data.checkout.amountToCharge, data.checkout.currency)}</dd>
+          </div>
+        </dl>
       </div>
 
-      <div className="mt-6 grid gap-4 md:grid-cols-3">
-        <div className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">Precio maximo</p>
-          <p className="mt-3 text-2xl font-bold text-slate-900">{formatMoney(data.checkout.maxPrice, data.checkout.currency)}</p>
-        </div>
-        <div className="rounded-[24px] border border-sky-100 bg-linear-to-br from-sky-50 to-white p-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700">Credito aplicado</p>
-          <p className="mt-3 text-2xl font-bold text-slate-900">{formatMoney(data.checkout.creditApplied, data.checkout.currency)}</p>
-          <p className="mt-2 text-sm text-slate-700">Saldo disponible al crear: {formatMoney(data.checkout.availableCreditAtCreation, data.checkout.currency)}</p>
-        </div>
-        <div className="rounded-[24px] border border-emerald-100 bg-linear-to-br from-emerald-50 to-white p-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Total a pagar</p>
-          <p className="mt-3 text-2xl font-bold text-slate-900">{formatMoney(data.checkout.amountToCharge, data.checkout.currency)}</p>
-        </div>
-      </div>
-
-      <div className="mt-6 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-        <div className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-5 text-sm text-slate-600">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Narrativa de demo</p>
-          <p className="mt-3 leading-6">
-            Esta vista separa con claridad el precio maximo aceptado, el credito disponible al crear el checkout y el monto final que debe resolverse por el canal de pago.
-          </p>
-        </div>
-
-        <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Siguiente hito</p>
-          <p className="mt-3 text-lg font-semibold text-slate-900">
-            {data.checkout.status === "CREATED" ? "Decidir como resolver el pago" : "Revisar el resultado final del checkout"}
-          </p>
-          <p className="mt-2 text-sm text-slate-600">
-            Usa los botones de la siguiente seccion para continuar el flujo sin cambiar ninguna regla funcional del checkout.
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-6 grid gap-4 rounded-[24px] border border-slate-200 bg-slate-50/80 p-5 text-sm text-slate-600 sm:grid-cols-2">
-        <div>
-          <dt className="font-semibold text-slate-900">Checkout ID</dt>
-          <dd className="mt-1 break-all">{data.checkout.id}</dd>
-        </div>
-        <div>
-          <dt className="font-semibold text-slate-900">Preference ID</dt>
-          <dd className="mt-1 break-all">{data.checkout.mercadoPagoPreferenceId ?? "No disponible"}</dd>
-        </div>
-        <div>
-          <dt className="font-semibold text-slate-900">Expiracion</dt>
-          <dd className="mt-1">{formatDateTime(data.checkout.expiresAt)}</dd>
-        </div>
-        <div>
-          <dt className="font-semibold text-slate-900">Canal de pago</dt>
-          <dd className="mt-1">{data.isDemoMode ? "Simulacion interna de demo" : "Mercado Pago Checkout Pro"}</dd>
-        </div>
-      </div>
+      <details className="mt-6 border-t border-slate-100 pt-4">
+        <summary className="text-xs font-semibold text-slate-400 hover:text-slate-600 cursor-pointer outline-none select-none">
+          Detalles técnicos del pago
+        </summary>
+        <dl className="mt-4 grid gap-4 text-xs text-slate-500 sm:grid-cols-2 text-left">
+          <div>
+            <dt className="font-semibold">Código de Pago (Checkout ID):</dt>
+            <dd className="mt-0.5 break-all">{data.checkout.id}</dd>
+          </div>
+          <div>
+            <dt className="font-semibold">Código de Pasarela (Preference ID):</dt>
+            <dd className="mt-0.5 break-all">{data.checkout.mercadoPagoPreferenceId ?? "No disponible"}</dd>
+          </div>
+          <div>
+            <dt className="font-semibold">Expiración:</dt>
+            <dd className="mt-0.5">{formatDateTime(data.checkout.expiresAt)}</dd>
+          </div>
+          <div>
+            <dt className="font-semibold">Canal de Pago:</dt>
+            <dd className="mt-0.5">{data.isDemoMode ? "Simulación de Demo" : "Mercado Pago Sandbox"}</dd>
+          </div>
+        </dl>
+      </details>
     </SectionCard>
   );
 }
@@ -220,60 +183,41 @@ export function CheckoutResultActions({
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-xl font-semibold text-slate-900">Siguientes pasos</h2>
-        <p className="mt-2 text-sm text-slate-600">
-          Vuelve a la vista Rider para continuar la demo o regresa a la aplicacion del pasajero si esta configurada.
-        </p>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Continuidad</p>
-          <p className="mt-3 font-semibold text-slate-900">Volver al dashboard</p>
-          <p className="mt-2 text-sm text-slate-600">Ideal para mostrar el banner de resultado y retomar la historia principal del rider.</p>
-        </div>
-        <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Seguimiento</p>
-          <p className="mt-3 font-semibold text-slate-900">Ir a checkouts recientes</p>
-          <p className="mt-2 text-sm text-slate-600">Permite explicar como quedan listados los pagos creados y su estado final.</p>
-        </div>
-        <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Contexto externo</p>
-          <p className="mt-3 font-semibold text-slate-900">Volver a Rider App</p>
-          <p className="mt-2 text-sm text-slate-600">Se mantiene disponible solo si la URL externa esta configurada en el entorno.</p>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+      <div className="flex flex-col gap-3">
         <Link
           href={demoRiderUrl}
-          className="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-3 text-center text-sm font-medium text-slate-700 shadow-sm hover:border-slate-900 hover:text-slate-900 sm:w-auto"
+          className="inline-flex w-full items-center justify-center rounded-full bg-slate-950 px-5 py-3 text-center text-sm font-semibold text-white shadow-md hover:bg-slate-800 transition duration-200 cursor-pointer"
         >
-          Volver a Rider en Payments
+          Volver a Rider
         </Link>
-        <Link
-          href="/rider/checkouts"
-          className="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-3 text-center text-sm font-medium text-slate-700 shadow-sm hover:border-slate-900 hover:text-slate-900 sm:w-auto"
-        >
-          Ver checkouts recientes
-        </Link>
-        {riderAppUrl ? (
+        
+        {riderAppUrl && (
           <Link
             href={riderAppUrl}
-            className="inline-flex w-full items-center justify-center rounded-full bg-slate-900 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-slate-800 sm:w-auto"
+            className="inline-flex w-full items-center justify-center rounded-full bg-sky-500 px-5 py-3 text-center text-sm font-bold text-white shadow-md hover:bg-sky-400 transition duration-200 cursor-pointer"
           >
-            Volver a Rider App
+            Volver a la App del Pasajero
           </Link>
-        ) : null}
+        )}
+
+        <Link
+          href="/rider/checkouts"
+          className="inline-flex w-full items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-3 text-center text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition duration-200"
+        >
+          Ver historial de pagos
+        </Link>
       </div>
 
-      {!riderAppUrl ? (
-        <EmptyState
-          title="Rider App externa no configurada"
-          description="La demo seguira dentro de Payments App. Si luego defines NEXT_PUBLIC_RIDER_APP_URL, aqui aparecera el retorno externo."
-        />
-      ) : null}
+      {!riderAppUrl && (
+        <details className="border-t border-slate-100 pt-3 mt-4">
+          <summary className="text-xs font-semibold text-slate-400 hover:text-slate-600 cursor-pointer outline-none select-none">
+            Información de la App externa
+          </summary>
+          <div className="mt-2 text-xs text-slate-500 leading-relaxed text-left">
+            La demo sigue dentro de Payments App. Si en el futuro configuras NEXT_PUBLIC_RIDER_APP_URL, aquí aparecerá el botón para retornar a la aplicación del pasajero.
+          </div>
+        </details>
+      )}
     </div>
   );
 }

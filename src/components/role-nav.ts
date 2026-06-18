@@ -8,24 +8,23 @@ export type NavItem = {
 
 export const NAV_ITEMS: Record<AppRole, NavItem[]> = {
   admin: [
-    { href: "/admin", label: "Menu principal", match: "exact" },
-    { href: "/admin/checkouts", label: "Pagos / Checkouts", match: "prefix" },
-    { href: "/admin/credits", label: "Creditos", match: "exact" },
-    { href: "/admin/pricing-rules", label: "Reglas de precios", match: "exact" },
-    { href: "/admin/settlements", label: "Liquidaciones", match: "exact" },
-    { href: "/admin/pools", label: "Pools", match: "exact" },
+    { href: "/admin", label: "Inicio", match: "exact" },
+    { href: "/admin/checkouts", label: "Control de pagos", match: "prefix" },
+    { href: "/admin/credits", label: "Saldos y créditos", match: "exact" },
+    { href: "/admin/pricing-rules", label: "Tarifas y reglas", match: "exact" },
+    { href: "/admin/settlements", label: "Pagos a choferes", match: "exact" },
+    { href: "/admin/pools", label: "Cierre de viajes", match: "exact" },
   ],
   rider: [
-    { href: "/rider", label: "Menu principal", match: "exact" },
+    { href: "/rider", label: "Inicio", match: "exact" },
     { href: "/rider/balance", label: "Saldo y movimientos", match: "exact" },
-    { href: "/rider/checkout-demo", label: "Crear checkout", match: "exact" },
-    { href: "/rider/checkouts", label: "Checkouts recientes", match: "exact" },
-    { href: "/rider/reservations", label: "Detalle de reserva", match: "exact" },
+    { href: "/rider/checkout-demo", label: "Pagar viaje de prueba", match: "exact" },
+    { href: "/rider/checkouts", label: "Mis pagos", match: "exact" },
+    { href: "/rider/reservations", label: "Mis viajes", match: "exact" },
   ],
   driver: [
-    { href: "/driver", label: "Menu principal", match: "exact" },
-    { href: "/driver/account", label: "Cuenta de cobro", match: "exact" },
-    { href: "/driver/settlements", label: "Liquidaciones", match: "exact" },
-    { href: "/driver/trips", label: "Pools y viajes", match: "exact" },
+    { href: "/driver", label: "Inicio", match: "exact" },
+    { href: "/driver/account", label: "Datos de cobro", match: "exact" },
+    { href: "/driver/trips", label: "Viajes y ganancias", match: "exact" },
   ],
 };
