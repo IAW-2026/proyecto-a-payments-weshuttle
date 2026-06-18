@@ -65,11 +65,13 @@ function DiscountSelect({ defaultValue }: { defaultValue: "PERCENTAGE" | "FIXED_
 }
 
 export default async function AdminPricingRulesPage({ searchParams }: PageProps) {
-  const authContext = await requirePageRole(["admin"]);
-  const params = await searchParams;
-  const rules = await prisma.pricingRule.findMany({
-    orderBy: [{ active: "desc" }, { destinationId: "asc" }, { minPassengers: "asc" }],
-  });
+  const [authContext, params, rules] = await Promise.all([
+    requirePageRole(["admin"]),
+    searchParams,
+    prisma.pricingRule.findMany({
+      orderBy: [{ active: "desc" }, { destinationId: "asc" }, { minPassengers: "asc" }],
+    }),
+  ]);
 
   return (
     <AppShell

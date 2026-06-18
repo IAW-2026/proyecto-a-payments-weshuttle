@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { requirePageRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-function fail(message: string, q?: string, page?: string) {
+function fail(message: string, q?: string, page?: string, path = "/driver") {
   const params = new URLSearchParams({ error: message });
 
   if (q) {
@@ -16,7 +16,7 @@ function fail(message: string, q?: string, page?: string) {
     params.set("page", page);
   }
 
-  redirect(`/driver?${params.toString()}`);
+  redirect(`${path}?${params.toString()}`);
 }
 
 function getTrimmedValue(formData: FormData, key: string) {
@@ -27,11 +27,12 @@ export async function savePayoutAccountAction(formData: FormData) {
   const authContext = await requirePageRole(["driver"]);
   const q = getTrimmedValue(formData, "q") || undefined;
   const page = getTrimmedValue(formData, "page") || undefined;
+  const path = getTrimmedValue(formData, "path") || "/driver";
   const accountReference = getTrimmedValue(formData, "accountReference");
   const alias = getTrimmedValue(formData, "alias");
 
   if (!accountReference) {
-    fail("La referencia de cobro es obligatoria.", q, page);
+    fail("La referencia de cobro es obligatoria.", q, page, path);
   }
 
   const existingAccounts = await prisma.payoutAccount.findMany({
@@ -71,6 +72,7 @@ export async function savePayoutAccountAction(formData: FormData) {
   });
 
   revalidatePath("/driver");
+  revalidatePath("/driver/account");
 
   const params = new URLSearchParams({ message: "Cuenta de cobro guardada" });
 
@@ -82,5 +84,5 @@ export async function savePayoutAccountAction(formData: FormData) {
     params.set("page", page);
   }
 
-  redirect(`/driver?${params.toString()}`);
+  redirect(`${path}?${params.toString()}`);
 }

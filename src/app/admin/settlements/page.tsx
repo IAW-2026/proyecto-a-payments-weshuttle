@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { AppShell } from "@/components/app-shell";
+import { AdminHero } from "../admin-ui";
 import { Pagination } from "@/components/pagination";
 import { Search } from "@/components/search";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -25,8 +26,10 @@ function parsePage(value: string | undefined) {
 }
 
 export default async function AdminSettlementsPage({ searchParams }: PageProps) {
-  const authContext = await requirePageRole(["admin"]);
-  const params = await searchParams;
+  const [authContext, params] = await Promise.all([
+    requirePageRole(["admin"]),
+    searchParams,
+  ]);
   const q = params.q?.trim() ?? "";
   const page = parsePage(params.page);
   const where: Prisma.SettlementWhereInput = q
@@ -59,9 +62,11 @@ export default async function AdminSettlementsPage({ searchParams }: PageProps) 
       description="Controla transferencias a conductores con una vista clara para contar que ya se liquido y que sigue pendiente."
     >
       <div className="flex flex-col gap-8">
+        <AdminHero title="Controla que ya se liquido y que sigue pendiente." description="La seccion de liquidaciones se enfoca en la transferencia al conductor con una lectura rapida para la demo." />
+
         <div className="grid gap-4 md:grid-cols-3">
           <MetricCard title="Registros visibles" value={String(totalSettlements)} description="Cantidad de liquidaciones para el filtro actual." tone="sky" />
-          <MetricCard title="Completadas" value={String(completedCount)} description="Liquidaciones ya ejecutadas en el sistema." tone="emerald" />
+          <MetricCard title="Completadas" value={String(completedCount)} description="Liquidaciones ya ejecutadas in el sistema." tone="emerald" />
           <MetricCard title="Pendientes" value={String(pendingCount)} description="Transferencias aun no completadas." tone="amber" />
         </div>
 

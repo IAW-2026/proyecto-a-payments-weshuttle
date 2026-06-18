@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { AdminHero, AdminQuickActions } from "./admin-ui";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatDateTime, formatMoney, humanizeStatus } from "@/components/ui/format";
 import { MetricCard } from "@/components/ui/metric-card";
@@ -9,9 +10,8 @@ import { requirePageRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export default async function AdminHomePage() {
-  const authContext = await requirePageRole(["admin"]);
-
   const [
+    authContext,
     totalCollectedData,
     totalCreditAppliedData,
     totalCreditGrantedData,
@@ -22,6 +22,7 @@ export default async function AdminHomePage() {
     recentFinalizationJobs,
     recentSettlements,
   ] = await Promise.all([
+    requirePageRole(["admin"]),
     prisma.charge.aggregate({
       _sum: { amountCharged: true },
       where: { status: "PAID" },
@@ -80,35 +81,27 @@ export default async function AdminHomePage() {
       description="Vista ejecutiva para entender recaudacion, creditos, liquidaciones y salud operativa del sistema durante la demo."
     >
       <div className="flex flex-col gap-8">
-        <SectionCard>
-          <div className="flex flex-col gap-6">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-700">Admin Demo</p>
-                <h2 className="mt-2 text-3xl font-bold text-slate-900 sm:text-4xl">
-                  Panorama rapido del negocio de pagos.
-                </h2>
-                <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">
-                  Esta pantalla resume cuanto se cobro, cuanto se liquido y que areas requieren atencion inmediata antes de entrar al detalle operativo.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-3 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
-                <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-500"></span>
-                Sistema en linea
-              </div>
+        <AdminHero
+          title="Panorama rapido del negocio de pagos."
+          description="Esta pantalla resume cuanto se cobro, cuanto se liquido y que areas requieren atencion inmediata antes de entrar al detalle operativo."
+          actions={
+            <div className="flex items-center gap-3 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
+              <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-500"></span>
+              Sistema en linea
             </div>
+          }
+        />
 
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              <MetricCard title="Total recaudado" value={formatMoney(totalCollected, "ARS")} description="Cobros acreditados por el flujo de pagos." tone="emerald" />
-              <MetricCard title="Credito aplicado" value={formatMoney(totalCreditApplied, "ARS")} description="Saldo a favor usado por riders en checkouts." tone="sky" />
-              <MetricCard title="Credito generado" value={formatMoney(totalCreditGranted, "ARS")} description="Ajustes y devoluciones convertidos en saldo." tone="amber" />
-              <MetricCard title="Total liquidado" value={formatMoney(totalSettled, "ARS")} description="Fondos ya derivados a conductores." tone="sky" />
-              <MetricCard title="Liquidaciones pendientes" value={String(pendingCount)} description={`Monto pendiente: ${formatMoney(pendingAmount, "ARS")}`} tone="amber" />
-              <MetricCard title="Tasa de exito" value={`${successRate.toFixed(1)}%`} description={`${paidCharges} de ${totalCharges} cobros terminaron en pagado.`} tone={successRate > 90 ? "emerald" : successRate > 70 ? "amber" : "rose"} />
-            </div>
-          </div>
-        </SectionCard>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <MetricCard title="Total recaudado" value={formatMoney(totalCollected, "ARS")} description="Cobros acreditados por el flujo de pagos." tone="emerald" />
+          <MetricCard title="Credito aplicado" value={formatMoney(totalCreditApplied, "ARS")} description="Saldo a favor usado por riders en checkouts." tone="sky" />
+          <MetricCard title="Credito generado" value={formatMoney(totalCreditGranted, "ARS")} description="Ajustes y devoluciones convertidos en saldo." tone="amber" />
+          <MetricCard title="Total liquidado" value={formatMoney(totalSettled, "ARS")} description="Fondos ya derivados a conductores." tone="sky" />
+          <MetricCard title="Liquidaciones pendientes" value={String(pendingCount)} description={`Monto pendiente: ${formatMoney(pendingAmount, "ARS")}`} tone="amber" />
+          <MetricCard title="Tasa de exito" value={`${successRate.toFixed(1)}%`} description={`${paidCharges} de ${totalCharges} cobros terminaron en pagado.`} tone={successRate > 90 ? "emerald" : successRate > 70 ? "amber" : "rose"} />
+        </div>
+
+        <AdminQuickActions />
 
         <div className="grid gap-8 lg:grid-cols-2">
           <SectionCard>
@@ -117,8 +110,8 @@ export default async function AdminHomePage() {
                 <h3 className="text-xl font-semibold text-slate-900">Ultimos cobros</h3>
                 <p className="mt-2 text-sm text-slate-600">Reservas cobradas recientemente con foco en monto y credito aplicado.</p>
               </div>
-              <Link href="/admin/transactions" className="text-sm font-semibold text-sky-700 hover:underline">
-                Ver transacciones
+              <Link href="/admin/checkouts" className="text-sm font-semibold text-sky-700 hover:underline">
+                Ver pagos y checkouts
               </Link>
             </div>
 
@@ -211,20 +204,6 @@ export default async function AdminHomePage() {
           </div>
         </SectionCard>
 
-        <section className="grid gap-4 md:grid-cols-3">
-          <Link href="/admin/pricing-rules" className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm transition hover:border-sky-300 hover:bg-sky-50/30">
-            <h4 className="font-semibold text-slate-900">Configurar precios</h4>
-            <p className="mt-2 text-sm text-slate-600">Gestiona reglas de pricing para cotizaciones, topes y descuentos.</p>
-          </Link>
-          <Link href="/admin/transactions" className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm transition hover:border-sky-300 hover:bg-sky-50/30">
-            <h4 className="font-semibold text-slate-900">Auditar transacciones</h4>
-            <p className="mt-2 text-sm text-slate-600">Explora cobros, creditos aplicados y resultado de cada reserva.</p>
-          </Link>
-          <Link href="/admin/settlements" className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm transition hover:border-sky-300 hover:bg-sky-50/30">
-            <h4 className="font-semibold text-slate-900">Controlar liquidaciones</h4>
-            <p className="mt-2 text-sm text-slate-600">Sigue el estado de las transferencias hacia conductores.</p>
-          </Link>
-        </section>
       </div>
     </AppShell>
   );

@@ -20,7 +20,7 @@ export function MetricCard({
   return (
     <div className={`rounded-[24px] border p-5 ${TONES[tone]}`}>
       <p className="text-xs font-semibold uppercase tracking-[0.18em]">{title}</p>
-      <p className="mt-3 text-3xl font-bold text-slate-900">{value}</p>
+      <p className="mt-3 text-2xl font-bold text-slate-900 sm:text-3xl">{value}</p>
       {description ? <p className="mt-2 text-sm text-slate-600">{description}</p> : null}
     </div>
   );

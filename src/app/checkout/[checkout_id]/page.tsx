@@ -14,8 +14,11 @@ type PageProps = {
 };
 
 export default async function CheckoutPage({ params }: PageProps) {
-  const authContext = await requirePageRole(["rider", "admin"]);
-  const { checkout_id: checkoutId } = await params;
+  const [authContext, resolvedParams] = await Promise.all([
+    requirePageRole(["rider", "admin"]),
+    params,
+  ]);
+  const checkoutId = resolvedParams.checkout_id;
   const data = await getCheckoutPageData(checkoutId);
 
   if (!data) {
@@ -42,7 +45,7 @@ export default async function CheckoutPage({ params }: PageProps) {
       <SectionCard>
         <h2 className="text-xl font-semibold text-slate-900">Siguiente paso</h2>
         <p className="mt-2 text-sm text-slate-600">
-          Elige la accion correspondiente segun el estado actual del checkout. No se modifica el flujo funcional de Mercado Pago.
+          Elige la accion correspondiente segun el estado actual del checkout. Esta pantalla solo ordena la demo; no modifica el flujo funcional de Mercado Pago.
         </p>
 
         {data.checkout.amountToCharge === 0 ? (
@@ -60,7 +63,7 @@ export default async function CheckoutPage({ params }: PageProps) {
         ) : data.isDemoMode ? (
           <div className="mt-4 space-y-4">
             <AlertBanner tone="warning" title="Herramientas de demo habilitadas">
-              Mercado Pago no esta configurado en este entorno. Puedes resolver el checkout desde Payments App para mostrar los distintos resultados.
+              Mercado Pago no esta configurado en este entorno. Puedes resolver el checkout desde Payments App para mostrar cada resultado durante la demo.
             </AlertBanner>
             <div className="grid gap-3 sm:grid-cols-2">
               <form action={resolveDemoCheckoutAction.bind(null, checkoutId, "PAID")}>
@@ -88,7 +91,7 @@ export default async function CheckoutPage({ params }: PageProps) {
         ) : canPayWithMercadoPago ? (
           <div className="mt-4 space-y-4">
             <p className="text-sm text-slate-600">
-              Al continuar, Payments App te redirige a Mercado Pago Checkout Pro en modo Sandbox.
+              Al continuar, Payments App te redirige a Mercado Pago Checkout Pro en modo Sandbox para mantener el flujo real.
             </p>
             <div className="flex flex-col gap-3 sm:flex-row">
               <Link

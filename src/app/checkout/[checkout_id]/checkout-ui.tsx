@@ -79,12 +79,43 @@ export function CheckoutLayout({
   children: React.ReactNode;
 }) {
   return (
-    <main className="min-h-screen px-4 py-10 text-slate-950 sm:px-6 lg:px-8">
+      <main className="min-h-screen px-4 py-6 text-slate-950 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
         <SectionCard className="overflow-hidden bg-linear-to-br from-white via-white to-sky-50/70">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-700">WeShuttle Payments</p>
-          <h1 className="mt-3 text-3xl font-bold text-slate-900 sm:text-4xl">{title}</h1>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">{description}</p>
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-3 text-sm sm:flex-row sm:flex-wrap sm:items-center">
+              <Link href="/rider" className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-2 font-medium text-slate-700 shadow-sm hover:border-slate-900 hover:text-slate-900">
+                Volver a Rider
+              </Link>
+              <Link href="/rider/checkouts" className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-2 font-medium text-slate-700 shadow-sm hover:border-slate-900 hover:text-slate-900">
+                Ver checkouts
+              </Link>
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-700">WeShuttle Payments</p>
+              <h1 className="mt-3 text-3xl font-bold text-slate-900 sm:text-4xl">{title}</h1>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">{description}</p>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="rounded-[22px] border border-slate-200 bg-white/80 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Paso 1</p>
+                <p className="mt-2 font-semibold text-slate-900">Resumen interno</p>
+                <p className="mt-1 text-sm text-slate-600">El rider entiende cuanto se cubre con credito y cuanto queda por pagar.</p>
+              </div>
+              <div className="rounded-[22px] border border-slate-200 bg-white/80 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Paso 2</p>
+                <p className="mt-2 font-semibold text-slate-900">Checkout Pro o demo</p>
+                <p className="mt-1 text-sm text-slate-600">La app conserva el mismo flujo funcional hacia Mercado Pago o su simulacion interna.</p>
+              </div>
+              <div className="rounded-[22px] border border-slate-200 bg-white/80 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Paso 3</p>
+                <p className="mt-2 font-semibold text-slate-900">Resultado y retorno</p>
+                <p className="mt-1 text-sm text-slate-600">El usuario vuelve al rider con el estado actualizado para continuar la demo.</p>
+              </div>
+            </div>
+          </div>
         </SectionCard>
         {children}
       </div>
@@ -133,6 +164,25 @@ export function CheckoutSummaryCard({ data }: { data: CheckoutViewData }) {
         </div>
       </div>
 
+      <div className="mt-6 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+        <div className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-5 text-sm text-slate-600">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Narrativa de demo</p>
+          <p className="mt-3 leading-6">
+            Esta vista separa con claridad el precio maximo aceptado, el credito disponible al crear el checkout y el monto final que debe resolverse por el canal de pago.
+          </p>
+        </div>
+
+        <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Siguiente hito</p>
+          <p className="mt-3 text-lg font-semibold text-slate-900">
+            {data.checkout.status === "CREATED" ? "Decidir como resolver el pago" : "Revisar el resultado final del checkout"}
+          </p>
+          <p className="mt-2 text-sm text-slate-600">
+            Usa los botones de la siguiente seccion para continuar el flujo sin cambiar ninguna regla funcional del checkout.
+          </p>
+        </div>
+      </div>
+
       <div className="mt-6 grid gap-4 rounded-[24px] border border-slate-200 bg-slate-50/80 p-5 text-sm text-slate-600 sm:grid-cols-2">
         <div>
           <dt className="font-semibold text-slate-900">Checkout ID</dt>
@@ -177,17 +227,41 @@ export function CheckoutResultActions({
         </p>
       </div>
 
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Continuidad</p>
+          <p className="mt-3 font-semibold text-slate-900">Volver al dashboard</p>
+          <p className="mt-2 text-sm text-slate-600">Ideal para mostrar el banner de resultado y retomar la historia principal del rider.</p>
+        </div>
+        <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Seguimiento</p>
+          <p className="mt-3 font-semibold text-slate-900">Ir a checkouts recientes</p>
+          <p className="mt-2 text-sm text-slate-600">Permite explicar como quedan listados los pagos creados y su estado final.</p>
+        </div>
+        <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Contexto externo</p>
+          <p className="mt-3 font-semibold text-slate-900">Volver a Rider App</p>
+          <p className="mt-2 text-sm text-slate-600">Se mantiene disponible solo si la URL externa esta configurada en el entorno.</p>
+        </div>
+      </div>
+
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
         <Link
           href={demoRiderUrl}
-          className="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm hover:border-slate-900 hover:text-slate-900 sm:w-auto"
+          className="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-3 text-center text-sm font-medium text-slate-700 shadow-sm hover:border-slate-900 hover:text-slate-900 sm:w-auto"
         >
           Volver a Rider en Payments
+        </Link>
+        <Link
+          href="/rider/checkouts"
+          className="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-3 text-center text-sm font-medium text-slate-700 shadow-sm hover:border-slate-900 hover:text-slate-900 sm:w-auto"
+        >
+          Ver checkouts recientes
         </Link>
         {riderAppUrl ? (
           <Link
             href={riderAppUrl}
-            className="inline-flex w-full items-center justify-center rounded-full bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800 sm:w-auto"
+            className="inline-flex w-full items-center justify-center rounded-full bg-slate-900 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-slate-800 sm:w-auto"
           >
             Volver a Rider App
           </Link>
