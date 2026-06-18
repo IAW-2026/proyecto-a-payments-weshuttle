@@ -951,6 +951,8 @@ GET /api/payments/pricing-estimate?origin_lat=-38.718&origin_lng=-62.266&destina
   "current_passengers": 5,
   "pricing_detail": {
     "base_price": 5000,
+    "distance_adjustment": 0,
+    "distance_km": 15.5,
     "estimated_discount": 800,
     "discount_reason": "OCCUPANCY_DISCOUNT"
   }
@@ -1007,7 +1009,8 @@ Luego, la **Payments App** devuelve una URL de pago para que la **Rider App** re
   "currency": "ARS",
   "success_url": "https://rider-app.com/reservations/res_123/success",
   "failure_url": "https://rider-app.com/reservations/res_123/failure",
-  "pending_url": "https://rider-app.com/reservations/res_123/pending"
+  "pending_url": "https://rider-app.com/reservations/res_123/pending",
+  "expires_at": "2026-06-10T08:00:00Z"
 }
 ```
 
@@ -1022,6 +1025,7 @@ Luego, la **Payments App** devuelve una URL de pago para que la **Rider App** re
 | `success_url` | string | Sí | URL final de Rider App para un pago exitoso. Payments App la preserva durante el retorno desde Mercado Pago. |
 | `failure_url` | string | Sí | URL final de Rider App para un pago rechazado o cancelado. Payments App la preserva durante el retorno desde Mercado Pago. |
 | `pending_url` | string | Sí | URL final de Rider App para un pago pendiente. Payments App la preserva durante el retorno desde Mercado Pago. |
+| `expires_at` | string | No | Fecha y hora límite en formato ISO 8601 para completar el pago. |
 
 ### Response `201 Created`
 
@@ -1037,7 +1041,8 @@ Luego, la **Payments App** devuelve una URL de pago para que la **Rider App** re
   "credit_applied": 1200,
   "amount_to_charge": 3800,
   "currency": "ARS",
-  "checkout_status": "CREATED"
+  "checkout_status": "CREATED",
+  "is_demo_mode": false
 }
 ```
 

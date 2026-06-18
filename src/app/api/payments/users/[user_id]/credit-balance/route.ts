@@ -30,6 +30,18 @@ export async function GET(_request: Request, context: RouteContext) {
     return authResult.response;
   }
 
+  const { clerkUserId, role } = authResult.context;
+
+  if (role === "rider" && userId.trim() !== clerkUserId) {
+    return NextResponse.json(
+      {
+        error: "FORBIDDEN",
+        message: "No tienes permisos para consultar el saldo de este usuario.",
+      },
+      { status: 403 },
+    );
+  }
+
   const creditAccount = await prisma.creditAccount.findUnique({
     where: { userId: userId.trim() },
   });
