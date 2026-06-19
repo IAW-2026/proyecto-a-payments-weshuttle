@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { notifyReservationPaymentResult } from "@/lib/external-apis";
+import { driverClient } from "@/lib/integrations/driver-client";
 import {
   getPaymentClient,
   getPreferenceClient,
@@ -453,6 +454,17 @@ async function applyCheckoutOutcome(input: {
       rejectionReason: input.rejectionReason,
       processedAt: input.processedAt.toISOString(),
     });
+
+    if (input.targetStatus === "DENIED") {
+      try {
+        await driverClient.notifyPaymentDenied(checkout.poolId, {
+          reservationId: checkout.reservationId,
+          passengerUserId: checkout.passengerUserId,
+        });
+      } catch (err) {
+        console.error("Failed to notify driver app of denied payment", err);
+      }
+    }
   }
 }
 
