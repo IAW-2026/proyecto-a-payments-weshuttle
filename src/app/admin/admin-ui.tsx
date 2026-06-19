@@ -50,6 +50,10 @@ export function AdminQuickActions() {
         <h3 className="font-semibold text-slate-900">Cierre de viajes</h3>
         <p className="mt-2 text-sm text-slate-600">Consulta la liquidación final de la tarifa de cada viaje compartido al finalizar.</p>
       </Link>
+      <Link href="/admin/pricing-rules/simulator" className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm transition hover:border-sky-300 hover:bg-sky-50/30">
+        <h3 className="font-semibold text-slate-900">Simulador de tarifas</h3>
+        <p className="mt-2 text-sm text-slate-600">Simula cotizaciones de viajes consultando el estimador en tiempo real según origen, destino y ocupación.</p>
+      </Link>
     </section>
   );
 }

@@ -8,6 +8,7 @@ import { formatMoney } from "@/components/ui/format";
 import { requirePageRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createPricingRuleAction, deletePricingRuleAction, updatePricingRuleAction } from "./actions";
+import { TableReportButtons } from "@/components/table-report-buttons";
 
 type PageProps = {
   searchParams: Promise<{
@@ -93,12 +94,20 @@ export default async function AdminPricingRulesPage({ searchParams }: PageProps)
                 </p>
               </div>
 
-              <Link
-                href="/admin"
-                className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:border-slate-900 hover:text-slate-900"
-              >
-                Volver a inicio
-              </Link>
+              <div className="flex flex-wrap items-center gap-3">
+                <Link
+                  href="/admin/pricing-rules/simulator"
+                  className="inline-flex items-center justify-center rounded-full border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-medium text-sky-700 shadow-sm hover:bg-sky-100 transition cursor-pointer"
+                >
+                  Probar estimador de tarifas
+                </Link>
+                <Link
+                  href="/admin"
+                  className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:border-slate-900 hover:text-slate-900"
+                >
+                  Volver a inicio
+                </Link>
+              </div>
             </div>
 
             {params.message ? <AlertBanner tone="success">{params.message}</AlertBanner> : null}
@@ -130,9 +139,12 @@ export default async function AdminPricingRulesPage({ searchParams }: PageProps)
               <h3 className="text-xl font-semibold text-slate-900">Listado de reglas</h3>
               <p className="mt-2 text-sm text-slate-600">Cada bloque resume una regla de precio. Presiona en &quot;Modificar regla&quot; para abrir el editor.</p>
             </div>
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">
-              {rules.length} reglas activas
-            </span>
+            <div className="flex items-center gap-3">
+              <TableReportButtons role="admin" section="pricing-rules" />
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">
+                {rules.length} reglas activas
+              </span>
+            </div>
           </div>
 
           <div className="grid gap-4">

@@ -6,6 +6,8 @@ import type {
   ExternalPoolPassengersFilter,
   ExternalPoolPassengersResponse,
 } from "@/lib/external-apis/types";
+import { prisma } from "@/lib/prisma";
+import { riderClient, isRiderConfigured } from "@/lib/integrations/rider-client";
 
 const MOCK_MANIFESTS: Record<string, ExternalPoolPassengersResponse> = {
   pool_demo_checkout_01: {
@@ -216,25 +218,96 @@ function matchesFilter(
   });
 }
 
+export function getMockPoolIds(): string[] {
+  return Object.keys(MOCK_MANIFESTS);
+}
+
 export async function getPoolPassengers(
   poolId: string,
   filter?: ExternalPoolPassengersFilter,
 ) {
-  const manifest = MOCK_MANIFESTS[poolId];
+  // If it is a demo pool ID, always return the local mock manifest immediately
+  if (poolId.startsWith("pool_demo_") && MOCK_MANIFESTS[poolId]) {
+    const manifest = MOCK_MANIFESTS[poolId];
+    return {
+      poolId: manifest.poolId,
+      passengers: matchesFilter(manifest, filter),
+    };
+  }
 
-  if (!manifest) {
+  // Attempt to call Rider App API
+  if (isRiderConfigured()) {
+    try {
+      const remoteManifest = await riderClient.getPoolPassengers(poolId, filter);
+      if (remoteManifest) {
+        return remoteManifest;
+      }
+    } catch (error) {
+      console.warn(
+        `getPoolPassengers: Failed to fetch passengers from Rider App for pool ${poolId}. Falling back to database charges...`,
+        error
+      );
+    }
+  }
+
+  // Fallback to local database charges
+  const charges = await prisma.charge.findMany({
+    where: { poolId, status: "PAID" },
+  });
+
+  if (charges.length === 0) {
     return null;
   }
 
+  const fallbackManifest: ExternalPoolPassengersResponse = {
+    poolId,
+    passengers: charges.map((charge) => ({
+      reservationId: charge.reservationId,
+      passengerUserId: charge.passengerUserId,
+      passengerName: `Pasajero (${charge.passengerUserId.split("+")[0]})`,
+      reservationStatus: "CONFIRMED" as const,
+      paymentStatus: "PAID" as const,
+      pickupPoint: {
+        address: "Punto de encuentro",
+        lat: -38.718,
+        lng: -62.266,
+      },
+      destinationId: "dest_polo_petroquimico",
+      departureTime: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      maxPrice: charge.maxPrice.toNumber(),
+      amountCharged: charge.amountCharged.toNumber(),
+      creditApplied: charge.creditApplied.toNumber(),
+      finalTripPrice: charge.finalTripPrice?.toNumber() ?? null,
+      creditGranted: charge.creditGranted.toNumber(),
+      currency: charge.currency,
+    })),
+  };
+
   return {
-    poolId: manifest.poolId,
-    passengers: matchesFilter(manifest, filter),
+    poolId: fallbackManifest.poolId,
+    passengers: matchesFilter(fallbackManifest, filter),
   };
 }
 
 export async function notifyReservationPaymentResult(
   input: ExternalPaymentResultInput,
 ): Promise<ExternalPaymentResultResponse> {
+  // Attempt real API call if configured
+  if (isRiderConfigured()) {
+    try {
+      const remoteResponse = await riderClient.notifyPaymentResult(input.reservationId, input);
+      if (remoteResponse) {
+        return remoteResponse;
+      }
+    } catch (error) {
+      console.error(
+        `notifyReservationPaymentResult: Failed to notify Rider App for reservation ${input.reservationId}. Falling back to simulated response...`,
+        error
+      );
+    }
+  }
+
+  // Fallback to simulated response
   if (input.paymentStatus === "PAID") {
     return {
       reservation_id: input.reservationId,
@@ -264,6 +337,22 @@ export async function notifyReservationPaymentResult(
 export async function notifyReservationCreditAdjustment(
   input: ExternalCreditAdjustmentInput,
 ): Promise<ExternalCreditAdjustmentResponse> {
+  // Attempt real API call if configured
+  if (isRiderConfigured()) {
+    try {
+      const remoteResponse = await riderClient.notifyCreditAdjustment(input.reservationId, input);
+      if (remoteResponse) {
+        return remoteResponse;
+      }
+    } catch (error) {
+      console.error(
+        `notifyReservationCreditAdjustment: Failed to notify Rider App of credit adjustment for reservation ${input.reservationId}. Falling back to simulated response...`,
+        error
+      );
+    }
+  }
+
+  // Fallback to simulated response
   return {
     reservation_id: input.reservationId,
     pool_id: input.poolId,

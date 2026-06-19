@@ -9,6 +9,7 @@ import { SectionCard } from "@/components/ui/section-card";
 import { requirePageRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SettlementsClient } from "./settlements-client";
+import { TableReportButtons } from "@/components/table-report-buttons";
 
 const PAGE_SIZE = 10;
 
@@ -75,9 +76,12 @@ export default async function AdminSettlementsPage({ searchParams }: PageProps) 
               <h2 className="text-xl font-semibold text-slate-900">Transferencias registradas</h2>
               <p className="mt-2 text-sm text-slate-600">Busca por viaje o conductor para auditar una transferencia puntual.</p>
             </div>
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">
-              {totalSettlements} registros
-            </span>
+            <div className="flex items-center gap-3">
+              <TableReportButtons role="admin" section="settlements" />
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">
+                {totalSettlements} registros
+              </span>
+            </div>
           </div>
 
           <div className="mt-5">

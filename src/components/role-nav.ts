@@ -11,7 +11,7 @@ export const NAV_ITEMS: Record<AppRole, NavItem[]> = {
     { href: "/admin", label: "Inicio", match: "exact" },
     { href: "/admin/checkouts", label: "Control de pagos", match: "prefix" },
     { href: "/admin/credits", label: "Saldos y créditos", match: "exact" },
-    { href: "/admin/pricing-rules", label: "Tarifas y reglas", match: "exact" },
+    { href: "/admin/pricing-rules", label: "Tarifas y reglas", match: "prefix" },
     { href: "/admin/settlements", label: "Pagos a choferes", match: "exact" },
     { href: "/admin/pools", label: "Cierre de viajes", match: "exact" },
   ],

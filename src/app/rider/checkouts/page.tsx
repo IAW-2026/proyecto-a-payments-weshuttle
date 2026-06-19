@@ -7,6 +7,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { requirePageRole } from "@/lib/auth";
 import { getRiderPageData } from "../rider-data";
 import { RiderHero } from "../rider-ui";
+import { TableReportButtons } from "@/components/table-report-buttons";
 
 export default async function RiderCheckoutsPage() {
   const authContext = await requirePageRole(["rider"]);
@@ -18,9 +19,12 @@ export default async function RiderCheckoutsPage() {
         <RiderHero title="Consulta tu historial de pagos." description="Aquí puedes revisar el estado y el desglose de todos los viajes asociados a tu cuenta." />
 
         <SectionCard>
-          <div>
-            <h3 className="text-lg font-bold text-slate-900">Historial de pagos</h3>
-            <p className="text-xs text-slate-500">Listado ordenado desde el viaje más reciente.</p>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-bold text-slate-900">Historial de pagos</h3>
+              <p className="text-xs text-slate-500">Listado ordenado desde el viaje más reciente.</p>
+            </div>
+            <TableReportButtons role="rider" section="payments" />
           </div>
 
           <div className="mt-6 space-y-3">

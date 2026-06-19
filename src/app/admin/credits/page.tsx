@@ -6,6 +6,7 @@ import { MetricCard } from "@/components/ui/metric-card";
 import { SectionCard } from "@/components/ui/section-card";
 import { requirePageRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { TableReportButtons } from "@/components/table-report-buttons";
 
 export default async function AdminCreditsPage() {
   const [authContext, creditApplied, creditGranted, recentMovements] = await Promise.all([
@@ -49,9 +50,12 @@ export default async function AdminCreditsPage() {
               <h2 className="text-xl font-semibold text-slate-900">Movimientos recientes de saldo</h2>
               <p className="mt-2 text-sm text-slate-600">Últimos movimientos de consumo o carga de saldo en el sistema.</p>
             </div>
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">
-              {recentMovements.length} visibles
-            </span>
+            <div className="flex items-center gap-3">
+              <TableReportButtons role="admin" section="credits" />
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">
+                {recentMovements.length} visibles
+              </span>
+            </div>
           </div>
 
           {recentMovements.length === 0 ? (
