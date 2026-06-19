@@ -1,5 +1,6 @@
 export {
   getPoolPassengers,
+  getMockPoolIds,
   notifyReservationCreditAdjustment,
   notifyReservationPaymentResult,
 } from "@/lib/external-apis/rider";

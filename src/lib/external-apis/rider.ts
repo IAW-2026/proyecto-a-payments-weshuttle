@@ -6,6 +6,7 @@ import type {
   ExternalPoolPassengersFilter,
   ExternalPoolPassengersResponse,
 } from "@/lib/external-apis/types";
+import { prisma } from "@/lib/prisma";
 
 const MOCK_MANIFESTS: Record<string, ExternalPoolPassengersResponse> = {
   pool_demo_checkout_01: {
@@ -216,14 +217,48 @@ function matchesFilter(
   });
 }
 
+export function getMockPoolIds(): string[] {
+  return Object.keys(MOCK_MANIFESTS);
+}
+
 export async function getPoolPassengers(
   poolId: string,
   filter?: ExternalPoolPassengersFilter,
 ) {
-  const manifest = MOCK_MANIFESTS[poolId];
+  let manifest = MOCK_MANIFESTS[poolId];
 
   if (!manifest) {
-    return null;
+    const charges = await prisma.charge.findMany({
+      where: { poolId, status: "PAID" },
+    });
+
+    if (charges.length === 0) {
+      return null;
+    }
+
+    manifest = {
+      poolId,
+      passengers: charges.map((charge) => ({
+        reservationId: charge.reservationId,
+        passengerUserId: charge.passengerUserId,
+        passengerName: `Pasajero (${charge.passengerUserId.split("+")[0]})`,
+        reservationStatus: "CONFIRMED" as const,
+        paymentStatus: "PAID" as const,
+        pickupPoint: {
+          address: "Punto de encuentro",
+          lat: -38.718,
+          lng: -62.266,
+        },
+        destinationId: "dest_polo_petroquimico",
+        departureTime: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+        maxPrice: charge.maxPrice.toNumber(),
+        amountCharged: charge.amountCharged.toNumber(),
+        creditApplied: charge.creditApplied.toNumber(),
+        finalTripPrice: charge.finalTripPrice?.toNumber() ?? null,
+        creditGranted: charge.creditGranted.toNumber(),
+        currency: charge.currency,
+      })),
+    };
   }
 
   return {

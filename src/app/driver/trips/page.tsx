@@ -10,6 +10,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { requirePageRole } from "@/lib/auth";
 import { getDriverSettlementsData, getDriverTripsData, getDriverSummaryData, parseDriverPage } from "../driver-data";
 import { DriverHero, DriverSummaryMetrics } from "../driver-ui";
+import { TableReportButtons } from "@/components/table-report-buttons";
 
 type PageProps = {
   searchParams: Promise<{
@@ -90,9 +91,12 @@ export default async function DriverTripsPage({ searchParams }: PageProps) {
 
         {activeTab === "viajes" ? (
           <SectionCard>
-            <div>
-              <h3 className="text-xl font-semibold text-slate-900">Tus viajes completados</h3>
-              <p className="mt-2 text-sm text-slate-600">Este es el listado de viajes realizados y el estado de cobro de sus tarifas.</p>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-semibold text-slate-900">Tus viajes completados</h3>
+                <p className="mt-2 text-sm text-slate-600">Este es el listado de viajes realizados y el estado de cobro de sus tarifas.</p>
+              </div>
+              <TableReportButtons role="driver" section="trips" />
             </div>
 
             {trips.length === 0 ? (
@@ -143,14 +147,17 @@ export default async function DriverTripsPage({ searchParams }: PageProps) {
           </SectionCard>
         ) : (
           <SectionCard>
-            <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div className="flex items-center justify-between gap-4">
               <div>
                 <h3 className="text-xl font-semibold text-slate-900">Historial de transferencias</h3>
                 <p className="mt-2 text-sm text-slate-600">Buscá y consultá los pagos individuales que te hemos transferido.</p>
               </div>
-              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                {settlementsData.totalSettlements} registros
-              </span>
+              <div className="flex items-center gap-3">
+                <TableReportButtons role="driver" section="settlements" />
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                  {settlementsData.totalSettlements} registros
+                </span>
+              </div>
             </div>
 
             <div className="mt-5">

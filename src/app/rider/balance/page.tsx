@@ -5,6 +5,7 @@ import { SectionCard } from "@/components/ui/section-card";
 import { requirePageRole } from "@/lib/auth";
 import { getRiderPageData, humanizeMovement } from "../rider-data";
 import { RiderHero } from "../rider-ui";
+import { TableReportButtons } from "@/components/table-report-buttons";
 
 export default async function RiderBalancePage() {
   const authContext = await requirePageRole(["rider"]);
@@ -24,9 +25,12 @@ export default async function RiderBalancePage() {
         </SectionCard>
 
         <SectionCard>
-          <div>
-            <h3 className="text-xl font-semibold text-slate-900">Movimientos recientes</h3>
-            <p className="mt-2 text-sm text-slate-600">Ideal para explicar de donde viene el saldo disponible y como impacta en la reserva.</p>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h3 className="text-xl font-semibold text-slate-900">Movimientos recientes</h3>
+              <p className="mt-2 text-sm text-slate-600">Ideal para explicar de donde viene el saldo disponible y como impacta en la reserva.</p>
+            </div>
+            <TableReportButtons role="rider" section="balance" />
           </div>
 
           <div className="mt-6 space-y-3">

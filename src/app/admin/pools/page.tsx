@@ -7,6 +7,10 @@ import { SectionCard } from "@/components/ui/section-card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { requirePageRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getMockPoolIds, getPoolPassengers } from "@/lib/external-apis";
+import { findApplicablePricingRule } from "@/lib/pricing-rules";
+import { PoolsClient } from "./pools-client";
+import { TableReportButtons } from "@/components/table-report-buttons";
 
 export default async function AdminPoolsPage() {
   const [authContext, recentJobs, completedJobs, pendingJobs] = await Promise.all([
@@ -18,6 +22,68 @@ export default async function AdminPoolsPage() {
     prisma.poolPriceFinalizationJob.count({ where: { status: "COMPLETED" } }),
     prisma.poolPriceFinalizationJob.count({ where: { status: "STARTED" } }),
   ]);
+
+  const dbPools = await prisma.charge.findMany({
+    where: { status: "PAID" },
+    select: { poolId: true },
+    distinct: ["poolId"],
+  });
+
+  const mockPoolIds = getMockPoolIds();
+  const allPoolIds = Array.from(new Set([...dbPools.map((c) => c.poolId), ...mockPoolIds]));
+
+  const eligiblePools = [];
+
+  for (const poolId of allPoolIds) {
+    const manifest = await getPoolPassengers(poolId);
+
+    if (manifest && manifest.passengers.length > 0) {
+      const paidPassengers = manifest.passengers.filter((p) => p.paymentStatus === "PAID");
+
+      if (paidPassengers.length > 0) {
+        const firstPassenger = paidPassengers[0];
+        const destinationId = firstPassenger.destinationId;
+        const departureTime = firstPassenger.departureTime;
+        const currency = firstPassenger.currency || "ARS";
+        const maxPricePaid = Math.max(...paidPassengers.map((p) => p.maxPrice), 0);
+
+        const completedJob = await prisma.poolPriceFinalizationJob.findFirst({
+          where: { poolId, status: { in: ["STARTED", "COMPLETED"] } },
+        });
+
+        const poolCharges = await prisma.charge.findMany({
+          where: { poolId, status: "PAID" },
+        });
+        const hasChargesFinalized = poolCharges.length > 0 && poolCharges.every((c) => c.finalTripPrice !== null);
+
+        const hasAdjustment = !!completedJob || hasChargesFinalized;
+
+        const pricingRule = destinationId
+          ? await findApplicablePricingRule(destinationId, paidPassengers.length)
+          : null;
+
+        eligiblePools.push({
+          poolId,
+          destinationId,
+          departureTime,
+          currency,
+          passengerCount: paidPassengers.length,
+          maxPricePaid,
+          pricingRule: pricingRule
+            ? {
+                id: pricingRule.id,
+                basePrice: pricingRule.basePrice.toNumber(),
+                discountType: pricingRule.discountType,
+                discountValue: pricingRule.discountValue.toNumber(),
+              }
+            : null,
+          hasJobCompleted: !!completedJob,
+          hasChargesFinalized,
+          hasAdjustment,
+        });
+      }
+    }
+  }
 
   return (
     <AppShell
@@ -35,10 +101,15 @@ export default async function AdminPoolsPage() {
           <MetricCard title="Viajes en proceso" value={String(pendingJobs)} description="Cálculos en ejecución o revisión pendiente." tone="amber" />
         </div>
 
+        <PoolsClient pools={eligiblePools} />
+
         <SectionCard>
-          <div>
-            <h2 className="text-xl font-semibold text-slate-900">Actividad de cierre de viajes</h2>
-            <p className="mt-2 text-sm text-slate-600">Revisa cómo impactaron las tarifas y descuentos sobre la facturación de cada viaje grupal.</p>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-semibold text-slate-900">Actividad de cierre de viajes</h2>
+              <p className="mt-2 text-sm text-slate-600">Revisa cómo impactaron las tarifas y descuentos sobre la facturación de cada viaje grupal.</p>
+            </div>
+            <TableReportButtons role="admin" section="pools" />
           </div>
 
           {recentJobs.length === 0 ? (

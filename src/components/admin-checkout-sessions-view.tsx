@@ -8,6 +8,7 @@ import { MetricCard } from "@/components/ui/metric-card";
 import { SectionCard } from "@/components/ui/section-card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { prisma } from "@/lib/prisma";
+import { TableReportButtons } from "@/components/table-report-buttons";
 
 const PAGE_SIZE = 10;
 
@@ -99,9 +100,12 @@ export async function AdminCheckoutSessionsView({
               Sigue el estado del cobro, el monto a cobrar y el crédito a favor aplicado.
             </p>
           </div>
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">
-            {totalCheckoutSessions} registros
-          </span>
+          <div className="flex items-center gap-3">
+            <TableReportButtons role="admin" section="checkouts" />
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">
+              {totalCheckoutSessions} registros
+            </span>
+          </div>
         </div>
 
         <div className="mt-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
