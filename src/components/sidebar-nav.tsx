@@ -62,10 +62,10 @@ export function SidebarNav({
             href={item.href}
             aria-current={isActive ? "page" : undefined}
             onClick={onNavigate}
-            className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${
+            className={`block rounded-lg px-4 py-3 text-sm font-medium transition ${
               isActive
-                ? "bg-sky-50 text-sky-900 shadow-sm ring-1 ring-sky-200"
-                : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+                ? "bg-primary/5 text-primary border border-primary/15 font-semibold shadow-xs"
+                : "text-slate-gray hover:bg-slate-gray/5 hover:text-primary"
             }`}
           >
             {collapsed ? (

@@ -101,9 +101,9 @@ export function PoolsClient({ pools }: { pools: EligiblePool[] }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="rounded-xl border border-outline-custom bg-white p-6 shadow-sm">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-700">Herramientas Demo</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Herramientas Demo</p>
           <h3 className="text-2xl font-bold text-slate-900 mt-1">Simular cierre T-1h</h3>
           <p className="mt-2 text-sm text-slate-600">
             Seleccioná un viaje (pool) con pagos confirmados para forzar el cierre una hora antes de la salida, calcular su precio final y devolver saldos a favor cuando corresponda.
@@ -111,7 +111,7 @@ export function PoolsClient({ pools }: { pools: EligiblePool[] }) {
         </div>
 
         {pools.length === 0 ? (
-          <div className="mt-6 rounded-2xl border border-slate-100 bg-slate-50 p-6 text-center text-slate-500 text-sm">
+          <div className="mt-6 rounded-xl border border-outline-custom bg-surface p-6 text-center text-slate-500 text-sm">
             Todavía no hay pools con pagos confirmados para procesar. Primero generá un checkout y completá un pago de prueba desde la sección del pasajero.
           </div>
         ) : (
@@ -130,7 +130,7 @@ export function PoolsClient({ pools }: { pools: EligiblePool[] }) {
                     setResult(null);
                     setErrorMsg(null);
                   }}
-                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 p-3.5 text-sm text-slate-800 focus:border-sky-500 focus:bg-white focus:outline-none transition duration-150"
+                  className="mt-2 w-full rounded-lg border border-outline-custom bg-surface p-3.5 text-sm text-primary focus:border-primary focus:bg-white focus:outline-none transition duration-150"
                 >
                   <option value="">-- Elige un pool disponible --</option>
                   {pools.map((pool) => (
@@ -152,10 +152,10 @@ export function PoolsClient({ pools }: { pools: EligiblePool[] }) {
                         type="button"
                         id="reason-locked"
                         onClick={() => setReason("POOL_LOCKED")}
-                        className={`rounded-2xl border py-3 text-center text-xs font-bold transition duration-150 cursor-pointer ${
+                        className={`rounded-lg border py-3 text-center text-xs font-bold transition duration-150 cursor-pointer ${
                           reason === "POOL_LOCKED"
-                            ? "border-sky-500 bg-sky-50/50 text-sky-800"
-                            : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                            ? "border-primary bg-primary/5 text-primary"
+                            : "border-outline-custom bg-white text-slate-gray hover:bg-surface"
                         }`}
                       >
                         Cierre de Ocupación Normal
@@ -164,10 +164,10 @@ export function PoolsClient({ pools }: { pools: EligiblePool[] }) {
                         type="button"
                         id="reason-no-driver"
                         onClick={() => setReason("NO_DRIVER_ASSIGNED")}
-                        className={`rounded-2xl border py-3 text-center text-xs font-bold transition duration-150 cursor-pointer ${
+                        className={`rounded-lg border py-3 text-center text-xs font-bold transition duration-150 cursor-pointer ${
                           reason === "NO_DRIVER_ASSIGNED"
-                            ? "border-sky-500 bg-sky-50/50 text-sky-800"
-                            : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                            ? "border-primary bg-primary/5 text-primary"
+                            : "border-outline-custom bg-white text-slate-gray hover:bg-surface"
                         }`}
                       >
                         Sin Conductor Asignado
@@ -181,10 +181,10 @@ export function PoolsClient({ pools }: { pools: EligiblePool[] }) {
                       id="btn-simulate-closure"
                       onClick={handleSimulate}
                       disabled={isPending || selectedPool.hasAdjustment}
-                      className={`w-full rounded-full py-3.5 text-sm font-bold text-white shadow-lg transition duration-200 cursor-pointer ${
+                      className={`w-full rounded-lg py-3.5 text-sm font-bold text-white shadow-lg transition duration-200 cursor-pointer ${
                         selectedPool.hasAdjustment
-                          ? "bg-slate-350 cursor-not-allowed shadow-none"
-                          : "bg-sky-600 shadow-sky-600/15 hover:bg-sky-500 hover:scale-[1.01] active:scale-[0.99]"
+                          ? "bg-slate-300 cursor-not-allowed shadow-none"
+                          : "bg-primary shadow-primary/10 hover:bg-primary-hover hover:scale-[1.01] active:scale-[0.99]"
                       }`}
                     >
                       {isPending ? "Procesando Simulación..." : selectedPool.hasAdjustment ? "Cierre ya procesado" : "Simular cierre T-1h"}
@@ -195,7 +195,7 @@ export function PoolsClient({ pools }: { pools: EligiblePool[] }) {
             </div>
 
             {/* Info Summary Column */}
-            <div className="flex flex-col justify-between rounded-2xl border border-slate-100 bg-slate-50/60 p-5">
+            <div className="flex flex-col justify-between rounded-xl border border-outline-custom bg-surface p-5">
               {selectedPool ? (
                 <div className="space-y-4">
                   <h4 className="text-sm font-bold text-slate-800 border-b border-slate-200/50 pb-2">
@@ -255,7 +255,7 @@ export function PoolsClient({ pools }: { pools: EligiblePool[] }) {
                     )}
                   </div>
 
-                  <div className="rounded-xl border border-amber-100 bg-amber-50/70 p-3.5 text-xs text-amber-800 leading-relaxed">
+                  <div className="rounded-xl border border-warning-amber/15 bg-warning-light p-3.5 text-xs text-warning-amber leading-relaxed">
                     <div className="flex gap-2">
                       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" className="h-4.5 w-4.5 shrink-0 mt-0.5">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -283,7 +283,7 @@ export function PoolsClient({ pools }: { pools: EligiblePool[] }) {
 
       {/* Error Message banner */}
       {errorMsg && (
-        <div id="sim-error-banner" className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-800 animate-in fade-in duration-200">
+        <div id="sim-error-banner" className="rounded-xl border border-error-red/15 bg-error-light p-4 text-sm font-semibold text-error-red animate-in fade-in duration-200">
           <div className="flex gap-2.5">
             <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5 shrink-0">
               <path strokeLinecap="round" strokeLinejoin="round" d="M10 14h.01M10 10V6m0 12a8 8 0 100-16 8 8 0 000 16z" />
@@ -295,37 +295,37 @@ export function PoolsClient({ pools }: { pools: EligiblePool[] }) {
 
       {/* Result Cards Display on Success */}
       {result && (
-        <section id="sim-success-card" className="rounded-[24px] border border-emerald-200 bg-emerald-50/30 p-6 shadow-sm animate-in zoom-in-95 duration-200">
-          <div className="flex items-center gap-3 border-b border-emerald-100 pb-4">
-            <div className="rounded-full bg-emerald-100 p-2 text-emerald-700">
+        <section id="sim-success-card" className="rounded-xl border border-success-emerald/20 bg-success-light/30 p-6 shadow-sm animate-in zoom-in-95 duration-200">
+          <div className="flex items-center gap-3 border-b border-success-emerald/15 pb-4">
+            <div className="rounded-full bg-success-light p-2 text-success-emerald border border-success-emerald/15">
               <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-5 w-5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
             </div>
             <div>
-              <h4 className="text-lg font-bold text-emerald-900">Simulación Completada</h4>
-              <p className="text-xs text-emerald-700 font-medium mt-0.5">
+              <h4 className="text-lg font-bold text-success-emerald">Simulación Completada</h4>
+              <p className="text-xs text-success-emerald font-medium mt-0.5">
                 Precio final calculado correctamente. Se actualizaron los cargos del pool y se generaron créditos a favor cuando correspondía.
               </p>
             </div>
           </div>
-
+ 
           <div className="mt-5 grid gap-4 md:grid-cols-3">
-            <div className="bg-white rounded-2xl border border-emerald-100/50 p-4 shadow-2xs">
+            <div className="bg-white rounded-xl border border-success-emerald/15 p-4 shadow-2xs">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Viaje (Pool)</span>
               <span className="text-base font-bold text-slate-800 mt-1 block truncate" title={result.pool_id}>{result.pool_id}</span>
             </div>
-            <div className="bg-white rounded-2xl border border-emerald-100/50 p-4 shadow-2xs">
+            <div className="bg-white rounded-xl border border-success-emerald/15 p-4 shadow-2xs">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Tarifa Final Calculada</span>
-              <span className="text-base font-bold text-emerald-600 mt-1 block">{formatMoney(result.final_price, result.currency)}</span>
+              <span className="text-base font-bold text-success-emerald mt-1 block">{formatMoney(result.final_price, result.currency)}</span>
             </div>
-            <div className="bg-white rounded-2xl border border-emerald-100/50 p-4 shadow-2xs">
+            <div className="bg-white rounded-xl border border-success-emerald/15 p-4 shadow-2xs">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Pasajeros Procesados</span>
               <span className="text-base font-bold text-slate-800 mt-1 block">{result.processed_reservations}</span>
             </div>
           </div>
-
-          <div className="mt-6 bg-white rounded-2xl border border-emerald-100/60 overflow-hidden shadow-2xs">
+ 
+          <div className="mt-6 bg-white rounded-xl border border-success-emerald/15 overflow-hidden shadow-2xs">
             <h5 className="bg-slate-50 border-b border-emerald-100 px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600">
               Desglose de Créditos Generados
             </h5>

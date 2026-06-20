@@ -78,23 +78,23 @@ export function CheckoutLayout({
   children: React.ReactNode;
 }) {
   return (
-    <main className="min-h-screen px-4 py-6 text-slate-950 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
+    <main className="min-h-screen px-4 py-6 text-primary sm:px-6 sm:py-8 lg:px-8 lg:py-10">
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
-        <SectionCard className="overflow-hidden bg-linear-to-br from-white via-white to-sky-50/50">
+        <SectionCard className="overflow-hidden bg-linear-to-br from-white via-white to-info-light/35">
           <div className="flex flex-col gap-4">
             <div className="flex flex-wrap items-center gap-3 text-sm">
-              <Link href="/rider" className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 font-medium text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-950 transition">
+              <Link href="/rider" className="inline-flex items-center justify-center rounded-lg border border-primary/20 bg-white px-4 py-2 font-medium text-primary shadow-sm hover:border-primary/50 hover:bg-primary/5 transition">
                 Volver a Rider
               </Link>
-              <Link href="/rider/checkouts" className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 font-medium text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-950 transition">
+              <Link href="/rider/checkouts" className="inline-flex items-center justify-center rounded-lg border border-primary/20 bg-white px-4 py-2 font-medium text-primary shadow-sm hover:border-primary/50 hover:bg-primary/5 transition">
                 Ver mis pagos
               </Link>
             </div>
 
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-sky-600">Mi Pago de Viaje</p>
-              <h1 className="mt-2 text-2xl font-bold text-slate-900 sm:text-3xl">{title}</h1>
-              <p className="mt-2 text-sm text-slate-600 leading-relaxed">{description}</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-primary">Mi Pago de Viaje</p>
+              <h1 className="mt-2 text-2xl font-bold text-primary sm:text-3xl">{title}</h1>
+              <p className="mt-2 text-sm text-slate-gray leading-relaxed">{description}</p>
             </div>
           </div>
         </SectionCard>
@@ -113,30 +113,30 @@ export function CheckoutSummaryCard({ data }: { data: CheckoutViewData }) {
         {copy.description}
       </AlertBanner>
 
-      <div className="mt-6 flex flex-col gap-2 border-b border-slate-100 pb-4">
+      <div className="mt-6 flex flex-col gap-2 border-b border-outline-custom pb-4">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-xl font-bold text-slate-900">Viaje #{data.checkout.reservationId}</h2>
+          <h2 className="text-xl font-bold text-primary">Viaje #{data.checkout.reservationId}</h2>
           <StatusBadge value={data.checkout.status} label={humanizeStatus(data.checkout.status)} />
         </div>
-        <p className="text-xs text-slate-400">Servicio de transporte programado</p>
+        <p className="text-xs text-slate-gray">Servicio de transporte programado</p>
       </div>
 
-      <div className="mt-6 bg-slate-50/70 border border-slate-100 rounded-2xl p-5">
-        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Detalle del pago</h3>
-        <dl className="space-y-3.5 text-sm text-slate-600">
+      <div className="mt-6 bg-surface border border-outline-custom rounded-xl p-5">
+        <h3 className="text-xs font-bold text-slate-gray uppercase tracking-wider mb-3">Detalle del pago</h3>
+        <dl className="space-y-3.5 text-sm text-slate-gray">
           <div className="flex justify-between">
-            <dt className="font-medium text-slate-500">Monto del viaje:</dt>
-            <dd className="font-semibold text-slate-800">{formatMoney(data.checkout.maxPrice, data.checkout.currency)}</dd>
+            <dt className="font-medium text-slate-gray">Monto del viaje:</dt>
+            <dd className="font-semibold text-primary">{formatMoney(data.checkout.maxPrice, data.checkout.currency)}</dd>
           </div>
           {data.checkout.creditApplied > 0 && (
-            <div className="flex justify-between text-sky-700">
+            <div className="flex justify-between text-primary">
               <dt className="font-medium">Saldo a favor aplicado:</dt>
               <dd className="font-bold">-{formatMoney(data.checkout.creditApplied, data.checkout.currency)}</dd>
             </div>
           )}
-          <div className="flex justify-between border-t border-slate-200/60 pt-3 text-base">
-            <dt className="font-bold text-slate-900">Total a pagar:</dt>
-            <dd className="font-extrabold text-slate-950 text-lg">{formatMoney(data.checkout.amountToCharge, data.checkout.currency)}</dd>
+          <div className="flex justify-between border-t border-outline-custom pt-3 text-base">
+            <dt className="font-bold text-primary">Total a pagar:</dt>
+            <dd className="font-extrabold text-primary text-lg">{formatMoney(data.checkout.amountToCharge, data.checkout.currency)}</dd>
           </div>
         </dl>
       </div>
@@ -186,15 +186,15 @@ export function CheckoutResultActions({
       <div className="flex flex-col gap-3">
         <Link
           href={demoRiderUrl}
-          className="inline-flex w-full items-center justify-center rounded-full bg-slate-950 px-5 py-3 text-center text-sm font-semibold text-white shadow-md hover:bg-slate-800 transition duration-200 cursor-pointer"
+          className="inline-flex w-full items-center justify-center rounded-lg bg-primary px-5 py-3 text-center text-sm font-semibold text-white shadow-md hover:bg-primary-hover transition duration-200 cursor-pointer"
         >
           Volver a Rider
         </Link>
-        
+
         {riderAppUrl && (
           <Link
             href={riderAppUrl}
-            className="inline-flex w-full items-center justify-center rounded-full bg-sky-500 px-5 py-3 text-center text-sm font-bold text-white shadow-md hover:bg-sky-400 transition duration-200 cursor-pointer"
+            className="inline-flex w-full items-center justify-center rounded-lg bg-primary px-5 py-3 text-center text-sm font-bold text-white shadow-md hover:bg-primary-hover transition duration-200 cursor-pointer"
           >
             Volver a la App del Pasajero
           </Link>
@@ -202,7 +202,7 @@ export function CheckoutResultActions({
 
         <Link
           href="/rider/checkouts"
-          className="inline-flex w-full items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-3 text-center text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition duration-200"
+          className="inline-flex w-full items-center justify-center rounded-lg border border-primary/25 bg-white px-5 py-3 text-center text-sm font-semibold text-primary shadow-sm hover:border-primary/50 hover:bg-primary/5 transition duration-200"
         >
           Ver historial de pagos
         </Link>

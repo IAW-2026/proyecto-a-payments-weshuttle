@@ -17,7 +17,7 @@ export default async function RiderBalancePage() {
         <RiderHero title="Entiende cuanto credito tienes disponible." description="Esta seccion concentra el saldo a favor y los movimientos mas relevantes sin mezclarlo con otras herramientas del rider." />
 
         <SectionCard>
-          <div className="rounded-[24px] border border-sky-100 bg-linear-to-br from-sky-50 to-white p-5">
+          <div className="rounded-xl border border-primary/10 bg-linear-to-br from-primary/5 to-white p-5">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700">Saldo a favor</p>
             <p className="mt-3 text-3xl font-bold text-slate-900">{formatMoney(data.availableCredit, data.creditAccount?.currency ?? "ARS")}</p>
             <p className="mt-2 text-sm text-slate-600">Se aplica antes de cobrar por Mercado Pago.</p>

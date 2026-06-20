@@ -53,10 +53,10 @@ export default async function RiderReservationsPage({ searchParams }: PageProps)
             </div>
           ) : (
             <div className="mt-6 space-y-6">
-              
+
               {/* Resumen del Pago */}
               {data.latestCheckout ? (
-                <div className="rounded-[24px] border border-slate-200 bg-slate-50/50 p-5">
+                <div className="rounded-xl border border-outline-custom bg-surface p-5">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between border-b border-slate-200/50 pb-3">
                     <div>
                       <h4 className="text-base font-bold text-slate-900">Resumen del Pago</h4>
@@ -92,7 +92,7 @@ export default async function RiderReservationsPage({ searchParams }: PageProps)
 
               {/* Resultado del Cobro */}
               {data.latestCharge ? (
-                <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="rounded-xl border border-outline-custom bg-white p-5 shadow-sm">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between border-b border-slate-200/50 pb-3">
                     <div>
                       <h4 className="text-base font-bold text-slate-900">Resultado del Cobro</h4>

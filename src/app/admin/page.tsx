@@ -85,7 +85,7 @@ export default async function AdminHomePage() {
           title="Vista general del negocio de pagos"
           description="Esta pantalla resume la recaudación global, saldos y pagos para una lectura y control rápidos del estado de la plataforma."
           actions={
-            <div className="flex items-center gap-3 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
+            <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
               <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-500"></span>
               Sistema en línea
             </div>
@@ -110,14 +110,14 @@ export default async function AdminHomePage() {
                 <h3 className="text-xl font-semibold text-slate-900">Últimos cobros aprobados</h3>
                 <p className="mt-2 text-sm text-slate-600">Cobros acreditados recientemente a pasajeros.</p>
               </div>
-              <Link href="/admin/checkouts" className="text-sm font-semibold text-sky-700 hover:underline">
+              <Link href="/admin/checkouts" className="text-sm font-semibold text-primary hover:underline">
                 Ver control de pagos
               </Link>
             </div>
 
             <div className="mt-6 space-y-3">
               {recentCharges.map((charge) => (
-                <div key={charge.id} className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-4">
+                <div key={charge.id} className="rounded-xl border border-outline-custom bg-surface p-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <p className="font-semibold text-slate-900">Cobro aprobado</p>
@@ -151,14 +151,14 @@ export default async function AdminHomePage() {
                 <h3 className="text-xl font-semibold text-slate-900">Cálculos de tarifas recientes</h3>
                 <p className="mt-2 text-sm text-slate-600">Últimas tarifas finales definidas para viajes completados.</p>
               </div>
-              <Link href="/admin/pools" className="text-sm font-semibold text-sky-700 hover:underline">
+              <Link href="/admin/pools" className="text-sm font-semibold text-primary hover:underline">
                 Ver cierre de viajes
               </Link>
             </div>
 
             <div className="mt-6 space-y-3">
               {recentFinalizationJobs.map((job) => (
-                <div key={job.id} className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-4">
+                <div key={job.id} className="rounded-xl border border-outline-custom bg-surface p-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <p className="font-semibold text-slate-900">Tarifa final calculada</p>
@@ -196,14 +196,14 @@ export default async function AdminHomePage() {
               <h3 className="text-xl font-semibold text-slate-900">Pagos recientes a choferes</h3>
               <p className="mt-2 text-sm text-slate-600">Ganancias transferidas recientemente a conductores.</p>
             </div>
-            <Link href="/admin/settlements" className="text-sm font-semibold text-sky-700 hover:underline">
+            <Link href="/admin/settlements" className="text-sm font-semibold text-primary hover:underline">
               Ver pagos a choferes
             </Link>
           </div>
 
           <div className="mt-6 space-y-3">
             {recentSettlements.map((settlement) => (
-              <div key={settlement.id} className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-4">
+              <div key={settlement.id} className="rounded-xl border border-outline-custom bg-surface p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <p className="font-semibold text-slate-900">Transferencia enviada</p>

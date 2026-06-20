@@ -42,7 +42,7 @@ export default async function DriverAccountPage({ searchParams }: PageProps) {
           </div>
 
           {data.payoutAccount ? (
-            <div className="mt-6 rounded-[24px] border border-slate-200 bg-slate-50/80 p-5">
+            <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50/80 p-5">
               <dl className="grid gap-4 text-sm text-slate-600 sm:grid-cols-2">
                 <div>
                   <dt className="font-semibold text-slate-900">Medio de cobro</dt>
@@ -68,7 +68,7 @@ export default async function DriverAccountPage({ searchParams }: PageProps) {
             </div>
           )}
 
-          <form action={savePayoutAccountAction} className="mt-6 grid gap-4 rounded-[26px] border border-slate-200 bg-white p-5 shadow-sm">
+          <form action={savePayoutAccountAction} className="mt-6 grid gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <input type="hidden" name="path" value="/driver/account" />
             <DriverField
               label="CBU, CVU o ID de Mercado Pago"
@@ -85,7 +85,7 @@ export default async function DriverAccountPage({ searchParams }: PageProps) {
               placeholder="Ej: Mi CVU de cobros"
               helpText="Un nombre sencillo para reconocer esta cuenta fácilmente."
             />
-            <button type="submit" className="rounded-full bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800">
+             <button type="submit" className="rounded-lg bg-primary px-4 py-3 text-sm font-bold text-white hover:bg-primary-hover shadow-md shadow-primary/10 transition cursor-pointer">
               Guardar datos de cobro
             </button>
           </form>

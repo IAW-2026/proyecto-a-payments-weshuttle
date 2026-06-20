@@ -110,21 +110,26 @@ export async function calculateCreditAdjustments(
   const startedAt = new Date();
   const basePrice =
     input.reason === "POOL_LOCKED"
-      ? decimalToNumber(pricingRule!.basePrice)
+      ? manifest.passengers.reduce((sum, p) => sum + p.maxPrice, 0)
       : Math.max(...manifest.passengers.map((passenger) => passenger.maxPrice));
 
   const finalPriceForPool =
     input.reason === "POOL_LOCKED"
       ? roundMoney(
-          Math.max(
-            basePrice -
-              calculateDiscountAmount(
-                basePrice,
-                pricingRule!.discountType,
-                decimalToNumber(pricingRule!.discountValue),
-              ),
-            0,
-          ),
+          manifest.passengers.reduce((sum, p) => {
+            const finalPPrice = roundMoney(
+              Math.max(
+                p.maxPrice -
+                  calculateDiscountAmount(
+                    p.maxPrice,
+                    pricingRule!.discountType,
+                    decimalToNumber(pricingRule!.discountValue),
+                  ),
+                0,
+              )
+            );
+            return sum + finalPPrice;
+          }, 0)
         )
       : 0;
 

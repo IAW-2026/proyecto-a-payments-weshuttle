@@ -1,8 +1,8 @@
 const TONE_CLASSES = {
-  info: "border-sky-200 bg-sky-50 text-sky-900",
-  success: "border-emerald-200 bg-emerald-50 text-emerald-900",
-  warning: "border-amber-200 bg-amber-50 text-amber-900",
-  danger: "border-rose-200 bg-rose-50 text-rose-900",
+  info: "border-primary/10 bg-info-light text-primary",
+  success: "border-success-emerald/15 bg-success-light text-success-emerald",
+  warning: "border-warning-amber/15 bg-warning-light text-warning-amber",
+  danger: "border-error-red/15 bg-error-light text-error-red",
 } as const;
 
 export function AlertBanner({
@@ -18,7 +18,7 @@ export function AlertBanner({
     <div
       role="status"
       aria-live="polite"
-      className={`rounded-2xl border px-4 py-3 text-sm shadow-sm ${TONE_CLASSES[tone]}`}
+      className={`rounded-xl border px-4 py-3 text-sm shadow-sm ${TONE_CLASSES[tone]}`}
     >
       {title ? <p className="font-semibold">{title}</p> : null}
       <div className={title ? "mt-1" : ""}>{children}</div>

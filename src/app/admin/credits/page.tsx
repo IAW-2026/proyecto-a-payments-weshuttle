@@ -73,7 +73,7 @@ export default async function AdminCreditsPage() {
                       : movement.type;
 
                 return (
-                  <article key={movement.id} className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-4">
+                  <article key={movement.id} className="rounded-xl border border-outline-custom bg-surface p-4">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div>
                         <p className="font-semibold text-slate-900">{movementLabel}</p>

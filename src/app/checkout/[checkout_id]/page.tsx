@@ -31,8 +31,8 @@ export default async function CheckoutPage({ params }: PageProps) {
 
   const canPayWithMercadoPago = Boolean(
     data.checkout.mercadoPagoInitPoint &&
-      data.checkout.amountToCharge > 0 &&
-      data.checkout.status === "CREATED",
+    data.checkout.amountToCharge > 0 &&
+    data.checkout.status === "CREATED",
   );
 
   return (
@@ -43,8 +43,8 @@ export default async function CheckoutPage({ params }: PageProps) {
       <CheckoutSummaryCard data={data} />
 
       <SectionCard>
-        <h2 className="text-lg font-bold text-slate-900">Métodos de pago disponibles</h2>
-        <p className="mt-1 text-xs text-slate-500">
+        <h2 className="text-lg font-bold text-primary">Métodos de pago disponibles</h2>
+        <p className="mt-1 text-xs text-slate-gray">
           Selecciona tu método de pago preferido para completar la transacción.
         </p>
 
@@ -55,7 +55,7 @@ export default async function CheckoutPage({ params }: PageProps) {
             </AlertBanner>
             <Link
               href={`/rider?payment=success&checkout_id=${checkoutId}`}
-              className="inline-flex items-center justify-center rounded-full bg-slate-950 px-6 py-3 text-sm font-semibold text-white hover:bg-slate-800 transition hover:scale-[1.01] active:scale-[0.99] duration-200"
+              className="inline-flex items-center justify-center rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-white hover:bg-primary-hover transition hover:scale-[1.01] active:scale-[0.99] duration-200"
             >
               Confirmar y Volver a Rider
             </Link>
@@ -66,13 +66,13 @@ export default async function CheckoutPage({ params }: PageProps) {
               <div className="flex flex-col gap-3">
                 <Link
                   href={data.checkout.mercadoPagoInitPoint!}
-                  className="inline-flex items-center justify-center rounded-full bg-sky-500 px-6 py-3.5 text-base font-bold text-white shadow-lg shadow-sky-500/15 hover:bg-sky-400 hover:scale-[1.01] active:scale-[0.99] transition duration-200"
+                  className="inline-flex items-center justify-center rounded-lg bg-primary px-6 py-3.5 text-base font-bold text-white shadow-lg shadow-primary/15 hover:bg-primary-hover hover:scale-[1.01] active:scale-[0.99] transition duration-200"
                 >
                   Pagar con Mercado Pago
                 </Link>
                 <Link
                   href="/rider"
-                  className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-medium text-slate-700 shadow-sm hover:border-slate-400 hover:text-slate-950 transition"
+                  className="inline-flex items-center justify-center rounded-lg border border-primary/25 bg-white px-5 py-3 text-sm font-medium text-primary shadow-sm hover:border-primary/50 hover:bg-primary/5 transition"
                 >
                   Volver a Rider
                 </Link>
@@ -84,7 +84,7 @@ export default async function CheckoutPage({ params }: PageProps) {
                 </AlertBanner>
                 <Link
                   href="/rider"
-                  className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-medium text-slate-700 shadow-sm hover:border-slate-400 hover:text-slate-950 transition"
+                  className="inline-flex items-center justify-center rounded-lg border border-primary/25 bg-white px-5 py-3 text-sm font-medium text-primary shadow-sm hover:border-primary/50 hover:bg-primary/5 transition"
                 >
                   Volver a Rider
                 </Link>
@@ -103,22 +103,22 @@ export default async function CheckoutPage({ params }: PageProps) {
                   </AlertBanner>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <form action={resolveDemoCheckoutAction.bind(null, checkoutId, "PAID")}>
-                      <button type="submit" className="w-full rounded-full bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 cursor-pointer">
+                      <button type="submit" className="w-full rounded-lg bg-success-emerald px-4 py-3 text-sm font-semibold text-white transition hover:bg-success-emerald/90 cursor-pointer">
                         Simular Pago Aprobado (PAID)
                       </button>
                     </form>
                     <form action={resolveDemoCheckoutAction.bind(null, checkoutId, "DENIED")}>
-                      <button type="submit" className="w-full rounded-full bg-rose-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-rose-500 cursor-pointer">
+                      <button type="submit" className="w-full rounded-lg bg-error-red px-4 py-3 text-sm font-semibold text-white transition hover:bg-error-red/90 cursor-pointer">
                         Simular Pago Rechazado (DENIED)
                       </button>
                     </form>
                     <form action={resolveDemoCheckoutAction.bind(null, checkoutId, "CANCELED")}>
-                      <button type="submit" className="w-full rounded-full bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 cursor-pointer">
+                      <button type="submit" className="w-full rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-hover cursor-pointer">
                         Simular Pago Cancelado (CANCELED)
                       </button>
                     </form>
                     <form action={resolveDemoCheckoutAction.bind(null, checkoutId, "EXPIRED")}>
-                      <button type="submit" className="w-full rounded-full border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-900 hover:text-slate-900 cursor-pointer">
+                      <button type="submit" className="w-full rounded-lg border border-primary/25 bg-white px-4 py-3 text-sm font-semibold text-primary transition hover:bg-primary/5 hover:border-primary/50 cursor-pointer">
                         Simular Pago Expirado (EXPIRED)
                       </button>
                     </form>

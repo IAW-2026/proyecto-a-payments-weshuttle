@@ -101,7 +101,7 @@ export function AdminNotificationTracker() {
           toast.visible && (
             <div
               key={toast.id}
-              className="flex w-full flex-col overflow-hidden rounded-[24px] border border-sky-100 bg-white/95 p-4 shadow-xl backdrop-blur-md transition-all duration-300 hover:shadow-2xl animate-in slide-in-from-top-4"
+              className="flex w-full flex-col overflow-hidden rounded-xl border border-outline-custom bg-white/95 p-4 shadow-xl backdrop-blur-md transition-all duration-300 hover:shadow-2xl animate-in slide-in-from-top-4"
               role="alert"
             >
               <div className="flex items-start gap-3">
