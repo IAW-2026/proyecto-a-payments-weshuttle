@@ -1,9 +1,9 @@
 const TONES = {
-  sky: "border-sky-100 bg-linear-to-br from-sky-50 to-white text-sky-700",
-  emerald: "border-emerald-100 bg-linear-to-br from-emerald-50 to-white text-emerald-700",
-  amber: "border-amber-100 bg-linear-to-br from-amber-50 to-white text-amber-700",
-  rose: "border-rose-100 bg-linear-to-br from-rose-50 to-white text-rose-700",
-  slate: "border-slate-200 bg-slate-50/80 text-slate-700",
+  sky: "border-primary/15 bg-linear-to-br from-info-light to-white text-primary",
+  emerald: "border-success-emerald/15 bg-linear-to-br from-success-light to-white text-success-emerald",
+  amber: "border-warning-amber/15 bg-linear-to-br from-warning-light to-white text-warning-amber",
+  rose: "border-error-red/15 bg-linear-to-br from-error-light to-white text-error-red",
+  slate: "border-outline-custom bg-surface text-slate-gray",
 } as const;
 
 export function MetricCard({
@@ -18,10 +18,10 @@ export function MetricCard({
   tone?: keyof typeof TONES;
 }) {
   return (
-    <div className={`rounded-[24px] border p-5 ${TONES[tone]}`}>
+    <div className={`rounded-xl border p-5 ${TONES[tone]}`}>
       <p className="text-xs font-semibold uppercase tracking-[0.18em]">{title}</p>
-      <p className="mt-3 text-2xl font-bold text-slate-900 sm:text-3xl">{value}</p>
-      {description ? <p className="mt-2 text-sm text-slate-600">{description}</p> : null}
+      <p className="mt-3 text-2xl font-bold text-primary sm:text-3xl">{value}</p>
+      {description ? <p className="mt-2 text-sm text-slate-gray">{description}</p> : null}
     </div>
   );
 }

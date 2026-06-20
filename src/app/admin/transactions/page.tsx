@@ -90,7 +90,7 @@ export default async function AdminTransactionsPage({ searchParams }: PageProps)
           <>
             <div className="mt-6 space-y-3 lg:hidden">
               {charges.map((charge) => (
-                <article key={charge.id} className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-4">
+                <article key={charge.id} className="rounded-xl border border-outline-custom bg-surface p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="font-semibold text-slate-900">Reserva {charge.reservationId}</p>

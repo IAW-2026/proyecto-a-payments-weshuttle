@@ -83,6 +83,10 @@ export const riderClient = {
     });
 
     if (!response.ok) {
+      if (response.status === 404) {
+        console.warn(`riderClient.getPoolPassengers: Pool ${poolId} not found on Rider App (404).`);
+        return null;
+      }
       const errorText = await response.text();
       console.error(`riderClient.getPoolPassengers failed: [${response.status}] ${errorText}`);
       throw new Error(`Rider App passenger lookup failed: ${response.statusText}`);

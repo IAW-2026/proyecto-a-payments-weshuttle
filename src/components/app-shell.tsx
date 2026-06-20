@@ -22,7 +22,7 @@ function MenuButton({
       type="button"
       onClick={onClick}
       aria-label={expanded ? "Colapsar navegacion" : "Expandir navegacion"}
-      className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:border-slate-900 hover:text-slate-900"
+      className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-outline-custom bg-white text-slate-gray shadow-sm transition hover:border-primary hover:text-primary"
     >
       <span className="sr-only">{expanded ? "Colapsar" : "Expandir"}</span>
       <svg viewBox="0 0 20 20" fill="none" className="h-5 w-5" aria-hidden="true">
@@ -81,19 +81,19 @@ export function AppShell({
             </div>
 
             <Link href={roleHomeHref} className="flex items-center gap-2.5 hover:opacity-90 transition">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-700 text-white shadow-md shadow-sky-200">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-white shadow-sm shadow-primary/10">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-5 w-5">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125a1.125 1.125 0 0 0 1.125-1.125V9.75M3.82 14.5a2.25 2.25 0 0 1-2.07-1.35m15 1.35a2.25 2.25 0 0 1-2.07-1.35m-12.93-.15h12.93M17 14.25v-1.621a4.5 4.5 0 0 0-.818-2.562L15 7.5M8 7.5h7M4 9.75H2" />
                 </svg>
               </div>
-              <span className="text-lg font-bold tracking-tight text-slate-900">
-                WeShuttle <span className="text-sky-700">Payments</span>
+              <span className="text-lg font-bold tracking-tight text-primary">
+                WeShuttle <span className="text-primary font-semibold">Payments</span>
               </span>
             </Link>
           </div>
 
           <div className="flex flex-wrap items-center gap-3 lg:justify-end">
-            <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700">
+            <span className="rounded-full border border-outline-custom bg-surface px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
               Rol {role}
             </span>
             <UserButton />
@@ -104,21 +104,19 @@ export function AppShell({
       {isMobileNavOpen ? <div className="fixed inset-0 z-40 bg-slate-950/20 lg:hidden" onClick={() => setIsMobileNavOpen(false)} aria-hidden="true" /> : null}
 
       <div
-        className={`mx-auto grid w-full max-w-7xl gap-4 px-4 py-4 sm:gap-6 sm:px-6 sm:py-6 lg:px-8 ${
-          isSidebarCollapsed ? "lg:grid-cols-[minmax(0,1fr)]" : "lg:grid-cols-[260px_minmax(0,1fr)]"
-        }`}
+        className={`mx-auto grid w-full max-w-7xl gap-4 px-4 py-4 sm:gap-6 sm:px-6 sm:py-6 lg:px-8 ${isSidebarCollapsed ? "lg:grid-cols-[minmax(0,1fr)]" : "lg:grid-cols-[260px_minmax(0,1fr)]"
+          }`}
       >
         <aside
-          className={`fixed inset-x-4 top-[5.5rem] z-50 -translate-y-4 opacity-0 transition-all lg:sticky lg:top-[96px] lg:self-start lg:z-auto lg:translate-y-0 lg:opacity-100 lg:px-0 lg:py-0 lg:h-fit ${
-            isMobileNavOpen ? "translate-y-0 opacity-100" : "pointer-events-none lg:pointer-events-auto"
-          }`}
+          className={`fixed inset-x-4 top-[5.5rem] z-50 -translate-y-4 opacity-0 transition-all lg:sticky lg:top-[96px] lg:self-start lg:z-auto lg:translate-y-0 lg:opacity-100 lg:px-0 lg:py-0 lg:h-fit ${isMobileNavOpen ? "translate-y-0 opacity-100" : "pointer-events-none lg:pointer-events-auto"
+            }`}
         >
           <SectionCard className={`overflow-hidden p-4 ${isSidebarCollapsed ? "hidden lg:hidden" : ""}`}>
             <div className="mb-4 flex items-center justify-end gap-3 lg:hidden">
               <button
                 type="button"
                 onClick={() => setIsMobileNavOpen(false)}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm lg:hidden"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-outline-custom bg-white text-slate-gray shadow-sm lg:hidden"
                 aria-label="Cerrar navegacion"
               >
                 <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4" aria-hidden="true">

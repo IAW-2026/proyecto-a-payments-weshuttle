@@ -227,16 +227,19 @@ export async function getPoolPassengers(
   filter?: ExternalPoolPassengersFilter,
 ) {
   // If it is a demo pool ID, always return the local mock manifest immediately
-  if (poolId.startsWith("pool_demo_") && MOCK_MANIFESTS[poolId]) {
+  if (poolId.startsWith("pool_demo_")) {
     const manifest = MOCK_MANIFESTS[poolId];
-    return {
-      poolId: manifest.poolId,
-      passengers: matchesFilter(manifest, filter),
-    };
+    if (manifest) {
+      return {
+        poolId: manifest.poolId,
+        passengers: matchesFilter(manifest, filter),
+      };
+    }
+    // If it's a demo pool but not in mock manifests, bypass the remote client and fallback directly to database
   }
 
   // Attempt to call Rider App API
-  if (isRiderConfigured()) {
+  if (isRiderConfigured() && !poolId.startsWith("pool_demo_")) {
     try {
       const remoteManifest = await riderClient.getPoolPassengers(poolId, filter);
       if (remoteManifest) {

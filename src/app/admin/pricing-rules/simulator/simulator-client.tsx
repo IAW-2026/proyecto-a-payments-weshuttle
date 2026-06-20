@@ -18,6 +18,7 @@ type EstimateDetail = {
   base_price: number;
   distance_adjustment: number;
   distance_km: number;
+  price_per_km?: number;
   estimated_discount: number;
   discount_reason: string;
 };
@@ -39,7 +40,7 @@ const ORIGIN_PRESETS = [
   { name: "Preset: Vieytes 245", address: "Vieytes 245, Bahía Blanca", lat: -38.7164, lng: -62.2712 },
 ];
 
-export function PricingSimulatorClient({ destinations }: { destinations: MockDestination[] }) {
+export function PricingSimulatorClient({ destinations, pricePerKm }: { destinations: MockDestination[]; pricePerKm: number }) {
   const [isPending, startTransition] = useTransition();
 
   // Form State
@@ -182,7 +183,7 @@ export function PricingSimulatorClient({ destinations }: { destinations: MockDes
       <div className="flex justify-between items-center">
         <Link
           href="/admin/pricing-rules"
-          className="inline-flex items-center gap-2 rounded-full border border-slate-350 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:border-slate-900 transition"
+          className="inline-flex items-center gap-2 rounded-lg border border-primary/20 bg-white px-4 py-2 text-xs font-bold text-primary hover:border-primary/50 hover:bg-primary/5 transition"
         >
           <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
             <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
@@ -195,12 +196,12 @@ export function PricingSimulatorClient({ destinations }: { destinations: MockDes
         {/* Form panel */}
         <div className="lg:col-span-5 flex flex-col gap-4">
           <SectionCard>
-            <h3 className="text-xl font-bold text-slate-900 mb-4">Parámetros del Viaje</h3>
+            <h3 className="text-xl font-bold text-primary mb-4">Parámetros del Viaje</h3>
 
             <div className="space-y-4">
               {/* Destination */}
               <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 block">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-gray block">
                   Destino del Pool
                 </label>
                 <select
@@ -209,7 +210,7 @@ export function PricingSimulatorClient({ destinations }: { destinations: MockDes
                     setDestinationId(e.target.value);
                     setResult(null);
                   }}
-                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-800 focus:border-sky-500 focus:bg-white focus:outline-none transition"
+                  className="mt-2 w-full rounded-lg border border-outline-custom bg-surface p-3 text-sm text-primary focus:border-primary focus:bg-white focus:outline-none transition"
                 >
                   <option value="">-- Elige un destino --</option>
                   {destinations.map((d) => (
@@ -219,15 +220,15 @@ export function PricingSimulatorClient({ destinations }: { destinations: MockDes
                   ))}
                 </select>
                 {selectedDest && (
-                  <p className="mt-1.5 text-xs text-slate-400 font-mono">
+                  <p className="mt-1.5 text-xs text-slate-gray font-mono">
                     Coord. Destino: {selectedDest.lat}, {selectedDest.lng}
                   </p>
                 )}
               </div>
 
               {/* Presets and Geocoding */}
-              <div className="border-t border-slate-100 pt-4">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 block mb-2">
+              <div className="border-t border-outline-custom pt-4">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-gray block mb-2">
                   Ubicación de Origen
                 </label>
 
@@ -235,7 +236,7 @@ export function PricingSimulatorClient({ destinations }: { destinations: MockDes
                 <select
                   onChange={(e) => handlePresetSelect(e.target.value)}
                   defaultValue=""
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 p-2.5 text-xs text-slate-700 focus:border-sky-500 focus:bg-white focus:outline-none transition mb-3"
+                  className="w-full rounded-lg border border-outline-custom bg-surface p-2.5 text-xs text-primary focus:border-primary focus:bg-white focus:outline-none transition mb-3"
                 >
                   <option value="">-- Cargar un preset de origen --</option>
                   {ORIGIN_PRESETS.map((preset, idx) => (
@@ -252,7 +253,7 @@ export function PricingSimulatorClient({ destinations }: { destinations: MockDes
                     placeholder="Escribir dirección (ej. Vieytes 245)"
                     value={addressSearch}
                     onChange={(e) => setAddressSearch(e.target.value)}
-                    className="flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:border-sky-500 focus:bg-white focus:outline-none transition"
+                    className="flex-1 rounded-lg border border-outline-custom bg-surface px-3 py-2 text-xs text-primary placeholder-slate-400 focus:border-primary focus:bg-white focus:outline-none transition"
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
@@ -264,7 +265,7 @@ export function PricingSimulatorClient({ destinations }: { destinations: MockDes
                     type="button"
                     onClick={handleGeocode}
                     disabled={isGeocoding}
-                    className="rounded-2xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-bold text-sky-700 hover:bg-sky-100 transition duration-150 disabled:opacity-50 shrink-0 cursor-pointer"
+                    className="rounded-lg border border-primary/20 bg-white px-3 py-2 text-xs font-bold text-primary hover:border-primary/50 hover:bg-primary/5 transition duration-150 disabled:opacity-50 shrink-0 cursor-pointer"
                   >
                     {isGeocoding ? "Buscando..." : "Buscar"}
                   </button>
@@ -272,10 +273,10 @@ export function PricingSimulatorClient({ destinations }: { destinations: MockDes
 
                 {geocodingMsg && (
                   <div className={`mt-2 text-xs font-medium rounded-lg p-2 ${geocodingMsg.tone === "success"
-                      ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                      ? "bg-success-light text-success-emerald border border-success-emerald/15"
                       : geocodingMsg.tone === "danger"
-                        ? "bg-rose-50 text-rose-700 border border-rose-100"
-                        : "bg-blue-50 text-blue-700 border border-blue-100"
+                        ? "bg-error-light text-error-red border border-error-red/15"
+                        : "bg-info-light text-primary border border-primary/10"
                     }`}>
                     {geocodingMsg.text}
                   </div>
@@ -285,7 +286,7 @@ export function PricingSimulatorClient({ destinations }: { destinations: MockDes
               {/* Lat/Lng Coords manual input */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-gray block">
                     Latitud Origen
                   </label>
                   <input
@@ -295,11 +296,11 @@ export function PricingSimulatorClient({ destinations }: { destinations: MockDes
                       setOriginLat(e.target.value);
                       setResult(null);
                     }}
-                    className="mt-1 w-full rounded-2xl border border-slate-200 bg-slate-50 p-2.5 text-xs text-slate-800 focus:border-sky-500 focus:bg-white focus:outline-none transition"
+                    className="mt-1 w-full rounded-lg border border-outline-custom bg-surface p-2.5 text-xs text-primary focus:border-primary focus:bg-white focus:outline-none transition"
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-gray block">
                     Longitud Origen
                   </label>
                   <input
@@ -309,14 +310,14 @@ export function PricingSimulatorClient({ destinations }: { destinations: MockDes
                       setOriginLng(e.target.value);
                       setResult(null);
                     }}
-                    className="mt-1 w-full rounded-2xl border border-slate-200 bg-slate-50 p-2.5 text-xs text-slate-800 focus:border-sky-500 focus:bg-white focus:outline-none transition"
+                    className="mt-1 w-full rounded-lg border border-outline-custom bg-surface p-2.5 text-xs text-primary focus:border-primary focus:bg-white focus:outline-none transition"
                   />
                 </div>
               </div>
 
               {/* Occupancy passengers */}
-              <div className="border-t border-slate-100 pt-4">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 block">
+              <div className="border-t border-outline-custom pt-4">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-gray block">
                   Ocupación Actual (Pasajeros en el Pool)
                 </label>
                 <div className="mt-2 flex items-center gap-3">
@@ -330,7 +331,7 @@ export function PricingSimulatorClient({ destinations }: { destinations: MockDes
                       setPassengers(Number(e.target.value));
                       setResult(null);
                     }}
-                    className="flex-1 accent-sky-600"
+                    className="flex-1 accent-primary"
                   />
                   <input
                     type="number"
@@ -341,10 +342,10 @@ export function PricingSimulatorClient({ destinations }: { destinations: MockDes
                       setPassengers(Math.max(1, parseInt(e.target.value) || 1));
                       setResult(null);
                     }}
-                    className="w-16 rounded-2xl border border-slate-200 bg-slate-50 p-2.5 text-center text-xs font-bold text-slate-800 focus:border-sky-500 focus:bg-white focus:outline-none transition"
+                    className="w-16 rounded-lg border border-outline-custom bg-surface p-2.5 text-center text-xs font-bold text-primary focus:border-primary focus:bg-white focus:outline-none transition"
                   />
                 </div>
-                <p className="mt-1.5 text-xs text-slate-400">
+                <p className="mt-1.5 text-xs text-slate-gray">
                   La cantidad de pasajeros define cuál regla de precios (rango) se aplicará al cotizar.
                 </p>
               </div>
@@ -354,7 +355,7 @@ export function PricingSimulatorClient({ destinations }: { destinations: MockDes
                 type="button"
                 onClick={handleCalculate}
                 disabled={isPending}
-                className="mt-4 w-full rounded-full bg-sky-600 py-3.5 text-sm font-bold text-white shadow-lg shadow-sky-600/15 hover:bg-sky-500 hover:scale-[1.01] active:scale-[0.99] transition duration-200 disabled:opacity-70 disabled:scale-100 cursor-pointer"
+                className="mt-4 w-full rounded-lg bg-primary py-3.5 text-sm font-bold text-white shadow-lg shadow-primary/15 hover:bg-primary-hover hover:scale-[1.01] active:scale-[0.99] transition duration-200 disabled:opacity-70 disabled:scale-100 cursor-pointer"
               >
                 {isPending ? "Calculando Tarifa..." : "Calcular precio estimado"}
               </button>
@@ -380,32 +381,32 @@ export function PricingSimulatorClient({ destinations }: { destinations: MockDes
               {/* Primary Price comparison cards */}
               <div className="grid gap-4 md:grid-cols-2">
                 {/* Max Price card */}
-                <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                <div className="rounded-xl border border-outline-custom bg-white p-5 shadow-sm">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-gray block">
                     Precio Máximo
                   </span>
-                  <span className="text-3xl font-extrabold text-slate-800 mt-2 block">
+                  <span className="text-3xl font-extrabold text-primary mt-2 block">
                     {formatMoney(result.max_price, result.currency)}
                   </span>
-                  <p className="text-xs text-slate-500 mt-2.5 leading-relaxed">
+                  <p className="text-xs text-slate-gray mt-2.5 leading-relaxed">
                     Representa lo máximo que el usuario podría pagar. Es la tarifa calculada con el recargo de distancia máximo posible. El cobro del checkout original se realizará por este monto.
                   </p>
                 </div>
 
                 {/* Estimated Price card */}
-                <div className="rounded-[24px] border border-emerald-200 bg-emerald-50/20 p-5 shadow-sm">
+                <div className="rounded-xl border border-success-emerald/20 bg-success-light/20 p-5 shadow-sm">
                   <div className="flex justify-between items-start">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 block">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-success-emerald block">
                       Precio Estimado
                     </span>
-                    <span className="rounded-full bg-emerald-100 border border-emerald-250 text-emerald-800 px-2 py-0.5 text-[10px] font-bold">
+                    <span className="rounded-full bg-success-light border border-success-emerald/15 text-success-emerald px-2 py-0.5 text-[10px] font-bold">
                       {result.current_passengers} pasajeros
                     </span>
                   </div>
-                  <span className="text-3xl font-extrabold text-emerald-600 mt-2 block animate-pulse">
+                  <span className="text-3xl font-extrabold text-success-emerald mt-2 block animate-pulse">
                     {formatMoney(result.estimated_price, result.currency)}
                   </span>
-                  <p className="text-xs text-slate-600 mt-2.5 leading-relaxed">
+                  <p className="text-xs text-slate-gray mt-2.5 leading-relaxed">
                     Es la estimación de lo que el pasajero pagará de forma final según la ocupación actual del pool. Si califica para descuento, la diferencia respecto al precio máximo se reembolsará en créditos.
                   </p>
                 </div>
@@ -413,47 +414,47 @@ export function PricingSimulatorClient({ destinations }: { destinations: MockDes
 
               {/* Detailed Breakdown */}
               <SectionCard>
-                <h4 className="text-base font-bold text-slate-800 border-b border-slate-100 pb-3 mb-4">
+                <h4 className="text-base font-bold text-primary border-b border-outline-custom pb-3 mb-4">
                   Desglose Técnico del Cálculo
                 </h4>
 
-                <div className="divide-y divide-slate-100 text-xs">
+                <div className="divide-y divide-outline-custom text-xs">
                   <div className="flex justify-between py-2.5">
-                    <span className="text-slate-500 font-medium">Precio base de regla:</span>
-                    <span className="font-semibold text-slate-850">
-                      {formatMoney(result.pricing_detail.base_price, result.currency)}
-                    </span>
-                  </div>
-
-                  <div className="flex justify-between py-2.5">
-                    <span className="text-slate-500 font-medium">Distancia calculada:</span>
-                    <span className="font-semibold text-slate-850">
+                    <span className="text-slate-gray font-medium">Distancia calculada:</span>
+                    <span className="font-semibold text-primary">
                       {result.pricing_detail.distance_km} km
                     </span>
                   </div>
 
                   <div className="flex justify-between py-2.5">
-                    <span className="text-slate-500 font-medium">Recargo por distancia ($35/km):</span>
-                    <span className="font-semibold text-slate-850">
-                      +{formatMoney(result.pricing_detail.distance_adjustment, result.currency)}
+                    <span className="text-slate-gray font-medium">Precio por kilómetro:</span>
+                    <span className="font-semibold text-primary">
+                      {formatMoney(pricePerKm, result.currency)}
                     </span>
                   </div>
 
-                  <div className="flex justify-between py-2.5 font-bold border-t border-slate-200 mt-1 pt-3">
-                    <span className="text-slate-800">Tarifa tope (Max price):</span>
-                    <span className="text-slate-900">
+                  <div className="flex justify-between py-2.5">
+                    <span className="text-slate-gray font-medium">Precio base (Distancia × Precio/km):</span>
+                    <span className="font-semibold text-primary">
+                      {formatMoney(result.pricing_detail.base_price, result.currency)}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between py-2.5 font-bold border-t border-outline-custom mt-1 pt-3">
+                    <span className="text-primary font-bold">Tarifa tope (Max price):</span>
+                    <span className="text-primary font-extrabold">
                       {formatMoney(result.max_price, result.currency)}
                     </span>
                   </div>
 
-                  <div className="flex justify-between py-2.5 text-emerald-600 font-medium">
+                  <div className="flex justify-between py-2.5 text-success-emerald font-medium">
                     <span>Descuento estimado por ocupación:</span>
                     <span className="font-bold">
                       -{formatMoney(result.pricing_detail.estimated_discount, result.currency)}
                     </span>
                   </div>
 
-                  <div className="flex justify-between py-2.5 text-[10px] text-slate-400 bg-slate-50 px-2 rounded-lg mt-1.5">
+                  <div className="flex justify-between py-2.5 text-[10px] text-slate-gray bg-surface px-2 rounded-lg mt-1.5 border border-outline-custom/50">
                     <span>Motivo del descuento aplicado:</span>
                     <span className="font-mono">{result.pricing_detail.discount_reason}</span>
                   </div>
@@ -461,8 +462,8 @@ export function PricingSimulatorClient({ destinations }: { destinations: MockDes
               </SectionCard>
 
               {/* Explanatory notice */}
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 text-xs text-slate-600 space-y-2">
-                <p className="font-bold text-slate-700">¿Cómo funciona esta lógica en producción?</p>
+              <div className="rounded-xl border border-outline-custom bg-white p-5 text-xs text-slate-gray space-y-2">
+                <p className="font-bold text-primary">¿Cómo funciona esta lógica en producción?</p>
                 <ul className="list-disc pl-4 space-y-1.5">
                   <li>El **Precio Máximo** es cobrado al pasajero en Mercado Pago cuando realiza la reserva. De esta forma, el cobro inicial está garantizado.</li>
                   <li>El **Precio Estimado** es informativo y cambia en tiempo real para el rider en su App a medida que más pasajeros se suman al pool del viaje.</li>
@@ -471,12 +472,12 @@ export function PricingSimulatorClient({ destinations }: { destinations: MockDes
               </div>
             </div>
           ) : (
-            <div className="rounded-[24px] border border-dashed border-slate-300 bg-slate-50/50 p-12 text-center text-slate-450 h-full flex flex-col justify-center items-center">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-10 w-10 text-slate-350 mb-3">
+            <div className="rounded-xl border border-dashed border-outline-custom bg-surface p-12 text-center text-slate-gray h-full flex flex-col justify-center items-center">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-10 w-10 text-slate-gray/50 mb-3">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
               </svg>
-              <h4 className="text-sm font-bold text-slate-700">Sin estimación calculada</h4>
-              <p className="text-xs text-slate-400 mt-1 max-w-sm">
+              <h4 className="text-sm font-bold text-primary">Sin estimación calculada</h4>
+              <p className="text-xs text-slate-gray mt-1 max-w-sm">
                 Configura los parámetros del viaje en el formulario de la izquierda y presiona en &quot;Calcular precio estimado&quot; para obtener los detalles tarifarios.
               </p>
             </div>

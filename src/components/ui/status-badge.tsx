@@ -22,13 +22,17 @@ function getTone(value: string) {
 export function StatusBadge({
   value,
   label,
+  rounded = "full",
 }: {
   value: string;
   label?: string;
+  rounded?: "full" | "lg";
 }) {
   return (
     <span
-      className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] ${getTone(value)}`}
+      className={`inline-flex border px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] ${
+        rounded === "lg" ? "rounded-lg" : "rounded-full"
+      } ${getTone(value)}`}
     >
       {label ?? value}
     </span>

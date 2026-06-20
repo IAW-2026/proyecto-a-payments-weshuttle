@@ -74,7 +74,7 @@ export function SettlementsClient({ settlements }: { settlements: SettlementItem
       {/* Mobile Card Layout */}
       <div className="mt-6 space-y-3 lg:hidden">
         {settlements.map((settlement) => (
-          <article key={settlement.id} className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-4">
+          <article key={settlement.id} className="rounded-xl border border-outline-custom bg-surface p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="font-semibold text-slate-900">{getDriverName(settlement.driverUserId)}</p>
@@ -176,7 +176,7 @@ export function SettlementsClient({ settlements }: { settlements: SettlementItem
           onClick={() => setActiveSettlement(null)}
         >
           <div
-            className="w-full max-w-lg overflow-hidden rounded-[28px] border border-slate-200 bg-white p-6 shadow-2xl transition-all animate-in zoom-in-95 duration-200"
+            className="w-full max-w-lg overflow-hidden rounded-xl border border-outline-custom bg-white p-6 shadow-2xl transition-all animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}

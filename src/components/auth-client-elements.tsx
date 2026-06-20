@@ -15,7 +15,7 @@ export function HeaderAuthButtons() {
 
   if (!mounted) {
     // Render space-matching placeholder to prevent layout shifts
-    return <div className="h-9 w-28 bg-slate-100/50 animate-pulse rounded-full" />;
+    return <div className="h-9 w-28 bg-slate-100/50 animate-pulse rounded-lg" />;
   }
 
   if (isSignedIn) {
@@ -23,12 +23,12 @@ export function HeaderAuthButtons() {
       <div className="flex items-center gap-3">
         <Link
           href="/post-login"
-          className="rounded-full bg-slate-950 px-5 py-2 text-sm font-semibold text-white shadow-md transition-all duration-200 hover:bg-slate-800 hover:scale-[1.03] active:scale-[0.97]"
+          className="rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-white shadow-md transition-all duration-200 hover:bg-primary-hover hover:scale-[1.02] active:scale-[0.98]"
         >
           Ir a la App
         </Link>
         <SignOutButton redirectUrl="/">
-          <button className="rounded-full border border-slate-200 bg-white px-5 py-2 text-sm font-semibold text-slate-700 shadow-sm transition-all duration-200 hover:bg-slate-50 hover:text-slate-950 hover:scale-[1.03] active:scale-[0.97] cursor-pointer">
+          <button className="rounded-lg border border-primary/20 bg-white px-5 py-2 text-sm font-semibold text-primary shadow-sm transition-all duration-200 hover:bg-primary/5 hover:border-primary/40 hover:scale-[1.02] active:scale-[0.98] cursor-pointer">
             Cerrar Sesión
           </button>
         </SignOutButton>
@@ -38,7 +38,7 @@ export function HeaderAuthButtons() {
 
   return (
     <SignInButton forceRedirectUrl="/post-login">
-      <button className="rounded-full bg-slate-950 px-5 py-2 text-sm font-semibold text-white shadow-md transition-all duration-200 hover:bg-slate-800 hover:scale-[1.03] active:scale-[0.97] cursor-pointer">
+      <button className="rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-white shadow-md transition-all duration-200 hover:bg-primary-hover hover:scale-[1.02] active:scale-[0.98] cursor-pointer">
         Iniciar Sesión
       </button>
     </SignInButton>
@@ -60,7 +60,7 @@ export function HeroAuthButton() {
   return (
     <div className="mt-8 flex flex-wrap items-center gap-4">
       <SignInButton forceRedirectUrl="/post-login">
-        <button className="rounded-full bg-sky-500 px-6 py-3 text-base font-bold text-white shadow-lg shadow-sky-500/20 transition-all duration-200 hover:bg-sky-400 hover:scale-[1.03] active:scale-[0.97] cursor-pointer">
+        <button className="rounded-lg bg-primary px-6 py-3.5 text-base font-bold text-white shadow-lg shadow-primary/20 transition-all duration-200 hover:bg-primary-hover hover:scale-[1.02] active:scale-[0.98] cursor-pointer">
           Comenzar Ahora
         </button>
       </SignInButton>

@@ -126,7 +126,7 @@ export async function AdminCheckoutSessionsView({
                 const charge = chargeByCheckoutId.get(checkout.id);
 
                 return (
-                  <article key={checkout.id} className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-4">
+                <article key={checkout.id} className="rounded-xl border border-outline-custom bg-surface p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="font-semibold text-slate-900">Cobro de Reserva</p>

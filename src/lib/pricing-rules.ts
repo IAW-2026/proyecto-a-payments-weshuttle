@@ -2,7 +2,6 @@ import { Prisma, PricingRule, PricingRuleDiscountType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 const DEFAULT_CURRENCY = "ARS";
-const DISTANCE_SURCHARGE_PER_KM = 35;
 
 export type Coordinates = {
   lat: number;
@@ -43,8 +42,17 @@ export function calculateDistanceKm(origin: Coordinates, destination: Coordinate
   return roundMoney(earthRadiusKm * haversineC);
 }
 
+export async function getPricePerKm(): Promise<number> {
+  const setting = await prisma.systemSetting.findUnique({
+    where: { key: "price_per_km" },
+  });
+  return setting ? parseFloat(setting.value) : 35;
+}
+
 export function calculateDistanceAdjustment(distanceKm: number) {
-  return roundMoney(Math.max(distanceKm, 0) * DISTANCE_SURCHARGE_PER_KM);
+  // Kept for backward compatibility, returns 0 since surcharge is no longer separate
+  if (distanceKm) {}
+  return 0;
 }
 
 export function calculateDiscountAmount(
@@ -61,15 +69,15 @@ export function calculateDiscountAmount(
 
 export function buildPricingEstimate(
   rule: PricingRule,
+  pricePerKm: number,
   trip?: {
     origin: Coordinates;
     destination: Coordinates;
   },
 ) {
-  const basePrice = toNumber(rule.basePrice);
   const distanceKm = trip ? calculateDistanceKm(trip.origin, trip.destination) : 0;
-  const distanceAdjustment = calculateDistanceAdjustment(distanceKm);
-  const maxPrice = roundMoney(basePrice + distanceAdjustment);
+  const basePrice = roundMoney(distanceKm * pricePerKm);
+  const maxPrice = basePrice;
   const discountValue = toNumber(rule.discountValue);
   const estimatedDiscount = calculateDiscountAmount(
     maxPrice,
@@ -82,9 +90,10 @@ export function buildPricingEstimate(
     maxPrice,
     estimatedPrice: roundMoney(Math.max(maxPrice - estimatedDiscount, 0)),
     pricingDetail: {
-      basePrice: roundMoney(basePrice),
-      distanceAdjustment,
+      basePrice,
+      distanceAdjustment: 0,
       distanceKm,
+      pricePerKm,
       estimatedDiscount,
       discountReason: "OCCUPANCY_DISCOUNT",
     },
@@ -92,7 +101,7 @@ export function buildPricingEstimate(
 }
 
 export async function findApplicablePricingRule(
-  destinationId: string,
+  destinationId: string | null, // Kept signature compatibility
   currentPassengers: number,
 ) {
   const matchingRules = await prisma.pricingRule.findMany({
@@ -100,21 +109,11 @@ export async function findApplicablePricingRule(
       active: true,
       minPassengers: { lte: currentPassengers },
       maxPassengers: { gte: currentPassengers },
-      OR: [{ destinationId }, { destinationId: null }],
+      destinationId: null, // Only global rules
     },
   });
 
-  const exactMatch = matchingRules
-    .filter((rule) => rule.destinationId === destinationId)
-    .sort(sortByPassengerRange)[0];
-
-  if (exactMatch) {
-    return exactMatch;
-  }
-
-  return matchingRules
-    .filter((rule) => rule.destinationId === null)
-    .sort(sortByPassengerRange)[0] ?? null;
+  return matchingRules.sort(sortByPassengerRange)[0] ?? null;
 }
 
 export async function hasConflictingPricingRule(input: {
@@ -126,7 +125,7 @@ export async function hasConflictingPricingRule(input: {
   const rules = await prisma.pricingRule.findMany({
     where: {
       active: true,
-      destinationId: input.destinationId,
+      destinationId: null, // Only global rules
       ...(input.id ? { NOT: { id: input.id } } : {}),
     },
   });
@@ -137,3 +136,4 @@ export async function hasConflictingPricingRule(input: {
       input.maxPassengers >= rule.minPassengers,
   );
 }
+

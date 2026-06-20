@@ -1,143 +1,116 @@
 "use server";
 
-import { PricingRuleDiscountType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requirePageRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { hasConflictingPricingRule } from "@/lib/pricing-rules";
 
-type PricingRuleFormInput = {
-  id?: string;
-  destinationId: string | null;
-  basePrice: string;
-  minPassengers: string;
-  maxPassengers: string;
-  discountType: string;
-  discountValue: string;
-  active: boolean;
-};
-
-function getTrimmedValue(formData: FormData, key: string) {
-  return formData.get(key)?.toString().trim() ?? "";
-}
-
-function parseFormData(formData: FormData): PricingRuleFormInput {
-  const destinationId = getTrimmedValue(formData, "destinationId");
-  const id = getTrimmedValue(formData, "id");
-
-  return {
-    id: id || undefined,
-    destinationId: destinationId || null,
-    basePrice: getTrimmedValue(formData, "basePrice"),
-    minPassengers: getTrimmedValue(formData, "minPassengers"),
-    maxPassengers: getTrimmedValue(formData, "maxPassengers"),
-    discountType: getTrimmedValue(formData, "discountType"),
-    discountValue: getTrimmedValue(formData, "discountValue"),
-    active: formData.get("active") === "on",
-  };
+function isRedirectError(error: unknown): boolean {
+  if (error instanceof Error) {
+    const digest = (error as Error & { digest?: unknown }).digest;
+    return typeof digest === "string" && digest.startsWith("NEXT_REDIRECT");
+  }
+  return false;
 }
 
 function fail(message: string) {
   redirect(`/admin/pricing-rules?error=${encodeURIComponent(message)}`);
 }
 
-async function savePricingRule(input: PricingRuleFormInput) {
+export async function savePricePerKmAction(formData: FormData) {
   await requirePageRole(["admin"]);
 
-  const basePrice = Number(input.basePrice);
-  const minPassengers = Number(input.minPassengers);
-  const maxPassengers = Number(input.maxPassengers);
-  const discountValue = Number(input.discountValue);
+  const pricePerKmStr = formData.get("pricePerKm")?.toString().trim();
+  const pricePerKm = Number(pricePerKmStr);
 
-  if (!Number.isFinite(basePrice) || basePrice < 0) {
-    fail("El precio base debe ser un numero mayor o igual a 0.");
-  }
-
-  if (!Number.isInteger(minPassengers) || minPassengers < 1) {
-    fail("La cantidad minima de pasajeros debe ser un entero mayor o igual a 1.");
-  }
-
-  if (!Number.isInteger(maxPassengers) || maxPassengers < minPassengers) {
-    fail("La cantidad maxima de pasajeros debe ser un entero mayor o igual al minimo.");
-  }
-
-  if (!Number.isFinite(discountValue) || discountValue < 0) {
-    fail("El valor de descuento debe ser un numero mayor o igual a 0.");
-  }
-
-  if (
-    input.discountType !== "PERCENTAGE" &&
-    input.discountType !== "FIXED_AMOUNT"
-  ) {
-    fail("El tipo de descuento es invalido.");
-  }
-
-  if (input.active) {
-    const hasConflict = await hasConflictingPricingRule({
-      id: input.id,
-      destinationId: input.destinationId,
-      minPassengers,
-      maxPassengers,
-    });
-
-    if (hasConflict) {
-      fail("Ya existe una regla activa con el mismo alcance y rango de pasajeros superpuesto.");
-    }
-  }
-
-  const data = {
-    destinationId: input.destinationId,
-    basePrice,
-    minPassengers,
-    maxPassengers,
-    discountType: input.discountType as PricingRuleDiscountType,
-    discountValue,
-    active: input.active,
-  };
-
-  if (input.id) {
-    await prisma.pricingRule.update({
-      where: { id: input.id },
-      data,
-    });
-
-    revalidatePath("/admin/pricing-rules");
-    redirect("/admin/pricing-rules?message=Regla%20actualizada");
-  }
-
-  await prisma.pricingRule.create({ data });
-
-  revalidatePath("/admin/pricing-rules");
-  redirect("/admin/pricing-rules?message=Regla%20creada");
-}
-
-export async function createPricingRuleAction(formData: FormData) {
-  await savePricingRule(parseFormData(formData));
-}
-
-export async function updatePricingRuleAction(formData: FormData) {
-  await savePricingRule(parseFormData(formData));
-}
-
-export async function deletePricingRuleAction(formData: FormData) {
-  await requirePageRole(["admin"]);
-  const id = formData.get("id")?.toString();
-
-  if (!id) {
-    fail("ID de regla no proporcionado.");
+  if (!pricePerKmStr || !Number.isFinite(pricePerKm) || pricePerKm < 0) {
+    fail("El precio por kilómetro debe ser un número mayor o igual a 0.");
     return;
   }
 
   try {
-    await prisma.pricingRule.delete({
-      where: { id },
+    await prisma.systemSetting.upsert({
+      where: { key: "price_per_km" },
+      update: { value: pricePerKm.toFixed(2) },
+      create: { key: "price_per_km", value: pricePerKm.toFixed(2) },
     });
+
+    revalidatePath("/admin/pricing-rules");
   } catch (error) {
-    console.error("Delete Pricing Rule Error:", error);
-    fail("No se pudo eliminar la regla. Asegurate de que no este siendo referenciada.");
+    if (isRedirectError(error)) {
+      throw error;
+    }
+    console.error("Save price_per_km error:", error);
+    fail("Ocurrió un error al guardar la tarifa por kilómetro.");
+    return;
   }
 
-  revalidatePath("/admin/pricing-rules");
-  redirect("/admin/pricing-rules?message=Regla%20eliminada%20permanentemente");
+  redirect("/admin/pricing-rules?message=Tarifa%20base%20por%20kilómetro%20actualizada");
+}
+
+export async function saveOccupancyDiscountsAction(formData: FormData) {
+  await requirePageRole(["admin"]);
+
+  const updates: { count: number; discountValue: number }[] = [];
+
+  for (let count = 1; count <= 15; count++) {
+    const valueStr = formData.get(`discount-${count}`)?.toString().trim();
+    const value = Number(valueStr);
+
+    if (!valueStr || !Number.isFinite(value) || value < 0 || value > 100) {
+      fail(`El descuento para ${count} pasajeros debe ser un número entre 0 y 100.`);
+      return;
+    }
+
+    updates.push({ count, discountValue: value });
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      for (const update of updates) {
+        const existing = await tx.pricingRule.findFirst({
+          where: {
+            destinationId: null,
+            minPassengers: update.count,
+            maxPassengers: update.count,
+          },
+        });
+
+        if (existing) {
+          await tx.pricingRule.update({
+            where: { id: existing.id },
+            data: {
+              discountValue: update.discountValue,
+              basePrice: 0,
+              discountType: "PERCENTAGE",
+              active: true,
+            },
+          });
+        } else {
+          await tx.pricingRule.create({
+            data: {
+              destinationId: null,
+              basePrice: 0,
+              minPassengers: update.count,
+              maxPassengers: update.count,
+              discountType: "PERCENTAGE",
+              discountValue: update.discountValue,
+              active: true,
+            },
+          });
+        }
+      }
+    });
+
+    revalidatePath("/admin/pricing-rules");
+  } catch (error) {
+    if (isRedirectError(error)) {
+      throw error;
+    }
+    console.error("Save occupancy discounts error:", error);
+    fail("Ocurrió un error al guardar los descuentos por ocupación.");
+    return;
+  }
+
+  redirect("/admin/pricing-rules?message=Tabla%20de%20descuentos%20actualizada%20con%20éxito");
 }
