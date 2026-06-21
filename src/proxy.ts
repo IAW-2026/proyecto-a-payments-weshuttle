@@ -3,10 +3,18 @@ import { NextResponse } from "next/server";
 
 const isAdminRoute = createRouteMatcher(["/admin(.*)"]);
 const isPaymentsApiRoute = createRouteMatcher(["/api/payments(.*)"]);
+const isCheckoutRoute = createRouteMatcher(["/checkout(.*)"]);
 
 export default clerkMiddleware(
   async (auth, request) => {
     const authState = await auth();
+
+    // Caso A: no hay sesión en Payments para rutas de checkout
+    if (isCheckoutRoute(request)) {
+      if (!authState.userId) {
+        return authState.redirectToSignIn({ returnBackUrl: request.url });
+      }
+    }
 
     if (isAdminRoute(request)) {
       if (!authState.userId) {

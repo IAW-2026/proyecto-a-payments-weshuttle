@@ -5,7 +5,7 @@ import { SectionCard } from "@/components/ui/section-card";
 import { requirePageRole } from "@/lib/auth";
 import { getCheckoutPageData } from "@/lib/payments/checkout";
 import { resolveDemoCheckoutAction } from "./actions";
-import { CheckoutLayout, CheckoutSummaryCard } from "./checkout-ui";
+import { CheckoutLayout, CheckoutSummaryCard, AccountConflictView } from "./checkout-ui";
 
 type PageProps = {
   params: Promise<{
@@ -26,7 +26,7 @@ export default async function CheckoutPage({ params }: PageProps) {
   }
 
   if (authContext.role === "rider" && data.checkout.passengerUserId !== authContext.clerkUserId) {
-    notFound();
+    return <AccountConflictView checkoutId={checkoutId} />;
   }
 
   const canPayWithMercadoPago = Boolean(
