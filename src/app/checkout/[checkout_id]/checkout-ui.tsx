@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SignOutButton } from "@clerk/nextjs";
 import { AlertBanner } from "@/components/ui/alert-banner";
 import { formatDateTime, formatMoney, humanizeStatus } from "@/components/ui/format";
 import { SectionCard } from "@/components/ui/section-card";
@@ -219,5 +220,48 @@ export function CheckoutResultActions({
         </details>
       )}
     </div>
+  );
+}
+
+export function AccountConflictView({ checkoutId }: { checkoutId: string }) {
+  const riderAppBaseUrl = process.env.NEXT_PUBLIC_RIDER_APP_URL?.trim();
+  const riderAppUrl = riderAppBaseUrl || "/rider";
+
+  return (
+    <CheckoutLayout
+      title="Conflicto de Cuenta"
+      description="El checkout al que intentas acceder pertenece a otra cuenta."
+    >
+      <SectionCard className="border-error-red/20 bg-linear-to-br from-white via-white to-error-light/10 shadow-lg">
+        <div className="flex flex-col items-center text-center gap-5 py-4">
+          <div className="rounded-full bg-error-light p-4 text-error-red border border-error-red/10 animate-pulse">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="h-8 w-8">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m0-10.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.75c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.57-.598-3.75h-.152c-3.196 0-6.1-1.249-8.25-3.286zm0 13.036h.008v.008H12v-.008z" />
+            </svg>
+          </div>
+
+          <div className="space-y-2">
+            <h2 className="text-xl font-extrabold text-primary">Este checkout pertenece a otra cuenta.</h2>
+            <p className="text-sm text-slate-gray leading-relaxed max-w-md">
+              Actualmente estás conectado en Payments con una cuenta distinta a la que creó esta reserva. Para continuar, cambiá de cuenta e ingresá con la cuenta correcta.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 w-full justify-center pt-4">
+            <SignOutButton redirectUrl={`/checkout/${checkoutId}`}>
+              <button className="inline-flex w-full sm:w-auto items-center justify-center rounded-lg bg-primary px-6 py-3 text-sm font-bold text-white shadow-md hover:bg-primary-hover hover:scale-[1.01] active:scale-[0.99] transition duration-200 cursor-pointer">
+                Cambiar cuenta
+              </button>
+            </SignOutButton>
+            <Link
+              href={riderAppUrl}
+              className="inline-flex w-full sm:w-auto items-center justify-center rounded-lg border border-primary/20 bg-white px-6 py-3 text-sm font-medium text-primary shadow-sm hover:border-primary/40 hover:bg-primary/5 hover:scale-[1.01] active:scale-[0.99] transition duration-200 cursor-pointer"
+            >
+              Volver a Rider App
+            </Link>
+          </div>
+        </div>
+      </SectionCard>
+    </CheckoutLayout>
   );
 }

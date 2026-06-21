@@ -7,6 +7,7 @@ import {
   CheckoutLayout,
   CheckoutResultActions,
   CheckoutSummaryCard,
+  AccountConflictView,
 } from "../checkout-ui";
 
 type PageProps = {
@@ -53,7 +54,7 @@ export default async function CheckoutPendingPage({ params, searchParams }: Page
   }
 
   if (authContext.role === "rider" && data.checkout.passengerUserId !== authContext.clerkUserId) {
-    notFound();
+    return <AccountConflictView checkoutId={checkoutId} />;
   }
 
   return (
