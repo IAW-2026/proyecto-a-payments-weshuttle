@@ -84,8 +84,8 @@ export function CheckoutLayout({
         <SectionCard className="overflow-hidden bg-linear-to-br from-white via-white to-info-light/35">
           <div className="flex flex-col gap-4">
             <div className="flex flex-wrap items-center gap-3 text-sm">
-              <Link href="/rider" className="inline-flex items-center justify-center rounded-lg border border-primary/20 bg-white px-4 py-2 font-medium text-primary shadow-sm hover:border-primary/50 hover:bg-primary/5 transition">
-                Volver a Rider
+              <Link href={process.env.NEXT_PUBLIC_RIDER_APP_URL?.trim() || "/rider"} className="inline-flex items-center justify-center rounded-lg border border-primary/20 bg-white px-4 py-2 font-medium text-primary shadow-sm hover:border-primary/50 hover:bg-primary/5 transition">
+                Volver a la app del pasajero
               </Link>
               <Link href="/rider/checkouts" className="inline-flex items-center justify-center rounded-lg border border-primary/20 bg-white px-4 py-2 font-medium text-primary shadow-sm hover:border-primary/50 hover:bg-primary/5 transition">
                 Ver mis pagos
@@ -179,27 +179,17 @@ export function CheckoutResultActions({
   const riderAppBaseUrl = process.env.NEXT_PUBLIC_RIDER_APP_URL?.trim();
   const riderAppUrl = riderAppBaseUrl
     ? `${riderAppBaseUrl.replace(/\/$/, "")}?payment=${paymentResult}&checkout_id=${checkoutId}`
-    : null;
-  const demoRiderUrl = `/rider?payment=${paymentResult}&checkout_id=${checkoutId}`;
+    : `/rider?payment=${paymentResult}&checkout_id=${checkoutId}`;
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3">
         <Link
-          href={demoRiderUrl}
-          className="inline-flex w-full items-center justify-center rounded-lg bg-primary px-5 py-3 text-center text-sm font-semibold text-white shadow-md hover:bg-primary-hover transition duration-200 cursor-pointer"
+          href={riderAppUrl}
+          className="inline-flex w-full items-center justify-center rounded-lg bg-primary px-5 py-3 text-center text-sm font-bold text-white shadow-md hover:bg-primary-hover transition duration-200 cursor-pointer"
         >
-          Volver a Rider
+          Volver a la app del pasajero
         </Link>
-
-        {riderAppUrl && (
-          <Link
-            href={riderAppUrl}
-            className="inline-flex w-full items-center justify-center rounded-lg bg-primary px-5 py-3 text-center text-sm font-bold text-white shadow-md hover:bg-primary-hover transition duration-200 cursor-pointer"
-          >
-            Volver a la App del Pasajero
-          </Link>
-        )}
 
         <Link
           href="/rider/checkouts"
@@ -209,7 +199,7 @@ export function CheckoutResultActions({
         </Link>
       </div>
 
-      {!riderAppUrl && (
+      {!riderAppBaseUrl && (
         <details className="border-t border-slate-100 pt-3 mt-4">
           <summary className="text-xs font-semibold text-slate-400 hover:text-slate-600 cursor-pointer outline-none select-none">
             Información de la App externa
@@ -257,7 +247,7 @@ export function AccountConflictView({ checkoutId }: { checkoutId: string }) {
               href={riderAppUrl}
               className="inline-flex w-full sm:w-auto items-center justify-center rounded-lg border border-primary/20 bg-white px-6 py-3 text-sm font-medium text-primary shadow-sm hover:border-primary/40 hover:bg-primary/5 hover:scale-[1.01] active:scale-[0.99] transition duration-200 cursor-pointer"
             >
-              Volver a Rider App
+              Volver a la app del pasajero
             </Link>
           </div>
         </div>

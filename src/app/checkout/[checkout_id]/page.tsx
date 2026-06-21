@@ -35,6 +35,12 @@ export default async function CheckoutPage({ params }: PageProps) {
     data.checkout.status === "CREATED",
   );
 
+  const riderAppBaseUrl = process.env.NEXT_PUBLIC_RIDER_APP_URL?.trim();
+  const riderAppUrl = riderAppBaseUrl || "/rider";
+  const successReturnUrl = riderAppBaseUrl
+    ? `${riderAppBaseUrl.replace(/\/$/, "")}?payment=success&checkout_id=${checkoutId}`
+    : `/rider?payment=success&checkout_id=${checkoutId}`;
+
   return (
     <CheckoutLayout
       title="Confirmar Pago de Viaje"
@@ -54,10 +60,10 @@ export default async function CheckoutPage({ params }: PageProps) {
               El saldo disponible en tu cuenta cubrió la totalidad del viaje, por lo que no es necesario realizar ningún cargo adicional.
             </AlertBanner>
             <Link
-              href={`/rider?payment=success&checkout_id=${checkoutId}`}
+              href={successReturnUrl}
               className="inline-flex items-center justify-center rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-white hover:bg-primary-hover transition hover:scale-[1.01] active:scale-[0.99] duration-200"
             >
-              Confirmar y Volver a Rider
+              Confirmar y volver a la app del pasajero
             </Link>
           </div>
         ) : (
@@ -71,10 +77,10 @@ export default async function CheckoutPage({ params }: PageProps) {
                   Pagar con Mercado Pago
                 </Link>
                 <Link
-                  href="/rider"
+                  href={riderAppUrl}
                   className="inline-flex items-center justify-center rounded-lg border border-primary/25 bg-white px-5 py-3 text-sm font-medium text-primary shadow-sm hover:border-primary/50 hover:bg-primary/5 transition"
                 >
-                  Volver a Rider
+                  Volver a la app del pasajero
                 </Link>
               </div>
             ) : (
@@ -83,10 +89,10 @@ export default async function CheckoutPage({ params }: PageProps) {
                   Este recibo de pago ya ha sido procesado o se encuentra expirado. Puedes regresar al menú principal.
                 </AlertBanner>
                 <Link
-                  href="/rider"
+                  href={riderAppUrl}
                   className="inline-flex items-center justify-center rounded-lg border border-primary/25 bg-white px-5 py-3 text-sm font-medium text-primary shadow-sm hover:border-primary/50 hover:bg-primary/5 transition"
                 >
-                  Volver a Rider
+                  Volver a la app del pasajero
                 </Link>
               </div>
             )}
