@@ -1400,6 +1400,63 @@ Permite a la **Driver App** informar que el viaje finalizó y que corresponde li
 
 ---
 
+## 6. GET `/api/payments/drivers/:driver_user_id/payout-account`
+
+### Descripción
+
+Permite a la **Driver App** consultar si un conductor tiene configurado un método de liquidación (cuenta de cobro) registrado y activo en la base de datos de Payments, antes de permitirle aceptar viajes en el Marketplace.
+
+### Quién llama a quién
+
+| App origen | App destino |
+|------------|-------------|
+| Driver App | Payments App |
+
+### Path params
+
+| Campo | Tipo | Descripción |
+|------|------|-------------|
+| `driver_user_id` | string | Identificador del conductor en Clerk. |
+
+### Ejemplo
+
+```http
+GET /api/payments/drivers/user_driver_01/payout-account
+```
+
+### Response `200 OK`
+
+Si el conductor tiene una cuenta de cobro activa cargada:
+
+```json
+{
+  "driver_user_id": "user_driver_01",
+  "has_payout_account": true,
+  "payout_account_id": "acc_123xyz"
+}
+```
+
+Si el conductor no tiene ninguna cuenta de cobro activa cargada:
+
+```json
+{
+  "driver_user_id": "user_driver_01",
+  "has_payout_account": false,
+  "payout_account_id": null
+}
+```
+
+### Errores
+
+| Código | Motivo |
+|--------|--------|
+| `400 Bad Request` | El `driver_user_id` tiene formato inválido o está vacío. |
+| `401 Unauthorized` | Token de autorización ausente o inválido. |
+| `403 Forbidden` | El servicio o cliente no está autorizado para acceder a este recurso. |
+| `500 Internal Server Error` | Error al consultar la base de datos de Payments. |
+
+---
+
 # Feedback App — Endpoints expuestos
 
 La **Feedback App** expone endpoints relacionados con calificaciones, promedios de reputación y pre-creación de reseñas.
