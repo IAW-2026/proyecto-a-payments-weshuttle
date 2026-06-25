@@ -88,6 +88,42 @@ export type AuthContext =
       redirectToSignIn: () => unknown;
     };
 
+export async function getUserAuthContext(): Promise<
+  | {
+      type: "user";
+      clerkUserId: string;
+      role: AppRole | null;
+      redirectToSignIn: () => unknown;
+    }
+  | {
+      type: "unauthenticated";
+      clerkUserId: null;
+      role: null;
+      redirectToSignIn: () => unknown;
+    }
+> {
+  const { authState, role } = await resolveAuthState();
+
+  if (!authState || !authState.userId) {
+    return {
+      type: "unauthenticated",
+      clerkUserId: null,
+      role: null,
+      redirectToSignIn: authState?.redirectToSignIn || (() => {
+        throw new Error("No redirect function available.");
+      }),
+    };
+  }
+
+  console.info(`[Auth] User authorized: ${authState.userId} (role: ${role})`);
+  return {
+    type: "user",
+    clerkUserId: authState.userId,
+    role,
+    redirectToSignIn: authState.redirectToSignIn,
+  };
+}
+
 export async function getAuthContext(): Promise<AuthContext> {
   // First, check if there is an Authorization header with an API Key
   try {
@@ -154,17 +190,21 @@ export async function getAuthContext(): Promise<AuthContext> {
         }
       }
 
-      // Invalid token
-      console.warn("[Auth] Service unauthorized: invalid API Key presented.");
-      return {
-        type: "unauthenticated",
-        clerkUserId: null,
-        role: null,
-        error: "Invalid API Key.",
-        redirectToSignIn: () => {
-          throw new Error("API Key authenticated request cannot be redirected to sign in.");
-        },
-      };
+      // If it looks like a Clerk JWT token, let it fall through to Clerk auth below
+      const isJwt = token.startsWith("eyJ") && token.includes(".");
+      if (!isJwt) {
+        // Invalid token
+        console.warn("[Auth] Service unauthorized: invalid API Key presented.");
+        return {
+          type: "unauthenticated",
+          clerkUserId: null,
+          role: null,
+          error: "Invalid API Key.",
+          redirectToSignIn: () => {
+            throw new Error("API Key authenticated request cannot be redirected to sign in.");
+          },
+        };
+      }
     }
   } catch (error) {
     // Fallback if headers are not available (e.g. static generation)
@@ -172,26 +212,7 @@ export async function getAuthContext(): Promise<AuthContext> {
   }
 
   // Fallback to original Clerk user session authentication
-  const { authState, role } = await resolveAuthState();
-
-  if (!authState || !authState.userId) {
-    return {
-      type: "unauthenticated",
-      clerkUserId: null,
-      role: null,
-      redirectToSignIn: authState?.redirectToSignIn || (() => {
-        throw new Error("No redirect function available.");
-      }),
-    };
-  }
-
-  console.info(`[Auth] User authorized: ${authState.userId} (role: ${role})`);
-  return {
-    type: "user",
-    clerkUserId: authState.userId,
-    role,
-    redirectToSignIn: authState.redirectToSignIn,
-  };
+  return getUserAuthContext();
 }
 
 export async function getAuthDiagnostics() {
@@ -205,7 +226,7 @@ export async function getAuthDiagnostics() {
 }
 
 export async function requirePageRole(allowedRoles: readonly AppRole[]) {
-  const context = await getAuthContext();
+  const context = await getUserAuthContext();
 
   if (context.type !== "user" || !context.clerkUserId) {
     if (context.redirectToSignIn) {

@@ -91,6 +91,12 @@ export default clerkMiddleware(
           }
         }
 
+        // If it looks like a Clerk JWT token, let it pass to Clerk middleware
+        const isJwt = token.startsWith("eyJ") && token.includes(".");
+        if (isJwt) {
+          return NextResponse.next();
+        }
+
         // Invalid key presented
         console.warn(`[Auth] Invalid API Key presented for ${pathname}`);
         return NextResponse.json(
