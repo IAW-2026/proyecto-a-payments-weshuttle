@@ -28,7 +28,7 @@ export async function GET(
   let tables: { title: string; headers: string[]; rows: string[][]; weights?: number[] }[] = [];
   let sheets: { name: string; data: Record<string, unknown>[] }[] = [];
 
-  const clerkUserId = auth.context.clerkUserId;
+  const clerkUserId = auth.context.clerkUserId ?? "";
 
   if (role === "rider") {
     if (section === "payments") {

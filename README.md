@@ -1,4 +1,4 @@
-# WeShuttle - Payments App (Etapa 2)
+# WeShuttle - Payments App (Etapa 3)
 
 ## 1. Link al deploy de producción
 https://proyecto-a-payments-weshuttle.vercel.app/
@@ -85,22 +85,22 @@ http://localhost:3000
 
 WeShuttle es una plataforma de transporte orientada a empleados que se trasladan hacia nodos industriales mediante viajes compartidos y programados.
 
-Esta aplicación, **Payments App**, es un microservicio full-stack desarrollado con Next.js App Router. Su responsabilidad es centralizar la lógica financiera del sistema: cálculo de precios, checkouts de reserva, cobros, saldo a favor, movimientos de crédito y liquidaciones a conductores.
+Esta aplicación, **Payments App**, es un microservicio full-stack desarrollado con Next.js App Router. Su responsabilidad es centralizar la lógica financiera del sistema: calculo de precios, checkouts de reserva, cobros, saldo a favor, movimientos de credito y liquidaciones a conductores.
 
-Durante la Etapa 2, la Payments App funciona de forma aislada. Las demás aplicaciones del ecosistema, como Rider App y Driver App, se simulan mediante mocks o stubs que respetan los contratos de APIs definidos en la documentación del proyecto.
+En la Etapa 3, Payments App ya no debe describirse como un servicio aislado. Los flujos principales deben integrarse con Rider App, Driver App y, cuando corresponda, Feedback App, utilizando los contratos documentados en `docs/03-apis.md`.
 
-El flujo actualizado establece que el pasajero paga el precio máximo al momento de reservar. Luego, al cierre T-1h, Payments App calcula el precio final del viaje según la ocupación real del pool. Si corresponde, la diferencia entre el precio máximo pagado y el precio final se acredita como saldo a favor para próximos viajes.
+El flujo vigente establece que el pasajero paga el precio maximo al momento de reservar. Luego, al cierre T-1h, Payments App calcula el precio final del viaje segun la ocupacion real del pool. Si corresponde, la diferencia entre el precio maximo pagado y el precio final se acredita como saldo a favor para proximos viajes.
 
 ## 5. Notas o comentarios para la corrección
-### Integración de Mercado Pago Sandbox
+### Integracion de Mercado Pago Sandbox
 
-La aplicación utiliza Mercado Pago Checkout Pro en modo Sandbox para simular pagos sin dinero real.
+La aplicacion utiliza Mercado Pago Checkout Pro en modo Sandbox para simular pagos sin dinero real.
 
-El flujo de pago se realiza mediante una sesión de checkout asociada a una reserva. Rider App crea el checkout llamando al backend de Payments App y recibe una `checkout_url` interna. Desde esa pantalla, Payments App muestra el resumen del cobro, aplica el saldo a favor disponible del pasajero y luego redirige a Mercado Pago Checkout Pro.
+El flujo de pago se realiza mediante una sesion de checkout asociada a una reserva. Rider App crea el checkout llamando al backend de Payments App y recibe una `checkout_url` interna. Desde esa pantalla, Payments App muestra el resumen del cobro, aplica el saldo a favor disponible del pasajero y luego redirige a Mercado Pago Checkout Pro.
 
-La variable `MERCADOPAGO_TEST_BUYER_EMAIL` es opcional y se usa solo para pruebas Sandbox con tarjeta dentro de Checkout Pro. Si está definida, Payments App la envía como `payer.email` al crear la `Preference`. Esta variable no reemplaza `MERCADOPAGO_ACCESS_TOKEN` y nunca se expone al frontend.
+La variable `MERCADOPAGO_TEST_BUYER_EMAIL` es opcional y se usa solo para pruebas Sandbox con tarjeta dentro de Checkout Pro. Si esta definida, Payments App la envia como `payer.email` al crear la `Preference`. Esta variable no reemplaza `MERCADOPAGO_ACCESS_TOKEN` y nunca se expone al frontend.
 
-La variable `NEXT_PUBLIC_RIDER_APP_URL` apunta al deploy real de Rider App. Payments App la usa para ofrecer el botón "Volver a Rider App" después del checkout. Si no está configurada, las pantallas de resultado muestran solo la opción de volver a la vista demo `/rider` dentro de Payments App.
+Las variables `RIDER_APP_URL`, `DRIVER_APP_URL` y `FEEDBACK_APP_URL` deben apuntar a los deploys o entornos reales de las otras apps cuando se recorren flujos integrados. Las variantes `NEXT_PUBLIC_*` siguen siendo utiles para navegacion del frontend, pero no reemplazan la necesidad de integracion real entre servicios.
 
 El resultado del checkout se informa a Rider App reutilizando:
 
@@ -120,15 +120,15 @@ Reglas del flujo:
 - si el pago es `PAID`, la reserva pasa a formar parte efectiva del pool;
 - si el pago es `DENIED`, la reserva permanece en `PENDING_PAYMENT` y puede reintentarse;
 - si el checkout es `CANCELED` o `EXPIRED`, la reserva pasa a `CANCELED`;
-- en ningun caso no exitoso la reserva forma parte efectiva del pool.
+- en ningun caso un resultado no exitoso debe contarse como reserva efectivamente pagada.
 
 ---
 
-### Cambio de flujo respecto al cobro automático
+### Cambio de flujo respecto al cobro automatico
 
-En versiones anteriores del diseño se contemplaba un cobro automático en T-1h.
+En versiones anteriores del diseno se contemplaba un cobro automatico en T-1h.
 
-Ese flujo fue reemplazado por una alternativa más simple y demostrable para la defensa:
+Ese flujo fue reemplazado por una alternativa mas simple y demostrable para la defensa:
 
 1. El pasajero paga al momento de reservar.
 2. Payments App cobra el precio máximo.
@@ -161,17 +161,17 @@ CREDIT_APPLIED
 MANUAL_ADJUSTMENT
 ```
 
-No se modela expiración de crédito en esta etapa.
+No se modela expiracion de credito en el alcance actual del proyecto.
 
 ---
 
-### Reglas de precio y descuento por ocupación
+### Reglas de precio y descuento por ocupacion
 
 Las reglas de precio se administran mediante `pricing_rules`.
 
-El descuento por ocupación se calcula al cierre T-1h dentro del proceso `pool_price_finalization_jobs`.
+El descuento por ocupacion se calcula al cierre T-1h dentro del proceso `pool_price_finalization_jobs`.
 
-No se modela una entidad separada de `charge_discounts` en esta etapa, porque el descuento principal depende del pool completo y de su ocupación final. El resultado individual se refleja en cada `charge` mediante:
+No se modela una entidad separada de `charge_discounts`, porque el descuento principal depende del pool completo y de su ocupacion final. El resultado individual se refleja en cada `charge` mediante:
 
 - `final_trip_price`;
 - `credit_granted`;
@@ -179,29 +179,26 @@ No se modela una entidad separada de `charge_discounts` en esta etapa, porque el
 
 ---
 
-### Mocks de APIs externas
+### Integraciones externas y criterio de mocks
 
-Todas las interacciones externas hacia otras aplicaciones del ecosistema se encuentran aisladas y simuladas.
+En Etapa 3, las integraciones con otras aplicaciones del ecosistema deben usar APIs reales como comportamiento principal.
 
-Los mocks o stubs se ubican en el directorio:
-
-```text
-src/lib/external-apis/
-```
-
-Endpoints externos simulados:
+Contratos principales involucrados:
 
 ```http
 GET /api/pools/:pool_id/passengers?payment_status=PAID
 PATCH /api/reservations/:reservation_id/payment-result
 PATCH /api/reservations/:reservation_id/credit-adjustment
+POST /api/pools/:pool_id/payment-denied
 ```
 
-No existe un endpoint separado para `payment-denied` en T-1h, porque en el nuevo flujo no hay pagos automáticos rechazados al cierre del pool. Si el pago falla al momento de reservar, la reserva no queda confirmada y no forma parte efectiva del pool.
+Los datos demo, seeds o herramientas internas de prueba pueden seguir existiendo para verificacion o desarrollo local, pero no deben presentarse como fuente principal de informacion cuando exista una app externa real configurada.
+
+Si una app externa no responde o la integracion no esta disponible, el criterio documental de Etapa 3 es registrar y exponer un error controlado o estado de integracion no disponible. No debe describirse como comportamiento esperado ocultar la falla con mocks silenciosos en produccion.
 
 ---
 
-### Búsqueda y paginación por URL
+### Busqueda y paginacion por URL
 
 Los listados principales deben implementar búsqueda, filtros y paginación mediante parámetros en la URL cuando corresponda.
 
@@ -224,16 +221,23 @@ El panel administrativo permite visualizar información financiera relevante, co
 
 ---
 
-### Alcance de la Etapa 2
+### Alcance de la Etapa 3
 
-La aplicación debe poder demostrar de forma aislada:
+La aplicacion debe poder demostrar, al menos, un flujo integrado de punta a punta y mantener sus vistas internas de administracion y consulta:
 
-- estimación de precios;
+- estimacion de precios;
 - creación de checkout;
 - pago mediante Mercado Pago Sandbox;
-- aplicación de saldo a favor;
+- aplicacion de saldo a favor;
 - consulta de saldo a favor;
-- cálculo de ajustes de crédito al cierre T-1h;
-- generación de saldo a favor por cancelación de pool sin conductor;
+- calculo de ajustes de credito al cierre T-1h;
+- generacion de saldo a favor por cancelacion de pool sin conductor;
 - liquidaciones a conductores;
-- panel administrativo con datos precargados.
+- panel administrativo con datos precargados;
+- integracion real con Rider App y Driver App en los flujos principales cuando las URLs externas estan configuradas.
+
+### Relacion con Control Plane y Analytics Dashboard
+
+Control Plane y Analytics Dashboard forman parte de los entregables globales de la Etapa 3, pero son aplicaciones transversales separadas de este repositorio.
+
+Payments App no los reemplaza ni es reemplazada por ellos. Su rol es exponer y consumir la informacion financiera necesaria para que esas aplicaciones puedan operar sobre el sistema completo.

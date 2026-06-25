@@ -3,7 +3,9 @@
 > **Tipo A — Plataforma de Transporte (WeShuttle)**
 
 Este documento define los contratos de APIs entre las aplicaciones del sistema.  
-Cada endpoint listado corresponde a una integración entre dos webapps y debe respetarse para que cada integrante pueda desarrollar y mockear su aplicación de forma aislada.
+Cada endpoint listado corresponde a una integracion activa entre dos webapps y debe respetarse para que los flujos principales funcionen de punta a punta en la Etapa 3.
+
+Los mocks o stubs pueden seguir existiendo como soporte de desarrollo local o verificacion puntual, pero no deben tomarse como la fuente principal de datos cuando exista una API real disponible.
 
 ---
 
@@ -48,6 +50,12 @@ Códigos HTTP comunes:
 | `404 Not Found` | El recurso solicitado no existe. |
 | `409 Conflict` | La acción no puede realizarse por el estado actual del recurso. |
 | `500 Internal Server Error` | Error interno no controlado. |
+
+### Criterio de errores de integracion
+
+Si una webapp depende de otra y la app destino no responde, devuelve un error o no esta configurada correctamente, el comportamiento esperado es responder con un error controlado o estado de integracion no disponible.
+
+No se debe documentar como comportamiento principal en produccion el ocultamiento silencioso de fallas reales mediante mocks automaticos.
 
 ---
 
@@ -338,6 +346,55 @@ Si el pool queda vacío:
 | `404 Not Found` | El pool o la reserva no existen. |
 | `409 Conflict` | El pool está `LOCKED` y no permite cancelaciones voluntarias. |
 | `500 Internal Server Error` | Error interno al cancelar la reserva en el pool. |
+
+## 4.1 POST `/api/pools/:pool_id/payment-denied`
+
+### Descripción
+
+Permite a la **Payments App** notificar a la **Driver App** que una reserva asociada a un pool no pudo confirmarse por pago rechazado.
+
+Este endpoint se utiliza como integracion operativa auxiliar cuando Driver App necesita corregir ocupacion, disponibilidad o estado derivado del intento de pago fallido.
+
+### Quién llama a quién
+
+| App origen | App destino |
+|------------|-------------|
+| Payments App | Driver App |
+
+### Path params
+
+| Campo | Tipo | Descripción |
+|------|------|-------------|
+| `pool_id` | string | Identificador del pool afectado. |
+
+### Request body
+
+```json
+{
+  "reservation_id": "res_456",
+  "passenger_user_id": "user_abc123"
+}
+```
+
+### Response `200 OK`
+
+```json
+{
+  "pool_id": "pool_abc123",
+  "reservation_id": "res_456",
+  "status": "UPDATED"
+}
+```
+
+### Errores
+
+| Código | Motivo |
+|--------|--------|
+| `400 Bad Request` | Faltan datos obligatorios del pago rechazado. |
+| `401 Unauthorized` | Token inválido o ausente. |
+| `404 Not Found` | El pool no existe. |
+| `409 Conflict` | El estado del pool no permite la corrección solicitada. |
+| `500 Internal Server Error` | Error interno al procesar la corrección operativa. |
 
 ---
 

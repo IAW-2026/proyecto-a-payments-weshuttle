@@ -51,6 +51,7 @@ export const driverClient = {
         headers,
         body: JSON.stringify(body),
         cache: "no-store",
+        signal: AbortSignal.timeout(5000),
       });
 
       if (!response.ok) {

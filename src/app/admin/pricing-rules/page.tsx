@@ -121,7 +121,7 @@ export default async function AdminPricingRulesPage({ searchParams }: PageProps)
           </div>
 
           <form action={saveOccupancyDiscountsAction}>
-            <div className="overflow-hidden rounded-xl border border-outline-custom bg-white">
+            <div className="overflow-x-auto rounded-xl border border-outline-custom bg-white">
               <table className="w-full border-collapse text-left text-sm text-slate-gray">
                 <thead className="bg-surface text-xs font-bold uppercase tracking-wider text-primary">
                   <tr>

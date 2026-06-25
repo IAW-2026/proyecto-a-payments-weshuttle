@@ -54,6 +54,7 @@ export const feedbackClient = {
         method: "GET",
         headers,
         cache: "no-store",
+        signal: AbortSignal.timeout(5000),
       });
 
       if (!response.ok) {
