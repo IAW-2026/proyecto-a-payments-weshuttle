@@ -255,10 +255,10 @@ export function SettlementsClient({ settlements }: { settlements: SettlementItem
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between border-b border-slate-200/50 pb-2.5">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-200/50 pb-2.5">
                   <span className="text-slate-500 font-medium">Alias/CVU:</span>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs text-slate-900">
+                  <div className="flex items-center gap-2 flex-wrap sm:justify-end">
+                    <span className="font-mono text-xs text-slate-900 break-all">
                       {activeSettlement.payoutAccount?.alias ??
                         activeSettlement.payoutAccount?.accountReference ??
                         "Sin cuenta vinculada"}
@@ -281,10 +281,10 @@ export function SettlementsClient({ settlements }: { settlements: SettlementItem
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <span className="text-slate-500 font-medium">Referencia interna:</span>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs text-slate-900">{activeSettlement.id}</span>
+                  <div className="flex items-center gap-2 flex-wrap sm:justify-end">
+                    <span className="font-mono text-xs text-slate-900 break-all">{activeSettlement.id}</span>
                     <button
                       onClick={() => handleCopy(activeSettlement.id, `ref-${activeSettlement.id}`)}
                       className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[10px] font-bold text-slate-600 hover:border-slate-300 hover:text-slate-900 cursor-pointer"

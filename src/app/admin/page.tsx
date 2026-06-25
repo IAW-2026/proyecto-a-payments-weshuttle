@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { AdminHero, AdminQuickActions } from "./admin-ui";
@@ -18,9 +19,6 @@ export default async function AdminHomePage() {
     totalSettledData,
     pendingSettlementsData,
     chargeStats,
-    recentCharges,
-    recentFinalizationJobs,
-    recentSettlements,
   ] = await Promise.all([
     requirePageRole(["admin"]),
     prisma.charge.aggregate({
@@ -47,18 +45,6 @@ export default async function AdminHomePage() {
     prisma.charge.groupBy({
       by: ["status"],
       _count: { id: true },
-    }),
-    prisma.charge.findMany({
-      take: 5,
-      orderBy: { processedAt: "desc" },
-    }),
-    prisma.poolPriceFinalizationJob.findMany({
-      take: 5,
-      orderBy: { startedAt: "desc" },
-    }),
-    prisma.settlement.findMany({
-      take: 5,
-      orderBy: { settledAt: "desc" },
     }),
   ]);
 
@@ -115,33 +101,10 @@ export default async function AdminHomePage() {
               </Link>
             </div>
 
-            <div className="mt-6 space-y-3">
-              {recentCharges.map((charge) => (
-                <div key={charge.id} className="rounded-xl border border-outline-custom bg-surface p-4">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <p className="font-semibold text-slate-900">Cobro aprobado</p>
-                      <p className="mt-1 text-sm text-slate-600">Monto total: {formatMoney(charge.amountCharged.toNumber(), charge.currency)}</p>
-                      <details className="mt-2 text-xs text-slate-400">
-                        <summary className="cursor-pointer hover:text-slate-600 outline-none select-none">Ver detalles técnicos</summary>
-                        <div className="mt-2 space-y-1 bg-white p-2.5 rounded-lg border border-slate-200 text-slate-600">
-                          <p>ID Reserva: <span className="font-mono">{charge.reservationId}</span></p>
-                          <p>ID Pool: <span className="font-mono">{charge.poolId}</span></p>
-                          <p>ID Cobro: <span className="font-mono">{charge.id}</span></p>
-                          <p>Saldo aplicado: {formatMoney(charge.creditApplied.toNumber(), charge.currency)}</p>
-                        </div>
-                      </details>
-                    </div>
-                    <div className="flex flex-col items-start gap-2 sm:items-end">
-                      <StatusBadge value={charge.status} label={humanizeStatus(charge.status)} />
-                      <p className="text-xs text-slate-500">{formatDateTime(charge.processedAt)}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {recentCharges.length === 0 ? (
-                <EmptyState title="Sin cobros recientes" description="Cuando ingresen pagos nuevos aparecerán aquí." />
-              ) : null}
+            <div className="mt-6">
+              <Suspense fallback={<ListSkeleton count={3} />}>
+                <RecentChargesSection />
+              </Suspense>
             </div>
           </SectionCard>
 
@@ -156,36 +119,10 @@ export default async function AdminHomePage() {
               </Link>
             </div>
 
-            <div className="mt-6 space-y-3">
-              {recentFinalizationJobs.map((job) => (
-                <div key={job.id} className="rounded-xl border border-outline-custom bg-surface p-4">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <p className="font-semibold text-slate-900">Tarifa final calculada</p>
-                      <p className="mt-1 text-sm text-slate-600">
-                        Monto final: {job.finalPrice !== null ? formatMoney(job.finalPrice.toNumber(), "ARS") : "Pendiente"}
-                      </p>
-                      <details className="mt-2 text-xs text-slate-400">
-                        <summary className="cursor-pointer hover:text-slate-600 outline-none select-none">Ver detalles técnicos</summary>
-                        <div className="mt-2 space-y-1 bg-white p-2.5 rounded-lg border border-slate-200 text-slate-600">
-                          <p>ID Pool: <span className="font-mono">{job.poolId}</span></p>
-                          <p>Motivo: {job.reason}</p>
-                          <p>Precio Base: {formatMoney(job.basePrice.toNumber(), "ARS")}</p>
-                          <p>Pasajeros: {job.currentPassengers}</p>
-                          <p>Descuento: {job.discountType ?? "No aplica"}</p>
-                        </div>
-                      </details>
-                    </div>
-                    <div className="text-left sm:text-right">
-                      <StatusBadge value={job.status} />
-                      <p className="text-xs text-slate-500 mt-2">{formatDateTime(job.startedAt)}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {recentFinalizationJobs.length === 0 ? (
-                <EmptyState title="Sin procesos recientes" description="Cuando se calculen tarifas de viajes completados aparecerán aquí." />
-              ) : null}
+            <div className="mt-6">
+              <Suspense fallback={<ListSkeleton count={3} />}>
+                <RecentPricingJobsSection />
+              </Suspense>
             </div>
           </SectionCard>
         </div>
@@ -201,35 +138,153 @@ export default async function AdminHomePage() {
             </Link>
           </div>
 
-          <div className="mt-6 space-y-3">
-            {recentSettlements.map((settlement) => (
-              <div key={settlement.id} className="rounded-xl border border-outline-custom bg-surface p-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <p className="font-semibold text-slate-900">Transferencia enviada</p>
-                    <p className="mt-1 text-sm text-slate-600">Monto: {formatMoney(settlement.amount.toNumber(), settlement.currency)}</p>
-                    <details className="mt-2 text-xs text-slate-400">
-                      <summary className="cursor-pointer hover:text-slate-600 outline-none select-none">Ver detalles técnicos</summary>
-                      <div className="mt-2 space-y-1 bg-white p-2.5 rounded-lg border border-slate-200 text-slate-600">
-                        <p>ID Pool: <span className="font-mono">{settlement.poolId}</span></p>
-                        <p>ID Chofer: <span className="font-mono">{settlement.driverUserId}</span></p>
-                        <p>ID Transferencia: <span className="font-mono">{settlement.id}</span></p>
-                      </div>
-                    </details>
-                  </div>
-                  <div className="flex flex-col items-start gap-2 sm:items-end">
-                    <StatusBadge value={settlement.status} label={humanizeStatus(settlement.status)} />
-                    <p className="text-xs text-slate-500">{settlement.settledAt ? formatDateTime(settlement.settledAt) : "Pendiente"}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-            {recentSettlements.length === 0 ? (
-              <EmptyState title="Sin transferencias recientes" description="Los pagos completados aparecerán aquí." />
-            ) : null}
+          <div className="mt-6">
+            <Suspense fallback={<ListSkeleton count={3} />}>
+              <RecentSettlementsSection />
+            </Suspense>
           </div>
         </SectionCard>
       </div>
     </AppShell>
+  );
+}
+
+/**
+ * Loading Placeholder for dashboard dynamic list sections
+ */
+function ListSkeleton({ count = 3 }: { count?: number }) {
+  return (
+    <div className="space-y-3 animate-pulse">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="rounded-xl border border-outline-custom bg-surface p-4 h-24">
+          <div className="flex justify-between items-start gap-4">
+            <div className="space-y-2 flex-1">
+              <div className="h-4 bg-slate-200 rounded w-1/3"></div>
+              <div className="h-3 bg-slate-100 rounded w-1/2"></div>
+            </div>
+            <div className="h-6 bg-slate-200 rounded w-16"></div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+async function RecentChargesSection() {
+  const recentCharges = await prisma.charge.findMany({
+    take: 5,
+    orderBy: { processedAt: "desc" },
+  });
+
+  if (recentCharges.length === 0) {
+    return <EmptyState title="Sin cobros recientes" description="Cuando ingresen pagos nuevos aparecerán aquí." />;
+  }
+
+  return (
+    <div className="space-y-3">
+      {recentCharges.map((charge) => (
+        <div key={charge.id} className="rounded-xl border border-outline-custom bg-surface p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="font-semibold text-slate-900">Cobro aprobado</p>
+              <p className="mt-1 text-sm text-slate-600">Monto total: {formatMoney(charge.amountCharged.toNumber(), charge.currency)}</p>
+              <details className="mt-2 text-xs text-slate-400">
+                <summary className="cursor-pointer hover:text-slate-600 outline-none select-none">Ver detalles técnicos</summary>
+                <div className="mt-2 space-y-1 bg-white p-2.5 rounded-lg border border-slate-200 text-slate-600">
+                  <p>ID Reserva: <span className="font-mono">{charge.reservationId}</span></p>
+                  <p>ID Pool: <span className="font-mono">{charge.poolId}</span></p>
+                  <p>ID Cobro: <span className="font-mono">{charge.id}</span></p>
+                  <p>Saldo aplicado: {formatMoney(charge.creditApplied.toNumber(), charge.currency)}</p>
+                </div>
+              </details>
+            </div>
+            <div className="flex flex-col items-start gap-2 sm:items-end">
+              <StatusBadge value={charge.status} label={humanizeStatus(charge.status)} />
+              <p className="text-xs text-slate-500">{formatDateTime(charge.processedAt)}</p>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+async function RecentPricingJobsSection() {
+  const recentFinalizationJobs = await prisma.poolPriceFinalizationJob.findMany({
+    take: 5,
+    orderBy: { startedAt: "desc" },
+  });
+
+  if (recentFinalizationJobs.length === 0) {
+    return <EmptyState title="Sin procesos recientes" description="Cuando se calculen tarifas de viajes completados aparecerán aquí." />;
+  }
+
+  return (
+    <div className="space-y-3">
+      {recentFinalizationJobs.map((job) => (
+        <div key={job.id} className="rounded-xl border border-outline-custom bg-surface p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="font-semibold text-slate-900">Tarifa final calculada</p>
+              <p className="mt-1 text-sm text-slate-600">
+                Monto final: {job.finalPrice !== null ? formatMoney(job.finalPrice.toNumber(), "ARS") : "Pendiente"}
+              </p>
+              <details className="mt-2 text-xs text-slate-400">
+                <summary className="cursor-pointer hover:text-slate-600 outline-none select-none">Ver detalles técnicos</summary>
+                <div className="mt-2 space-y-1 bg-white p-2.5 rounded-lg border border-slate-200 text-slate-600">
+                  <p>ID Pool: <span className="font-mono">{job.poolId}</span></p>
+                  <p>Motivo: {job.reason}</p>
+                  <p>Precio Base: {formatMoney(job.basePrice.toNumber(), "ARS")}</p>
+                  <p>Pasajeros: {job.currentPassengers}</p>
+                  <p>Descuento: {job.discountType ?? "No aplica"}</p>
+                </div>
+              </details>
+            </div>
+            <div className="text-left sm:text-right">
+              <StatusBadge value={job.status} />
+              <p className="text-xs text-slate-500 mt-2">{formatDateTime(job.startedAt)}</p>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+async function RecentSettlementsSection() {
+  const recentSettlements = await prisma.settlement.findMany({
+    take: 5,
+    orderBy: { settledAt: "desc" },
+  });
+
+  if (recentSettlements.length === 0) {
+    return <EmptyState title="Sin transferencias recientes" description="Los pagos completados aparecerán aquí." />;
+  }
+
+  return (
+    <div className="space-y-3">
+      {recentSettlements.map((settlement) => (
+        <div key={settlement.id} className="rounded-xl border border-outline-custom bg-surface p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="font-semibold text-slate-900">Transferencia enviada</p>
+              <p className="mt-1 text-sm text-slate-600">Monto: {formatMoney(settlement.amount.toNumber(), settlement.currency)}</p>
+              <details className="mt-2 text-xs text-slate-400">
+                <summary className="cursor-pointer hover:text-slate-600 outline-none select-none">Ver detalles técnicos</summary>
+                <div className="mt-2 space-y-1 bg-white p-2.5 rounded-lg border border-slate-200 text-slate-600">
+                  <p>ID Pool: <span className="font-mono">{settlement.poolId}</span></p>
+                  <p>ID Chofer: <span className="font-mono">{settlement.driverUserId}</span></p>
+                  <p>ID Transferencia: <span className="font-mono">{settlement.id}</span></p>
+                </div>
+              </details>
+            </div>
+            <div className="flex flex-col items-start gap-2 sm:items-end">
+              <StatusBadge value={settlement.status} label={humanizeStatus(settlement.status)} />
+              <p className="text-xs text-slate-500">{settlement.settledAt ? formatDateTime(settlement.settledAt) : "Pendiente"}</p>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }

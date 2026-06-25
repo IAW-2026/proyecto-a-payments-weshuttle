@@ -79,7 +79,8 @@ export async function POST(request: Request, context: RouteContext) {
     ? (body as { pending_url: string }).pending_url.trim()
     : "";
 
-  const isPassengerUserIdMissing = role === "rider" ? !passengerUserId : false;
+  const isService = authResult.context.type === "service";
+  const isPassengerUserIdMissing = (role === "rider" || isService) ? !passengerUserId : false;
 
   if (!poolId || isPassengerUserIdMissing || maxPrice === null || maxPrice < 0 || !currency || !isValidUrl(successUrl) || !isValidUrl(failureUrl) || !isValidUrl(pendingUrl)) {
     return NextResponse.json(
@@ -104,9 +105,9 @@ export async function POST(request: Request, context: RouteContext) {
     );
   }
 
-  const resolvedPassengerUserId = role === "admin"
-    ? passengerUserId || clerkUserId
-    : clerkUserId;
+  const resolvedPassengerUserId = (isService || role === "admin")
+    ? passengerUserId || (clerkUserId ?? "")
+    : clerkUserId ?? "";
 
   const result = await createCheckoutSession({
     reservationId: reservationId.trim(),

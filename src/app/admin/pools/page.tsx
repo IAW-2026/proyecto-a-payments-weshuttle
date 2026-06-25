@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { AppShell } from "@/components/app-shell";
 import { AdminHero } from "../admin-ui";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -23,68 +24,6 @@ export default async function AdminPoolsPage() {
     prisma.poolPriceFinalizationJob.count({ where: { status: "STARTED" } }),
   ]);
 
-  const dbPools = await prisma.charge.findMany({
-    where: { status: "PAID" },
-    select: { poolId: true },
-    distinct: ["poolId"],
-  });
-
-  const mockPoolIds = getMockPoolIds();
-  const allPoolIds = Array.from(new Set([...dbPools.map((c) => c.poolId), ...mockPoolIds]));
-
-  const eligiblePools = [];
-
-  for (const poolId of allPoolIds) {
-    const manifest = await getPoolPassengers(poolId);
-
-    if (manifest && manifest.passengers.length > 0) {
-      const paidPassengers = manifest.passengers.filter((p) => p.paymentStatus === "PAID");
-
-      if (paidPassengers.length > 0) {
-        const firstPassenger = paidPassengers[0];
-        const destinationId = firstPassenger.destinationId;
-        const departureTime = firstPassenger.departureTime;
-        const currency = firstPassenger.currency || "ARS";
-        const maxPricePaid = Math.max(...paidPassengers.map((p) => p.maxPrice), 0);
-
-        const completedJob = await prisma.poolPriceFinalizationJob.findFirst({
-          where: { poolId, status: { in: ["STARTED", "COMPLETED"] } },
-        });
-
-        const poolCharges = await prisma.charge.findMany({
-          where: { poolId, status: "PAID" },
-        });
-        const hasChargesFinalized = poolCharges.length > 0 && poolCharges.every((c) => c.finalTripPrice !== null);
-
-        const hasAdjustment = !!completedJob || hasChargesFinalized;
-
-        const pricingRule = destinationId
-          ? await findApplicablePricingRule(destinationId, paidPassengers.length)
-          : null;
-
-        eligiblePools.push({
-          poolId,
-          destinationId,
-          departureTime,
-          currency,
-          passengerCount: paidPassengers.length,
-          maxPricePaid,
-          pricingRule: pricingRule
-            ? {
-                id: pricingRule.id,
-                basePrice: pricingRule.basePrice.toNumber(),
-                discountType: pricingRule.discountType,
-                discountValue: pricingRule.discountValue.toNumber(),
-              }
-            : null,
-          hasJobCompleted: !!completedJob,
-          hasChargesFinalized,
-          hasAdjustment,
-        });
-      }
-    }
-  }
-
   return (
     <AppShell
       role="admin"
@@ -101,7 +40,10 @@ export default async function AdminPoolsPage() {
           <MetricCard title="Viajes en proceso" value={String(pendingJobs)} description="Cálculos en ejecución o revisión pendiente." tone="amber" />
         </div>
 
-        <PoolsClient pools={eligiblePools} />
+        {/* Suspense boundary around the slow API calls component */}
+        <Suspense fallback={<EligiblePoolsSkeleton />}>
+          <EligiblePoolsSection />
+        </Suspense>
 
         <SectionCard>
           <div className="flex items-center justify-between gap-4">
@@ -153,4 +95,137 @@ export default async function AdminPoolsPage() {
       </div>
     </AppShell>
   );
+}
+
+/**
+ * Skeleton Loader Component displayed while pools are loading
+ */
+function EligiblePoolsSkeleton() {
+  return (
+    <section className="rounded-xl border border-outline-custom bg-white p-6 shadow-sm animate-pulse">
+      <div>
+        <div className="h-4 w-28 bg-slate-200 rounded mb-2"></div>
+        <div className="h-6 w-56 bg-slate-200 rounded mb-2"></div>
+        <div className="h-4 w-96 bg-slate-100 rounded mb-6"></div>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        <div className="space-y-4">
+          <div>
+            <div className="h-3 w-32 bg-slate-100 rounded mb-2"></div>
+            <div className="h-12 bg-slate-100 rounded-lg w-full"></div>
+          </div>
+          <div>
+            <div className="h-3 w-40 bg-slate-100 rounded mb-2"></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="h-11 bg-slate-100 rounded-lg"></div>
+              <div className="h-11 bg-slate-100 rounded-lg"></div>
+            </div>
+          </div>
+          <div className="h-12 bg-slate-200 rounded-lg w-full mt-4"></div>
+        </div>
+
+        <div className="rounded-xl border border-slate-100 bg-slate-50 p-5 flex flex-col justify-between h-[300px]">
+          <div className="space-y-4">
+            <div className="h-4 w-40 bg-slate-200 rounded mb-4"></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <div className="h-3 w-16 bg-slate-100 rounded"></div>
+                <div className="h-4 w-24 bg-slate-200 rounded"></div>
+              </div>
+              <div className="space-y-2">
+                <div className="h-3 w-12 bg-slate-100 rounded"></div>
+                <div className="h-4 w-20 bg-slate-200 rounded"></div>
+              </div>
+              <div className="space-y-2">
+                <div className="h-3 w-20 bg-slate-100 rounded"></div>
+                <div className="h-4 w-28 bg-slate-200 rounded"></div>
+              </div>
+              <div className="space-y-2">
+                <div className="h-3 w-24 bg-slate-100 rounded"></div>
+                <div className="h-5 w-16 bg-slate-200 rounded"></div>
+              </div>
+            </div>
+          </div>
+          <div className="h-16 bg-slate-100 rounded-xl w-full"></div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * Isolated Async Component that performs passenger manifest fetches
+ */
+async function EligiblePoolsSection() {
+  const dbPools = await prisma.charge.findMany({
+    where: { status: "PAID" },
+    select: { poolId: true },
+    distinct: ["poolId"],
+  });
+
+  const mockPoolIds = getMockPoolIds();
+  const allPoolIds = Array.from(new Set([...dbPools.map((c) => c.poolId), ...mockPoolIds]));
+
+  const poolsData = await Promise.all(
+    allPoolIds.map(async (poolId) => {
+      const manifest = await getPoolPassengers(poolId);
+
+      if (!manifest || manifest.passengers.length === 0) {
+        return null;
+      }
+
+      const paidPassengers = manifest.passengers.filter((p) => p.paymentStatus === "PAID");
+
+      if (paidPassengers.length === 0) {
+        return null;
+      }
+
+      const firstPassenger = paidPassengers[0];
+      const destinationId = firstPassenger.destinationId;
+      const departureTime = firstPassenger.departureTime;
+      const currency = firstPassenger.currency || "ARS";
+      const maxPricePaid = Math.max(...paidPassengers.map((p) => p.maxPrice), 0);
+
+      // Perform all database queries for this pool in parallel
+      const [completedJob, poolCharges, pricingRule] = await Promise.all([
+        prisma.poolPriceFinalizationJob.findFirst({
+          where: { poolId, status: { in: ["STARTED", "COMPLETED"] } },
+        }),
+        prisma.charge.findMany({
+          where: { poolId, status: "PAID" },
+        }),
+        destinationId
+          ? findApplicablePricingRule(destinationId, paidPassengers.length)
+          : Promise.resolve(null),
+      ]);
+
+      const hasChargesFinalized = poolCharges.length > 0 && poolCharges.every((c) => c.finalTripPrice !== null);
+      const hasAdjustment = !!completedJob || hasChargesFinalized;
+
+      return {
+        poolId,
+        destinationId,
+        departureTime,
+        currency,
+        passengerCount: paidPassengers.length,
+        maxPricePaid,
+        pricingRule: pricingRule
+          ? {
+              id: pricingRule.id,
+              basePrice: pricingRule.basePrice.toNumber(),
+              discountType: pricingRule.discountType,
+              discountValue: pricingRule.discountValue.toNumber(),
+            }
+          : null,
+        hasJobCompleted: !!completedJob,
+        hasChargesFinalized,
+        hasAdjustment,
+      };
+    })
+  );
+
+  const eligiblePools = poolsData.filter((p): p is NonNullable<typeof p> => p !== null);
+
+  return <PoolsClient pools={eligiblePools} />;
 }

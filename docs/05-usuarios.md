@@ -28,7 +28,7 @@ sub
 |---------|------------------------------|-------------|
 | **Empleado / Pasajero (`rider`)** | Rider App, Payments App, Feedback App | Puede solicitar viajes, reservar lugares en pools, pagar reservas desde Payments App, utilizar saldo a favor disponible, consultar pagos asociados a sus viajes y calificar al conductor al finalizar el viaje. |
 | **Conductor (`driver`)** | Driver App, Payments App, Feedback App | Puede aceptar pools desde el marketplace, gestionar el recorrido, configurar o consultar su cuenta de cobro, recibir liquidaciones y calificar pasajeros. |
-| **Administrador (`admin`)** | Rider App, Driver App, Payments App, Feedback App y posteriormente Control Plane | Puede gestionar datos principales, consultar listados, revisar reportes y administrar operaciones del sistema. |
+| **Administrador (`admin`)** | Rider App, Driver App, Payments App, Feedback App y Control Plane | Puede gestionar datos principales, consultar listados, revisar reportes y administrar operaciones del sistema. |
 
 ---
 
@@ -115,7 +115,7 @@ Los siguientes claims deben estar disponibles en el JWT utilizado por las aplica
 | **Driver App** | `sub`, `role` | Identificar al conductor, verificar que tenga rol `driver` o `admin`, y asociar pools o acciones operativas al conductor autenticado. |
 | **Payments App** | `sub`, `role` | Identificar al usuario que paga una reserva, consulta saldo a favor, utiliza crédito disponible, consulta pagos o recibe liquidaciones. El rol permite distinguir si el usuario opera como pasajero, conductor o administrador. |
 | **Feedback App** | `sub`, `role` | Identificar al autor de una reseña o reporte y validar si está actuando como pasajero, conductor o administrador. |
-| **Control Plane** *(futuro)* | `sub`, `role` | Permitir acceso únicamente a usuarios con rol `admin`. |
+| **Control Plane** | `sub`, `role` | Permitir acceso únicamente a usuarios con rol `admin`. |
 
 ---
 
@@ -229,7 +229,7 @@ Cada app debe validar el JWT en sus rutas protegidas.
 | **Driver App** | `driver`, `admin` |
 | **Payments App** | `rider`, `driver`, `admin` |
 | **Feedback App** | `rider`, `driver`, `admin` |
-| **Control Plane** *(futuro)* | `admin` |
+| **Control Plane** | `admin` |
 
 ---
 
@@ -252,7 +252,7 @@ Notas:
 
 ## Consideración sobre métodos de pago
 
-En esta etapa, el sistema no requiere que el pasajero guarde previamente un método de pago para cobros automáticos.
+En el alcance actual del sistema, no se requiere que el pasajero guarde previamente un metodo de pago para cobros automaticos.
 
 El pasajero paga directamente cada reserva desde Payments App mediante una sesión de checkout.
 
@@ -262,7 +262,7 @@ Por lo tanto:
 - no se ejecutan cobros automáticos al cierre T-1h;
 - el cierre T-1h solo se utiliza para calcular el precio final y generar saldo a favor si corresponde.
 
-En futuras etapas, si se decide volver a implementar cobros automáticos, se podrá incorporar nuevamente la vinculación de métodos de pago guardados.
+Si mas adelante se decide volver a implementar cobros automaticos, se podra incorporar nuevamente la vinculacion de metodos de pago guardados.
 
 ---
 
@@ -342,7 +342,7 @@ Estrategia:
 
 ## Consideraciones sobre múltiples roles
 
-En esta etapa, se define un único rol principal por usuario:
+Actualmente se define un unico rol principal por usuario:
 
 ```text
 role
@@ -358,11 +358,9 @@ Si en etapas futuras se permite que un mismo usuario sea pasajero y conductor al
 }
 ```
 
-En esta primera etapa no se modela esa complejidad.
+Hoy no se modela esa complejidad.
 
 ---
-
-## Autenticación en APIs inter-servicio
 
 ## Autenticación en APIs inter-servicio
 
@@ -386,6 +384,8 @@ Ejemplos:
 - Driver App notifica a Feedback App el inicio o fin de un recorrido.
 
 En ambos casos, cada app debe verificar que la aplicación llamadora tenga permisos para ejecutar la acción solicitada.
+
+En Etapa 3, este criterio pasa a ser parte del funcionamiento integrado esperado del sistema completo.
 
 ---
 

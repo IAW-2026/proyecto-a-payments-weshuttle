@@ -21,6 +21,8 @@ Ninguna aplicación accede directamente a la base de datos de otra. Cuando una a
 
 La definición detallada de cada endpoint, incluyendo request y response, se documenta en el archivo **1.3 — Diseño de APIs inter-servicios**.
 
+En la Etapa 3, estas integraciones deben considerarse parte del funcionamiento principal del sistema y no solo contratos para mockeo local.
+
 ---
 
 ## Datos propios de cada app (Persistencia)

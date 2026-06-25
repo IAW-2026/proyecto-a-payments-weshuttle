@@ -10,7 +10,7 @@
 |-------|-------------|----------------------|
 | **Pasajero (Rider)** | Reserva su lugar en pools, visualiza precios estimados, paga el precio máximo al momento de reservar y recibe saldo a favor si el precio final del viaje resulta menor por la ocupación del pool. Al finalizar su viaje puede realizar una reseña al conductor. | Rider, Payments, Feedback |
 | **Conductor (Driver)** | Acepta viajes del marketplace, actualiza el estado del recorrido, recibe su liquidación y puede realizar una reseña a cada pasajero. | Driver, Payments, Feedback |
-| **Administrador** | Gestiona los datos principales de cada app y visualiza listados y reportes | Rider, Driver, Payments, Feedback y posteriormente Control Plane|
+| **Administrador** | Gestiona los datos principales de cada app y visualiza listados y reportes | Rider, Driver, Payments, Feedback y Control Plane |
 
 ## Flujo principal de uso
 

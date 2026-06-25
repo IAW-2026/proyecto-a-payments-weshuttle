@@ -80,6 +80,7 @@ export const riderClient = {
       method: "GET",
       headers,
       cache: "no-store",
+      signal: AbortSignal.timeout(5000),
     });
 
     if (!response.ok) {
@@ -157,6 +158,7 @@ export const riderClient = {
       headers,
       body: JSON.stringify(body),
       cache: "no-store",
+      signal: AbortSignal.timeout(5000),
     });
 
     if (!response.ok) {
@@ -209,6 +211,7 @@ export const riderClient = {
       headers,
       body: JSON.stringify(body),
       cache: "no-store",
+      signal: AbortSignal.timeout(5000),
     });
 
     if (!response.ok) {

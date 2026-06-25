@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { AppShell } from "@/components/app-shell";
 import { AdminHero } from "../admin-ui";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -9,7 +10,7 @@ import { prisma } from "@/lib/prisma";
 import { TableReportButtons } from "@/components/table-report-buttons";
 
 export default async function AdminCreditsPage() {
-  const [authContext, creditApplied, creditGranted, recentMovements] = await Promise.all([
+  const [authContext, creditApplied, creditGranted] = await Promise.all([
     requirePageRole(["admin"]),
     prisma.creditMovement.aggregate({
       _sum: { amount: true },
@@ -20,10 +21,6 @@ export default async function AdminCreditsPage() {
       _sum: { amount: true },
       _count: { id: true },
       where: { type: "CREDIT_GRANTED" },
-    }),
-    prisma.creditMovement.findMany({
-      take: 12,
-      orderBy: { createdAt: "desc" },
     }),
   ]);
 
@@ -52,55 +49,96 @@ export default async function AdminCreditsPage() {
             </div>
             <div className="flex items-center gap-3">
               <TableReportButtons role="admin" section="credits" />
-              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">
-                {recentMovements.length} visibles
-              </span>
             </div>
           </div>
 
-          {recentMovements.length === 0 ? (
-            <div className="mt-6">
-              <EmptyState title="Sin movimientos de crédito" description="Cuando se apliquen o generen créditos aparecerán aquí." />
-            </div>
-          ) : (
-            <div className="mt-6 space-y-3">
-              {recentMovements.map((movement) => {
-                const movementLabel =
-                  movement.type === "CREDIT_APPLIED"
-                    ? "Saldo utilizado en viaje"
-                    : movement.type === "CREDIT_GRANTED"
-                      ? "Saldo a favor acreditado (Ajuste o Devolución)"
-                      : movement.type;
-
-                return (
-                  <article key={movement.id} className="rounded-xl border border-outline-custom bg-surface p-4">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div>
-                        <p className="font-semibold text-slate-900">{movementLabel}</p>
-                        <p className="mt-1.5 text-sm text-slate-600">Monto: <span className="font-semibold text-slate-900">{formatMoney(movement.amount.toNumber(), movement.currency)}</span></p>
-                        <details className="mt-2.5 text-xs text-slate-400">
-                          <summary className="cursor-pointer hover:text-slate-600 outline-none select-none">Ver detalles técnicos</summary>
-                          <div className="mt-2 space-y-1 bg-white p-2.5 rounded-lg border border-slate-200 text-slate-600">
-                            <p>ID Movimiento: <span className="font-mono">{movement.id}</span></p>
-                            <p>ID Pasajero: <span className="font-mono">{movement.userId}</span></p>
-                            <p>ID Reserva: <span className="font-mono">{movement.reservationId ?? "Sin reserva"}</span></p>
-                            <p>ID Pool: <span className="font-mono">{movement.poolId ?? "Sin pool"}</span></p>
-                            <p>ID Cobro: <span className="font-mono">{movement.chargeId ?? "No aplica"}</span></p>
-                            <p>Código del tipo: <span className="font-mono">{movement.type}</span></p>
-                          </div>
-                        </details>
-                      </div>
-                      <div className="text-left sm:text-right">
-                        <p className="text-xs text-slate-500">{formatDateTime(movement.createdAt)}</p>
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          )}
+          <Suspense fallback={<CreditsSkeleton />}>
+            <CreditMovementsListSection />
+          </Suspense>
         </SectionCard>
       </div>
     </AppShell>
+  );
+}
+
+/**
+ * Loading Placeholder for credit movements
+ */
+function CreditsSkeleton() {
+  return (
+    <div className="space-y-3 mt-6 animate-pulse">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="rounded-xl border border-outline-custom bg-surface p-4 h-24">
+          <div className="flex justify-between items-start gap-4">
+            <div className="space-y-2 flex-1">
+              <div className="h-4 bg-slate-200 rounded w-1/4"></div>
+              <div className="h-3 bg-slate-100 rounded w-1/3"></div>
+            </div>
+            <div className="h-4 bg-slate-100 rounded w-16"></div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+async function CreditMovementsListSection() {
+  const recentMovements = await prisma.creditMovement.findMany({
+    take: 12,
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (recentMovements.length === 0) {
+    return (
+      <div className="mt-6">
+        <EmptyState title="Sin movimientos de crédito" description="Cuando se apliquen o generen créditos aparecerán aquí." />
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="mt-4 flex justify-end">
+        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">
+          {recentMovements.length} visibles
+        </span>
+      </div>
+
+      <div className="mt-4 space-y-3">
+        {recentMovements.map((movement) => {
+          const movementLabel =
+            movement.type === "CREDIT_APPLIED"
+              ? "Saldo utilizado en viaje"
+              : movement.type === "CREDIT_GRANTED"
+                ? "Saldo a favor acreditado (Ajuste o Devolución)"
+                : movement.type;
+
+          return (
+            <article key={movement.id} className="rounded-xl border border-outline-custom bg-surface p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="font-semibold text-slate-900">{movementLabel}</p>
+                  <p className="mt-1.5 text-sm text-slate-600">Monto: <span className="font-semibold text-slate-900">{formatMoney(movement.amount.toNumber(), movement.currency)}</span></p>
+                  <details className="mt-2.5 text-xs text-slate-400">
+                    <summary className="cursor-pointer hover:text-slate-600 outline-none select-none">Ver detalles técnicos</summary>
+                    <div className="mt-2 space-y-1 bg-white p-2.5 rounded-lg border border-slate-200 text-slate-600">
+                      <p>ID Movimiento: <span className="font-mono">{movement.id}</span></p>
+                      <p>ID Pasajero: <span className="font-mono">{movement.userId}</span></p>
+                      <p>ID Reserva: <span className="font-mono">{movement.reservationId ?? "Sin reserva"}</span></p>
+                      <p>ID Pool: <span className="font-mono">{movement.poolId ?? "Sin pool"}</span></p>
+                      <p>ID Cobro: <span className="font-mono">{movement.chargeId ?? "No aplica"}</span></p>
+                      <p>Código del tipo: <span className="font-mono">{movement.type}</span></p>
+                    </div>
+                  </details>
+                </div>
+                <div className="text-left sm:text-right">
+                  <p className="text-xs text-slate-500">{formatDateTime(movement.createdAt)}</p>
+                </div>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </>
   );
 }
