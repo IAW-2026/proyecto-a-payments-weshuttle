@@ -147,7 +147,7 @@ export function PoolsClient({ pools }: { pools: EligiblePool[] }) {
                     <span className="text-xs font-bold uppercase tracking-wider text-slate-500 block">
                       Motivo de Cierre / Simulación
                     </span>
-                    <div className="mt-2 grid grid-cols-2 gap-3">
+                    <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <button
                         type="button"
                         id="reason-locked"
@@ -349,16 +349,16 @@ export function PoolsClient({ pools }: { pools: EligiblePool[] }) {
               <div className="divide-y divide-slate-100">
                 {result.credits_generated.map((credit) => (
                   <div key={credit.reservation_id} className="p-4 text-xs flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between hover:bg-slate-50/50 transition">
-                    <div>
-                      <p className="font-bold text-slate-800">{credit.passenger_user_id}</p>
-                      <p className="text-[10px] text-slate-400 font-mono mt-0.5">Reserva: {credit.reservation_id}</p>
-                      <div className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-slate-50 px-2 py-1 text-[10px] font-medium text-slate-600 border border-slate-100">
+                    <div className="min-w-0">
+                      <p className="font-bold text-slate-800 break-all">{credit.passenger_user_id}</p>
+                      <p className="text-[10px] text-slate-400 font-mono mt-0.5 break-all">Reserva: {credit.reservation_id}</p>
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5 rounded-md bg-slate-50 px-2 py-1 text-[10px] font-medium text-slate-600 border border-slate-100">
                         <span className="font-semibold text-slate-500">Cálculo:</span>
-                        <span className="font-mono">{formatMoney(credit.max_price_paid, result.currency)} <span className="text-[9px] text-slate-400">(cobrado)</span></span>
+                        <span className="font-mono whitespace-nowrap">{formatMoney(credit.max_price_paid, result.currency)} <span className="text-[9px] text-slate-400">(cobrado)</span></span>
                         <span>−</span>
-                        <span className="font-mono">{formatMoney(credit.final_price, result.currency)} <span className="text-[9px] text-slate-400">(tarifa final)</span></span>
+                        <span className="font-mono whitespace-nowrap">{formatMoney(credit.final_price, result.currency)} <span className="text-[9px] text-slate-400">(tarifa final)</span></span>
                         <span>=</span>
-                        <span className="font-mono text-emerald-600 font-bold bg-emerald-50 px-1 py-0.2 rounded">{formatMoney(credit.credit_granted, result.currency)} <span className="text-[9px] text-emerald-500 font-normal">(devuelto)</span></span>
+                        <span className="font-mono text-emerald-600 font-bold bg-emerald-50 px-1 py-0.2 rounded whitespace-nowrap">{formatMoney(credit.credit_granted, result.currency)} <span className="text-[9px] text-emerald-500 font-normal">(devuelto)</span></span>
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-4 text-right">

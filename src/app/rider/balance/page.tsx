@@ -61,7 +61,7 @@ async function RiderBalanceContentSection({ clerkUserId }: { clerkUserId: string
       </SectionCard>
 
       <SectionCard>
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h3 className="text-xl font-semibold text-slate-900">Movimientos recientes</h3>
             <p className="mt-2 text-sm text-slate-600">Ideal para explicar de donde viene el saldo disponible y como impacta en la reserva.</p>

@@ -204,7 +204,7 @@ export function PayoutAccountForm({
               setIsEditing(true);
               setStatus("idle");
             }}
-            className="flex-1 rounded-lg bg-primary px-4 py-3 text-sm font-bold text-white shadow-md hover:bg-primary-hover transition cursor-pointer"
+            className="flex-1 w-full rounded-lg bg-primary px-4 py-3 text-sm font-bold text-white shadow-md hover:bg-primary-hover transition cursor-pointer"
           >
             Actualizar método de cobro
           </button>
@@ -212,7 +212,7 @@ export function PayoutAccountForm({
           <button
             type="button"
             onClick={handleDelete}
-            className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700 hover:bg-rose-100 transition cursor-pointer"
+            className="flex-1 w-full rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700 hover:bg-rose-100 transition cursor-pointer"
           >
             Eliminar método de cobro
           </button>
@@ -300,7 +300,7 @@ export function PayoutAccountForm({
           <button
             type="submit"
             disabled={isSaveDisabled}
-            className="flex-1 rounded-lg bg-primary px-4 py-3 text-sm font-bold text-white shadow-md hover:bg-primary-hover transition disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none cursor-pointer"
+            className="flex-1 w-full rounded-lg bg-primary px-4 py-3 text-sm font-bold text-white shadow-md hover:bg-primary-hover transition disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none cursor-pointer"
           >
             {buttonText}
           </button>
@@ -311,7 +311,7 @@ export function PayoutAccountForm({
               type="button"
               onClick={handleCancel}
               disabled={status === "saving"}
-              className="rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+              className="flex-1 w-full rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
             >
               Cancelar
             </button>

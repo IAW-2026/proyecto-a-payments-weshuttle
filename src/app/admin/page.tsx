@@ -153,9 +153,9 @@ async function RecentChargesSection() {
               <details className="mt-2 text-xs text-slate-400">
                 <summary className="cursor-pointer hover:text-slate-600 outline-none select-none">Ver detalles técnicos</summary>
                 <div className="mt-2 space-y-1 bg-white p-2.5 rounded-lg border border-slate-200 text-slate-600">
-                  <p>ID Reserva: <span className="font-mono">{charge.reservationId}</span></p>
-                  <p>ID Pool: <span className="font-mono">{charge.poolId}</span></p>
-                  <p>ID Cobro: <span className="font-mono">{charge.id}</span></p>
+                  <p>ID Reserva: <span className="font-mono break-all">{charge.reservationId}</span></p>
+                  <p>ID Pool: <span className="font-mono break-all">{charge.poolId}</span></p>
+                  <p>ID Cobro: <span className="font-mono break-all">{charge.id}</span></p>
                   <p>Saldo aplicado: {formatMoney(charge.creditApplied.toNumber(), charge.currency)}</p>
                 </div>
               </details>
@@ -194,11 +194,11 @@ async function RecentPricingJobsSection() {
               <details className="mt-2 text-xs text-slate-400">
                 <summary className="cursor-pointer hover:text-slate-600 outline-none select-none">Ver detalles técnicos</summary>
                 <div className="mt-2 space-y-1 bg-white p-2.5 rounded-lg border border-slate-200 text-slate-600">
-                  <p>ID Pool: <span className="font-mono">{job.poolId}</span></p>
+                  <p>ID Pool: <span className="font-mono break-all">{job.poolId}</span></p>
+                  <p>ID Job: <span className="font-mono break-all">{job.id}</span></p>
                   <p>Motivo: {job.reason}</p>
-                  <p>Precio Base: {formatMoney(job.basePrice.toNumber(), "ARS")}</p>
-                  <p>Pasajeros: {job.currentPassengers}</p>
-                  <p>Descuento: {job.discountType ?? "No aplica"}</p>
+                  <p>Ocupación: {job.currentPassengers} pasajeros</p>
+                  <p>Precio base original: {formatMoney(job.basePrice.toNumber(), job.currency)}</p>
                 </div>
               </details>
             </div>
@@ -234,9 +234,9 @@ async function RecentSettlementsSection() {
               <details className="mt-2 text-xs text-slate-400">
                 <summary className="cursor-pointer hover:text-slate-600 outline-none select-none">Ver detalles técnicos</summary>
                 <div className="mt-2 space-y-1 bg-white p-2.5 rounded-lg border border-slate-200 text-slate-600">
-                  <p>ID Pool: <span className="font-mono">{settlement.poolId}</span></p>
-                  <p>ID Chofer: <span className="font-mono">{settlement.driverUserId}</span></p>
-                  <p>ID Transferencia: <span className="font-mono">{settlement.id}</span></p>
+                  <p>ID Pool: <span className="font-mono break-all">{settlement.poolId}</span></p>
+                  <p>ID Chofer: <span className="font-mono break-all">{settlement.driverUserId}</span></p>
+                  <p>ID Transferencia: <span className="font-mono break-all">{settlement.id}</span></p>
                 </div>
               </details>
             </div>

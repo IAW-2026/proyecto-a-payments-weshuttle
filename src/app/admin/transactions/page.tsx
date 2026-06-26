@@ -156,9 +156,9 @@ async function TransactionsTableSection({ q, page }: { q: string; page: number }
         {charges.map((charge) => (
           <article key={charge.id} className="rounded-xl border border-outline-custom bg-surface p-4">
             <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="font-semibold text-slate-900">Reserva {charge.reservationId}</p>
-                <p className="mt-1 text-xs text-slate-500">Pool {charge.poolId}</p>
+              <div className="min-w-0">
+                <p className="font-semibold text-slate-900 break-all">Reserva {charge.reservationId}</p>
+                <p className="mt-1 text-xs text-slate-500 break-all">Pool {charge.poolId}</p>
               </div>
               <StatusBadge value={charge.status} label={humanizeStatus(charge.status)} />
             </div>

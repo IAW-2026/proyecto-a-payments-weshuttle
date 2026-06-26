@@ -48,7 +48,7 @@ async function RiderCheckoutsContentSection({ clerkUserId }: { clerkUserId: stri
 
   return (
     <SectionCard>
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h3 className="text-lg font-bold text-slate-900">Historial de pagos</h3>
           <p className="text-xs text-slate-500">Listado ordenado desde el viaje más reciente.</p>

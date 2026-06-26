@@ -96,7 +96,7 @@ export default async function AdminPricingRulesPage({ searchParams }: PageProps)
                 </div>
                 <button
                   type="submit"
-                  className="rounded-lg bg-primary px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-primary/15 hover:bg-primary-hover hover:scale-[1.01] active:scale-[0.99] transition cursor-pointer"
+                  className="w-full md:w-auto rounded-lg bg-primary px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-primary/15 hover:bg-primary-hover hover:scale-[1.01] active:scale-[0.99] transition cursor-pointer"
                 >
                   Guardar tarifa base
                 </button>

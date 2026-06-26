@@ -293,15 +293,15 @@ export function CheckoutSummaryCard({ data }: { data: CheckoutViewData }) {
                         El precio final de tu viaje fue calculado en base a la ocupación del pool (cierre T-1h).
                       </p>
                       <div className="bg-surface-neutral p-3 rounded-lg border border-outline-custom space-y-2">
-                        <div className="flex justify-between">
-                          <span>Tarifa máxima de reserva:</span>
+                        <div className="flex flex-row flex-wrap justify-between gap-2 text-xs">
+                          <span className="text-slate-500 font-medium">Tarifa máxima de reserva:</span>
                           <span className="font-semibold text-primary">{formatMoney(data.checkout.maxPrice, data.checkout.currency)}</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span>Tarifa final calculada:</span>
+                        <div className="flex flex-row flex-wrap justify-between gap-2 text-xs">
+                          <span className="text-slate-500 font-medium">Tarifa final calculada:</span>
                           <span className="font-semibold text-primary">{formatMoney(data.checkout.finalTripPrice ?? 0, data.checkout.currency)}</span>
                         </div>
-                        <div className="flex justify-between border-t border-outline-custom pt-1.5 font-bold text-emerald-700">
+                        <div className="flex flex-row flex-wrap justify-between gap-2 text-xs border-t border-outline-custom pt-1.5 font-bold text-emerald-700">
                           <span>Saldo devuelto a tu cuenta:</span>
                           <span>+{formatMoney(data.checkout.creditRefund ?? 0, data.checkout.currency)}</span>
                         </div>
@@ -387,11 +387,11 @@ export function CheckoutResultActions({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col sm:flex-row sm:justify-center gap-3">
         {riderAppUrl ? (
           <a
             href={riderAppUrl}
-            className="inline-flex w-full items-center justify-center rounded-lg bg-primary px-5 py-3 text-center text-sm font-bold text-white shadow-md hover:bg-primary-hover transition duration-200 cursor-pointer"
+            className="inline-flex w-full sm:w-auto items-center justify-center rounded-lg bg-primary px-5 py-3 text-center text-sm font-bold text-white shadow-md hover:bg-primary-hover transition duration-200 cursor-pointer"
           >
             Volver a Rider App
           </a>
@@ -399,14 +399,14 @@ export function CheckoutResultActions({
 
         <Link
           href="/rider"
-          className="inline-flex w-full items-center justify-center rounded-lg border border-primary/25 bg-white px-5 py-3 text-center text-sm font-semibold text-primary shadow-sm hover:border-primary/50 hover:bg-primary/5 transition duration-200"
+          className="inline-flex w-full sm:w-auto items-center justify-center rounded-lg border border-primary/25 bg-white px-5 py-3 text-center text-sm font-semibold text-primary shadow-sm hover:border-primary/50 hover:bg-primary/5 transition duration-200"
         >
           Volver a Payments
         </Link>
 
         <Link
           href="/rider/checkouts"
-          className="inline-flex w-full items-center justify-center rounded-lg border border-primary/25 bg-white px-5 py-3 text-center text-sm font-semibold text-primary shadow-sm hover:border-primary/50 hover:bg-primary/5 transition duration-200"
+          className="inline-flex w-full sm:w-auto items-center justify-center rounded-lg border border-primary/25 bg-white px-5 py-3 text-center text-sm font-semibold text-primary shadow-sm hover:border-primary/50 hover:bg-primary/5 transition duration-200"
         >
           Ver mis pagos
         </Link>

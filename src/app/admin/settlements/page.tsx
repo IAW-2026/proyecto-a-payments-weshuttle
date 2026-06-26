@@ -72,7 +72,7 @@ export default async function AdminSettlementsPage({ searchParams }: PageProps) 
         )}
 
         <SectionCard id="registros-tabla">
-          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-xl font-semibold text-slate-900">Transferencias registradas</h2>
               <p className="mt-2 text-sm text-slate-600">Busca por viaje o conductor para auditar una transferencia puntual.</p>

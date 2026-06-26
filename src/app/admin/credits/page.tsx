@@ -107,9 +107,9 @@ export default async function AdminCreditsPage() {
 
                       <details className="text-xs text-slate-400">
                         <summary className="cursor-pointer hover:text-slate-600 outline-none select-none">Ver detalles técnicos</summary>
-                        <div className="mt-2 space-y-1 bg-white p-2.5 rounded-lg border border-slate-200 text-slate-650">
-                          <p>ID Pool: <span className="font-mono">{job.poolId}</span></p>
-                          <p>ID Job: <span className="font-mono">{job.id}</span></p>
+                        <div className="mt-2 space-y-1 bg-white p-2.5 rounded-lg border border-slate-200 text-slate-600">
+                          <p>ID Pool: <span className="font-mono break-all">{job.poolId}</span></p>
+                          <p>ID Job: <span className="font-mono break-all">{job.id}</span></p>
                           <p>Motivo: {job.reason}</p>
                           <p>Ocupación: {job.currentPassengers} pasajeros</p>
                           <p>Precio base original: {formatMoney(job.basePrice.toNumber(), job.currency)}</p>
@@ -355,11 +355,11 @@ async function CreditMovementsListSection() {
                 <details className="text-xs text-slate-400">
                   <summary className="cursor-pointer hover:text-slate-600 outline-none select-none">Ver detalles técnicos</summary>
                   <div className="mt-2 space-y-1 bg-white p-2.5 rounded-lg border border-slate-200 text-slate-600">
-                    <p>ID Movimiento: <span className="font-mono">{movement.id}</span></p>
-                    <p>ID Pasajero: <span className="font-mono">{movement.userId}</span></p>
-                    <p>ID Reserva: <span className="font-mono">{movement.reservationId ?? "Sin reserva"}</span></p>
-                    <p>ID Pool: <span className="font-mono">{movement.poolId ?? "Sin pool"}</span></p>
-                    <p>ID Cobro: <span className="font-mono">{movement.chargeId ?? "No aplica"}</span></p>
+                    <p>ID Movimiento: <span className="font-mono break-all">{movement.id}</span></p>
+                    <p>ID Pasajero: <span className="font-mono break-all">{movement.userId}</span></p>
+                    <p>ID Reserva: <span className="font-mono break-all">{movement.reservationId ?? "Sin reserva"}</span></p>
+                    <p>ID Pool: <span className="font-mono break-all">{movement.poolId ?? "Sin pool"}</span></p>
+                    <p>ID Cobro: <span className="font-mono break-all">{movement.chargeId ?? "No aplica"}</span></p>
                   </div>
                 </details>
               </div>

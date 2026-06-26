@@ -122,8 +122,8 @@ export default async function DriverPage({ searchParams }: PageProps) {
                   <details className="mt-3 text-xs text-slate-gray cursor-pointer hover:text-primary">
                     <summary className="font-medium select-none">Ver detalles técnicos</summary>
                     <div className="mt-2 space-y-1 pl-2 font-mono bg-primary/5 p-2.5 rounded-lg text-[10px] border border-primary/10">
-                      <p>ID de pago: {settlement.id}</p>
-                      <p>ID de viaje (Pool): {settlement.poolId}</p>
+                      <p className="break-all">ID de pago: {settlement.id}</p>
+                      <p className="break-all">ID de viaje (Pool): {settlement.poolId}</p>
                     </div>
                   </details>
                 </article>

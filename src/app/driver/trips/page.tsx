@@ -86,7 +86,7 @@ async function DriverUnifiedTripsSection({
   return (
     <SectionCard>
       {/* Header */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h3 className="text-xl font-semibold text-slate-900">Mis viajes y cobros</h3>
           <p className="mt-1 text-sm text-slate-600">

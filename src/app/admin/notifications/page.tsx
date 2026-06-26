@@ -20,14 +20,14 @@ export default async function AdminNotificationsPage() {
     >
       <div className="flex flex-col gap-6 max-w-4xl mx-auto">
         <SectionCard>
-          <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 pb-4">
             <div>
               <h3 className="text-xl font-bold text-slate-900">Historial Reciente</h3>
               <p className="text-xs text-slate-500 mt-1">
                 Visualiza los últimos 50 eventos registrados en la plataforma.
               </p>
             </div>
-            <span className="rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">
+            <span className="rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700 self-start sm:self-auto shrink-0">
               {notifications.length} registros
             </span>
           </div>
@@ -69,9 +69,9 @@ export default async function AdminNotificationsPage() {
                       </p>
 
                       <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[10px] text-slate-400">
-                        <span className="flex items-center gap-1">
+                        <span className="flex items-center gap-1 min-w-0">
                           <span className="font-semibold text-slate-600">Usuario Relacionado:</span>
-                          <span className="font-mono">{notification.userId}</span>
+                          <span className="font-mono break-all">{notification.userId}</span>
                           {notification.role && (
                             <span className="rounded bg-sky-50 text-sky-700 px-1 font-bold">
                               {notification.role}

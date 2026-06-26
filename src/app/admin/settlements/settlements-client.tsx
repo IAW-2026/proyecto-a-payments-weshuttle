@@ -109,8 +109,8 @@ export function SettlementsClient({ settlements }: { settlements: SettlementItem
               <details className="text-xs text-slate-400">
                 <summary className="cursor-pointer hover:text-slate-600 outline-none select-none">Ver ids</summary>
                 <div className="mt-2 space-y-1 bg-white p-2.5 rounded-lg border border-slate-200 text-slate-600">
-                  <p className="font-mono">ID: {settlement.id}</p>
-                  <p className="font-mono">Pool: {settlement.poolId}</p>
+                  <p className="font-mono break-all">ID: {settlement.id}</p>
+                  <p className="font-mono break-all">Pool: {settlement.poolId}</p>
                 </div>
               </details>
             </div>
@@ -202,7 +202,7 @@ export function SettlementsClient({ settlements }: { settlements: SettlementItem
               <div>
                 <h3 className="text-lg font-bold text-slate-950">Liquidación al chofer</h3>
                 <p className="mt-1 text-xs text-slate-500">
-                  Viaje ID (Pool): <span className="font-mono text-slate-800 font-medium">{activeSettlement.poolId}</span>
+                  Viaje ID (Pool): <span className="font-mono text-slate-800 font-medium break-all">{activeSettlement.poolId}</span>
                 </p>
               </div>
               <button
