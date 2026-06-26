@@ -1,8 +1,11 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { AlertBanner } from "@/components/ui/alert-banner";
+import { SectionCard } from "@/components/ui/section-card";
+import { formatMoney } from "@/components/ui/format";
 import { requirePageRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { createPricingRuleAction, deletePricingRuleAction, updatePricingRuleAction } from "./actions";
+import { savePricePerKmAction, saveOccupancyDiscountsAction } from "./actions";
 
 type PageProps = {
   searchParams: Promise<{
@@ -11,174 +14,166 @@ type PageProps = {
   }>;
 };
 
-function Field({
-  label,
-  name,
-  type = "text",
-  defaultValue,
-  step,
-  min,
-  required = true,
-}: {
-  label: string;
-  name: string;
-  type?: string;
-  defaultValue?: string | number | null;
-  step?: string;
-  min?: string;
-  required?: boolean;
-}) {
-  return (
-    <label className="flex flex-col gap-2 text-sm text-slate-700">
-      <span className="font-medium">{label}</span>
-      <input
-        name={name}
-        type={type}
-        step={step}
-        min={min}
-        required={required}
-        defaultValue={defaultValue ?? ""}
-        className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none ring-0 transition focus:border-slate-900"
-      />
-    </label>
-  );
-}
-
-function DiscountSelect({ defaultValue }: { defaultValue: "PERCENTAGE" | "FIXED_AMOUNT" }) {
-  return (
-    <label className="flex flex-col gap-2 text-sm text-slate-700">
-      <span className="font-medium">Tipo de descuento</span>
-      <select
-        name="discountType"
-        defaultValue={defaultValue}
-        className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none transition focus:border-slate-900"
-      >
-        <option value="PERCENTAGE">PERCENTAGE</option>
-        <option value="FIXED_AMOUNT">FIXED_AMOUNT</option>
-      </select>
-    </label>
-  );
-}
-
 export default async function AdminPricingRulesPage({ searchParams }: PageProps) {
-  const authContext = await requirePageRole(["admin"]);
-  const params = await searchParams;
-  const rules = await prisma.pricingRule.findMany({
-    orderBy: [{ active: "desc" }, { destinationId: "asc" }, { minPassengers: "asc" }],
+  const [authContext, params, pricePerKmSetting, dbRules] = await Promise.all([
+    requirePageRole(["admin"]),
+    searchParams,
+    prisma.systemSetting.findUnique({
+      where: { key: "price_per_km" },
+    }),
+    prisma.pricingRule.findMany({
+      where: { destinationId: null },
+      orderBy: { minPassengers: "asc" },
+    }),
+  ]);
+
+  const pricePerKm = pricePerKmSetting ? parseFloat(pricePerKmSetting.value) : 35.00;
+
+  // Build the list of 1 to 15 rules
+  const rulesMap = new Map<number, number>();
+  dbRules.forEach((r) => {
+    rulesMap.set(r.minPassengers, r.discountValue.toNumber());
   });
+
+  const passengerCounts = Array.from({ length: 15 }, (_, i) => i + 1);
 
   return (
     <AppShell
       role="admin"
       clerkUserId={authContext.clerkUserId}
-      title="Reglas de precio"
-      description="Persisti y ajusta reglas de pricing para cotizaciones y cobros automaticos."
+      title="Tarifas y reglas"
+      description="Configura los precios globales por kilómetro y las reglas de descuento según la cantidad de pasajeros en el pool."
     >
       <div className="flex flex-col gap-8">
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
-                Admin Payments
-              </p>
-              <h2 className="mt-2 text-3xl font-bold text-slate-900">Pricing Rules</h2>
-              <p className="mt-3 max-w-2xl text-sm text-slate-600">
-                Persisti reglas de precio para definir el maximo y el estimado de cada viaje segun destino y ocupacion.
-              </p>
-              <p className="mt-3 text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-                Admin authenticated: {authContext.clerkUserId}
-              </p>
+        <SectionCard>
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4">
+              <div>
+                <h2 className="text-lg font-bold text-primary">Tarifa Base por Kilómetro</h2>
+                <p className="text-xs text-slate-gray mt-0.5">Ajusta el precio base por kilómetro aplicable a todos los destinos.</p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <Link
+                  href="/admin/pricing-rules/simulator"
+                  className="inline-flex items-center justify-center rounded-lg border border-primary/20 bg-white px-4 py-2 text-sm font-medium text-primary shadow-sm hover:border-primary/50 hover:bg-primary/5 transition cursor-pointer"
+                >
+                  Probar estimador de tarifas
+                </Link>
+                <Link
+                  href="/admin"
+                  className="inline-flex items-center justify-center rounded-lg border border-primary/20 bg-white px-4 py-2 text-sm font-medium text-primary shadow-sm hover:border-primary/50 hover:bg-primary/5 transition"
+                >
+                  Volver a inicio
+                </Link>
+              </div>
             </div>
 
-            <Link
-              href="/"
-              className="inline-flex items-center justify-center rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-900 hover:text-slate-900"
-            >
-              Volver al inicio
-            </Link>
+            {params.message ? <AlertBanner tone="success">{params.message}</AlertBanner> : null}
+            {params.error ? <AlertBanner tone="danger">{params.error}</AlertBanner> : null}
+
+            {/* Price Per Km Setting Form */}
+            <form action={savePricePerKmAction} className="rounded-xl border border-outline-custom bg-surface p-6">
+              <div className="flex flex-col md:flex-row md:items-end gap-4">
+                <div className="flex-1">
+                  <label htmlFor="pricePerKm" className="text-sm font-semibold text-primary block mb-2">
+                    Precio base por kilómetro (ARS)
+                  </label>
+                  <div className="relative rounded-lg shadow-sm">
+                    <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-slate-gray font-medium">$</span>
+                    <input
+                      id="pricePerKm"
+                      name="pricePerKm"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      required
+                      defaultValue={pricePerKm.toFixed(2)}
+                      className="w-full rounded-lg border border-outline-custom bg-white pl-8 pr-4 py-3 text-primary outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition"
+                      placeholder="35.00"
+                    />
+                  </div>
+                </div>
+                <button
+                  type="submit"
+                  className="w-full md:w-auto rounded-lg bg-primary px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-primary/15 hover:bg-primary-hover hover:scale-[1.01] active:scale-[0.99] transition cursor-pointer"
+                >
+                  Guardar tarifa base
+                </button>
+              </div>
+              <p className="mt-2 text-xs text-slate-gray">
+                Este valor se utiliza para calcular el precio base de cada viaje (Distancia en Km × Tarifa base).
+              </p>
+            </form>
+          </div>
+        </SectionCard>
+
+        {/* Occupancy Discounts Table Form */}
+        <SectionCard>
+          <div className="mb-6">
+            <h3 className="text-xl font-bold text-primary">Tabla General de Descuentos por Ocupación</h3>
+            <p className="mt-2 text-sm text-slate-gray">
+              Configura el porcentaje de descuento a aplicar sobre la tarifa base según la cantidad de pasajeros finales confirmados en el viaje.
+            </p>
           </div>
 
-          {params.message ? (
-            <p className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-              {params.message}
-            </p>
-          ) : null}
+          <form action={saveOccupancyDiscountsAction}>
+            <div className="overflow-x-auto rounded-xl border border-outline-custom bg-white">
+              <table className="w-full border-collapse text-left text-sm text-slate-gray">
+                <thead className="bg-surface text-xs font-bold uppercase tracking-wider text-primary">
+                  <tr>
+                    <th scope="col" className="px-6 py-4">Pasajeros en el Pool</th>
+                    <th scope="col" className="px-6 py-4">Descuento (%)</th>
+                    <th scope="col" className="px-6 py-4">Ejemplo (ARS)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {passengerCounts.map((count) => {
+                    const discount = rulesMap.get(count) ?? 0;
+                    return (
+                      <tr key={count} className="hover:bg-slate-50/50 transition">
+                        <td className="px-6 py-4 font-semibold text-primary">
+                          {count} {count === 1 ? "pasajero" : "pasajeros"}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2 max-w-[150px]">
+                            <input
+                              type="number"
+                              name={`discount-${count}`}
+                              min="0"
+                              max="100"
+                              step="0.1"
+                              required
+                              defaultValue={discount}
+                              className="w-full rounded-lg border border-outline-custom bg-surface px-3 py-2 text-center font-bold text-primary focus:border-primary focus:bg-white focus:outline-none transition"
+                            />
+                            <span className="font-bold text-slate-gray">%</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-xs text-slate-gray leading-relaxed">
+                          Para un viaje base de $5.000:{" "}
+                          <span className="font-semibold text-primary">
+                            {formatMoney(5000 * (1 - discount / 100), "ARS")}
+                          </span>{" "}
+                          (ahorro de {formatMoney((5000 * discount) / 100, "ARS")})
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
 
-          {params.error ? (
-            <p className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-              {params.error}
-            </p>
-          ) : null}
-
-          <form action={createPricingRuleAction} className="mt-8 grid gap-4 rounded-3xl border border-slate-200 bg-slate-50 p-5 sm:grid-cols-2 xl:grid-cols-4">
-            <Field label="Destino externo" name="destinationId" required={false} />
-            <Field label="Precio base" name="basePrice" type="number" min="0" step="0.01" />
-            <Field label="Pasajeros minimos" name="minPassengers" type="number" min="1" step="1" />
-            <Field label="Pasajeros maximos" name="maxPassengers" type="number" min="1" step="1" />
-            <DiscountSelect defaultValue="PERCENTAGE" />
-            <Field label="Valor de descuento" name="discountValue" type="number" min="0" step="0.01" />
-            <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700">
-              <input name="active" type="checkbox" defaultChecked className="h-4 w-4 rounded border-slate-300" />
-              Activa
-            </label>
-            <div className="flex items-end">
-              <button type="submit" className="w-full rounded-full bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-700">
-                Crear regla
+            <div className="mt-6 flex justify-end">
+              <button
+                type="submit"
+                className="rounded-lg bg-primary px-8 py-3.5 text-sm font-bold text-white shadow-lg shadow-primary/15 hover:bg-primary-hover hover:scale-[1.01] active:scale-[0.99] transition cursor-pointer"
+              >
+                Guardar tabla de descuentos
               </button>
             </div>
           </form>
-        </section>
-
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-          <div className="mb-6 flex items-center justify-between gap-4">
-            <div>
-              <h3 className="text-xl font-semibold text-slate-900">Reglas persistidas</h3>
-              <p className="mt-2 text-sm text-slate-600">Cada fila se edita y guarda sin crear endpoints adicionales.</p>
-            </div>
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">
-              {rules.length} reglas
-            </span>
-          </div>
-
-          <div className="grid gap-4">
-            {rules.map((rule) => (
-              <form
-                key={rule.id}
-                action={updatePricingRuleAction}
-                className="grid gap-4 rounded-3xl border border-slate-200 bg-slate-50 p-5 sm:grid-cols-2 xl:grid-cols-[1.2fr_repeat(5,minmax(0,1fr))_auto_auto] xl:items-end"
-              >
-                <input type="hidden" name="id" value={rule.id} />
-                <Field label="Destino externo" name="destinationId" required={false} defaultValue={rule.destinationId} />
-                <Field label="Precio base" name="basePrice" type="number" min="0" step="0.01" defaultValue={rule.basePrice.toString()} />
-                <Field label="Min" name="minPassengers" type="number" min="1" step="1" defaultValue={rule.minPassengers} />
-                <Field label="Max" name="maxPassengers" type="number" min="1" step="1" defaultValue={rule.maxPassengers} />
-                <DiscountSelect defaultValue={rule.discountType} />
-                <Field label="Descuento" name="discountValue" type="number" min="0" step="0.01" defaultValue={rule.discountValue.toString()} />
-                <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 xl:min-h-[46px]">
-                  <input name="active" type="checkbox" defaultChecked={rule.active} className="h-4 w-4 rounded border-slate-300" />
-                  {rule.active ? "Activa" : "Inactiva"}
-                </label>
-                <div className="flex items-center gap-2">
-                  <button type="submit" className="rounded-full bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-700">
-                    Guardar
-                  </button>
-                  <form action={deletePricingRuleAction}>
-                    <input type="hidden" name="id" value={rule.id} />
-                    <button type="submit" className="rounded-full border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100">
-                      Eliminar
-                    </button>
-                  </form>
-                </div>
-              </form>
-            ))}
-
-            {rules.length === 0 ? (
-              <p className="rounded-2xl border border-dashed border-slate-300 px-4 py-6 text-sm text-slate-500">
-                No hay reglas cargadas todavia.
-              </p>
-            ) : null}
-          </div>
-        </section>
+        </SectionCard>
       </div>
     </AppShell>
   );

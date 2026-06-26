@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireApiRole } from "@/lib/auth";
 import { getMockDestinationById } from "@/lib/mock/destinations";
-import { buildPricingEstimate, findApplicablePricingRule } from "@/lib/pricing-rules";
+import { buildPricingEstimate, findApplicablePricingRule, getPricePerKm } from "@/lib/pricing-rules";
 
 export const runtime = "nodejs";
 
@@ -15,12 +15,6 @@ function parseNumber(value: string | null) {
 }
 
 export async function GET(request: Request) {
-  const authResult = await requireApiRole(["rider", "driver", "admin"]);
-
-  if (!authResult.ok) {
-    return authResult.response;
-  }
-
   const { searchParams } = new URL(request.url);
   const originLat = parseNumber(searchParams.get("origin_lat"));
   const originLng = parseNumber(searchParams.get("origin_lng"));
@@ -42,6 +36,13 @@ export async function GET(request: Request) {
       },
       { status: 400 },
     );
+  }
+
+  // Authorize after validating sync parameters (cheap check first)
+  const authResult = await requireApiRole(["rider", "driver", "admin"]);
+
+  if (!authResult.ok) {
+    return authResult.response;
   }
 
   const rule = await findApplicablePricingRule(destinationId, currentPassengers);
@@ -67,7 +68,9 @@ export async function GET(request: Request) {
     );
   }
 
-  const estimate = buildPricingEstimate(rule, {
+  const pricePerKm = await getPricePerKm();
+
+  const estimate = buildPricingEstimate(rule, pricePerKm, {
     origin: { lat: originLat, lng: originLng },
     destination: { lat: destination.lat, lng: destination.lng },
   });

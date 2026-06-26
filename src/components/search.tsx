@@ -21,11 +21,12 @@ export function Search({ placeholder = "Buscar..." }: { placeholder?: string }) 
 
   return (
     <div className="relative flex flex-1 flex-shrink-0">
-      <label htmlFor="search" className="sr-only">
-        Search
+      <label htmlFor="search-input" className="sr-only">
+        Buscar
       </label>
       <input
-        className="peer block w-full rounded-xl border border-slate-300 bg-white py-[9px] pl-10 text-sm text-slate-900 outline-none transition placeholder:text-slate-500 focus:border-slate-900"
+        id="search-input"
+        className="peer block w-full rounded-2xl border border-slate-300/80 bg-white/95 py-3 pl-10 pr-4 text-sm text-slate-900 shadow-sm outline-none placeholder:text-slate-400 focus:border-sky-400 focus:ring-4 focus:ring-sky-100"
         placeholder={placeholder}
         onChange={(e) => {
           handleSearch(e.target.value);
@@ -33,7 +34,7 @@ export function Search({ placeholder = "Buscar..." }: { placeholder?: string }) 
         defaultValue={searchParams.get("q")?.toString()}
       />
       <svg
-        className="absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-slate-500 peer-focus:text-slate-900"
+        className="absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-slate-400 peer-focus:text-slate-700"
         xmlns="http://www.w3.org/2000/svg"
         fill="none"
         viewBox="0 0 24 24"

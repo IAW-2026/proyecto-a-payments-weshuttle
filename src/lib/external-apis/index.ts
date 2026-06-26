@@ -1,13 +1,18 @@
-export { notifyPoolPaymentDenied } from "@/lib/external-apis/driver";
 export {
   getPoolPassengers,
+  getMockPoolIds,
+  notifyReservationCreditAdjustment,
   notifyReservationPaymentResult,
 } from "@/lib/external-apis/rider";
+
 export type {
-  ExternalPaymentDeniedInput,
-  ExternalPaymentDeniedResponse,
+  ExternalCreditAdjustmentInput,
+  ExternalCreditAdjustmentResponse,
   ExternalPaymentResultInput,
   ExternalPaymentResultResponse,
   ExternalPoolPassenger,
+  ExternalPoolPassengersFilter,
   ExternalPoolPassengersResponse,
+  ExternalPaymentStatus,
+  ExternalReservationStatus,
 } from "@/lib/external-apis/types";

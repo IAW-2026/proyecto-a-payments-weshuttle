@@ -21,8 +21,19 @@ const MOCK_DESTINATIONS: Record<string, MockDestination> = {
     lat: -38.7818,
     lng: -62.2746,
   },
+  dest_parque_industrial: {
+    id: "dest_parque_industrial",
+    name: "Parque Industrial",
+    address: "Ruta Acceso Parque Industrial, Bahia Blanca",
+    lat: -38.7797,
+    lng: -62.1883,
+  },
 };
 
 export function getMockDestinationById(destinationId: string) {
   return MOCK_DESTINATIONS[destinationId] ?? null;
+}
+
+export function getMockDestinations(): MockDestination[] {
+  return Object.values(MOCK_DESTINATIONS);
 }

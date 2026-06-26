@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { logNotification } from "@/lib/notifications";
 
 type SettlePoolInput = {
   poolId: string;
@@ -13,7 +14,7 @@ type SettlePoolResult =
       data: {
         poolId: string;
         settlementId: string;
-        settlementStatus: "COMPLETED";
+        settlementStatus: "PENDING" | "COMPLETED" | "FAILED";
         driverUserId: string;
         amount: number;
         currency: string;
@@ -61,6 +62,17 @@ export async function settlePool(input: SettlePoolInput): Promise<SettlePoolResu
     };
   }
 
+  const chargesWithoutFinalPrice = charges.filter((charge) => charge.finalTripPrice === null);
+
+  if (chargesWithoutFinalPrice.length > 0) {
+    return {
+      ok: false,
+      status: 409,
+      error: "POOL_PRICE_NOT_FINALIZED",
+      message: "El pool todavia no tiene precio final calculado para todas las reservas pagadas.",
+    };
+  }
+
   const payoutAccount = await prisma.payoutAccount.findFirst({
     where: {
       driverUserId: input.driverUserId,
@@ -78,7 +90,10 @@ export async function settlePool(input: SettlePoolInput): Promise<SettlePoolResu
     };
   }
 
-  const amount = charges.reduce((total, charge) => total + decimalToNumber(charge.effectivePrice), 0);
+  const amount = charges.reduce(
+    (total, charge) => total + decimalToNumber(charge.finalTripPrice),
+    0,
+  );
   const currency = charges[0]?.currency ?? "ARS";
   const settlement = await prisma.settlement.create({
     data: {
@@ -87,9 +102,17 @@ export async function settlePool(input: SettlePoolInput): Promise<SettlePoolResu
       payoutAccountId: payoutAccount.id,
       amount: new Prisma.Decimal(amount.toFixed(2)),
       currency,
-      status: "COMPLETED",
-      settledAt: new Date(input.completedAt),
+      status: "PENDING",
+      settledAt: null,
     },
+  });
+
+  await logNotification({
+    type: "SETTLEMENT_PENDING",
+    title: "Liquidación Pendiente",
+    message: `Se reportó fin de viaje en el pool ${input.poolId}. El chofer solicita liquidación de $${amount.toFixed(2)}.`,
+    userId: input.driverUserId,
+    role: "DRIVER",
   });
 
   return {
@@ -97,7 +120,7 @@ export async function settlePool(input: SettlePoolInput): Promise<SettlePoolResu
     data: {
       poolId: input.poolId,
       settlementId: settlement.id,
-      settlementStatus: "COMPLETED",
+      settlementStatus: settlement.status,
       driverUserId: input.driverUserId,
       amount: settlement.amount.toNumber(),
       currency: settlement.currency,

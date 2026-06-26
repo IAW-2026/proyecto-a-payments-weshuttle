@@ -1,38 +1,24 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { EmptyState } from "@/components/ui/empty-state";
+import { formatDateTime, formatMoney, humanizeStatus } from "@/components/ui/format";
+import { MetricCard } from "@/components/ui/metric-card";
+import { SectionCard } from "@/components/ui/section-card";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { requirePageRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-function StatCard({ title, value, description, color = "blue" }: { title: string; value: string; description?: string; color?: "blue" | "emerald" | "rose" | "amber" }) {
-  const colorClasses = {
-    blue: "text-blue-600 bg-blue-50 border-blue-100",
-    emerald: "text-emerald-600 bg-emerald-50 border-emerald-100",
-    rose: "text-rose-600 bg-rose-50 border-rose-100",
-    amber: "text-amber-600 bg-amber-50 border-amber-100",
-  };
-
-  return (
-    <div className={`rounded-2xl border p-6 shadow-sm ${colorClasses[color]}`}>
-      <p className="text-xs font-bold uppercase tracking-wider opacity-80">{title}</p>
-      <h3 className="mt-2 text-3xl font-bold">{value}</h3>
-      {description && <p className="mt-2 text-xs opacity-70">{description}</p>}
-    </div>
-  );
-}
-
 export default async function AdminHomePage() {
-  const authContext = await requirePageRole(["admin"]);
-
   const [
+    authContext,
     totalCollectedData,
     totalSettledData,
     pendingSettlementsData,
-    chargeStats,
-    recentCharges,
-    recentSettlements,
   ] = await Promise.all([
+    requirePageRole(["admin"]),
     prisma.charge.aggregate({
-      _sum: { effectivePrice: true },
+      _sum: { amountCharged: true },
       where: { status: "PAID" },
     }),
     prisma.settlement.aggregate({
@@ -44,138 +30,223 @@ export default async function AdminHomePage() {
       _count: { id: true },
       where: { status: "PENDING" },
     }),
-    prisma.charge.groupBy({
-      by: ["status"],
-      _count: { id: true },
-    }),
-    prisma.charge.findMany({
-      take: 5,
-      orderBy: { processedAt: "desc" },
-      include: { paymentMethod: true },
-    }),
-    prisma.settlement.findMany({
-      take: 5,
-      orderBy: { settledAt: "desc" },
-    }),
   ]);
 
-  const totalCollected = totalCollectedData._sum.effectivePrice?.toNumber() || 0;
+  const totalCollected = totalCollectedData._sum.amountCharged?.toNumber() || 0;
   const totalSettled = totalSettledData._sum.amount?.toNumber() || 0;
   const pendingAmount = pendingSettlementsData._sum.amount?.toNumber() || 0;
   const pendingCount = pendingSettlementsData._count.id || 0;
-
-  const totalCharges = chargeStats.reduce((acc, curr) => acc + curr._count.id, 0);
-  const paidCharges = chargeStats.find(s => s.status === "PAID")?._count.id || 0;
-  const successRate = totalCharges > 0 ? (paidCharges / totalCharges) * 100 : 0;
 
   return (
     <AppShell
       role="admin"
       clerkUserId={authContext.clerkUserId}
-      title="Dashboard Financiero Global"
-      description="Vista analitica de recaudacion, liquidaciones y salud operativa del sistema de pagos."
+      title=""
+      description=""
     >
       <div className="flex flex-col gap-8">
-        <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-sm font-bold uppercase tracking-[0.2em] text-slate-500">Admin Payments</p>
-              <h2 className="mt-2 text-3xl font-bold text-slate-900">Dashboard Financiero</h2>
-              <p className="mt-3 max-w-2xl text-sm text-slate-600 font-medium">
-                Admin: {authContext.clerkUserId}
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="h-3 w-3 animate-pulse rounded-full bg-emerald-500"></span>
-              <span className="text-sm font-semibold text-emerald-700">Sistema en linea</span>
-            </div>
-          </div>
-
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard 
-              title="Total Recaudado" 
-              value={`ARS ${totalCollected.toLocaleString()}`} 
-              description="Cobros efectivos a pasajeros" 
-              color="emerald" 
-            />
-            <StatCard 
-              title="Total Liquidado" 
-              value={`ARS ${totalSettled.toLocaleString()}`} 
-              description="Fondos transferidos a conductores" 
-              color="blue" 
-            />
-            <StatCard 
-              title="Liquidaciones Pendientes" 
-              value={pendingCount.toString()} 
-              description={`Monto: ARS ${pendingAmount.toLocaleString()}`} 
-              color="amber" 
-            />
-            <StatCard 
-              title="Tasa de Exito" 
-              value={`${successRate.toFixed(1)}%`} 
-              description={`${paidCharges} de ${totalCharges} cobros exitosos`} 
-              color={successRate > 90 ? "emerald" : successRate > 70 ? "amber" : "rose"} 
-            />
-          </div>
-        </section>
-
-        <div className="grid gap-8 lg:grid-cols-2">
-          {/* Recent Transactions */}
-          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-slate-900">Ultimos Cobros</h3>
-              <Link href="/admin/transactions" className="text-xs font-bold text-blue-600 hover:underline">Ver todos</Link>
-            </div>
-            <div className="space-y-4">
-              {recentCharges.map(charge => (
-                <div key={charge.id} className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm">
-                  <div>
-                    <p className="font-bold text-slate-900">{charge.reservationId}</p>
-                    <p className="text-xs text-slate-500">{charge.processedAt?.toLocaleDateString()} - {charge.status}</p>
-                  </div>
-                  <p className="font-bold text-slate-900">ARS {charge.effectivePrice?.toNumber().toFixed(2) || charge.maxPrice.toNumber().toFixed(2)}</p>
-                </div>
-              ))}
-              {recentCharges.length === 0 && <p className="py-4 text-center text-sm text-slate-500">Sin movimientos recientes.</p>}
-            </div>
-          </section>
-
-          {/* Recent Settlements */}
-          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-slate-900">Ultimas Liquidaciones</h3>
-              <Link href="/admin/settlements" className="text-xs font-bold text-blue-600 hover:underline">Ver todos</Link>
-            </div>
-            <div className="space-y-4">
-              {recentSettlements.map(settlement => (
-                <div key={settlement.id} className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm">
-                  <div>
-                    <p className="font-bold text-slate-900">Pool: {settlement.poolId}</p>
-                    <p className="text-xs text-slate-500">{settlement.settledAt?.toLocaleDateString()} - {settlement.status}</p>
-                  </div>
-                  <p className="font-bold text-slate-900">ARS {settlement.amount.toNumber().toFixed(2)}</p>
-                </div>
-              ))}
-              {recentSettlements.length === 0 && <p className="py-4 text-center text-sm text-slate-500">Sin movimientos recientes.</p>}
-            </div>
-          </section>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <MetricCard title="Total recaudado" value={formatMoney(totalCollected, "ARS")} description="Monto cobrado y acreditado con éxito." tone="emerald" />
+          <MetricCard title="Pagado a choferes" value={formatMoney(totalSettled, "ARS")} description="Fondos ya transferidos a los conductores." tone="sky" />
+          <MetricCard title="Pendiente a choferes" value={String(pendingCount)} description={`Pendiente de transferir: ${formatMoney(pendingAmount, "ARS")}`} tone="amber" />
         </div>
 
-        <section className="grid gap-4 md:grid-cols-3">
-          <Link href="/admin/pricing-rules" className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-slate-900">
-            <h4 className="font-bold text-slate-900">Configurar Precios</h4>
-            <p className="mt-2 text-xs text-slate-600">ABM de reglas por destino y capacidad.</p>
-          </Link>
-          <Link href="/admin/transactions" className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-slate-900">
-            <h4 className="font-bold text-slate-900">Auditar Transacciones</h4>
-            <p className="mt-2 text-xs text-slate-600">Reporte detallado de cobros y descuentos.</p>
-          </Link>
-          <Link href="/admin/settlements" className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-slate-900">
-            <h4 className="font-bold text-slate-900">Control de Liquidaciones</h4>
-            <p className="mt-2 text-xs text-slate-600">Gestion de fondos transferidos a conductores.</p>
-          </Link>
-        </section>
+        <div className="grid gap-8 lg:grid-cols-2">
+          <SectionCard>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-semibold text-slate-900">Últimos cobros aprobados</h3>
+                <p className="mt-2 text-sm text-slate-600">Cobros acreditados recientemente a pasajeros.</p>
+              </div>
+              <Link href="/admin/checkouts" className="text-sm font-semibold text-primary hover:underline">
+                Ver control de pagos
+              </Link>
+            </div>
+
+            <div className="mt-6">
+              <Suspense fallback={<ListSkeleton count={3} />}>
+                <RecentChargesSection />
+              </Suspense>
+            </div>
+          </SectionCard>
+
+          <SectionCard>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-semibold text-slate-900">Cálculos de tarifas recientes</h3>
+                <p className="mt-2 text-sm text-slate-600">Últimas tarifas finales definidas para viajes completados.</p>
+              </div>
+              <Link href="/admin/credits" className="text-sm font-semibold text-primary hover:underline">
+                Ver ajustes de crédito
+              </Link>
+            </div>
+
+            <div className="mt-6">
+              <Suspense fallback={<ListSkeleton count={3} />}>
+                <RecentPricingJobsSection />
+              </Suspense>
+            </div>
+          </SectionCard>
+        </div>
+
+        <SectionCard>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h3 className="text-xl font-semibold text-slate-900">Pagos recientes a choferes</h3>
+              <p className="mt-2 text-sm text-slate-600">Ganancias transferidas recientemente a conductores.</p>
+            </div>
+            <Link href="/admin/settlements" className="text-sm font-semibold text-primary hover:underline">
+              Ver pagos a choferes
+            </Link>
+          </div>
+
+          <div className="mt-6">
+            <Suspense fallback={<ListSkeleton count={3} />}>
+              <RecentSettlementsSection />
+            </Suspense>
+          </div>
+        </SectionCard>
       </div>
     </AppShell>
+  );
+}
+
+/**
+ * Loading Placeholder for dashboard dynamic list sections
+ */
+function ListSkeleton({ count = 3 }: { count?: number }) {
+  return (
+    <div className="space-y-3 animate-pulse">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="rounded-xl border border-outline-custom bg-surface p-4 h-24">
+          <div className="flex justify-between items-start gap-4">
+            <div className="space-y-2 flex-1">
+              <div className="h-4 bg-slate-200 rounded w-1/3"></div>
+              <div className="h-3 bg-slate-100 rounded w-1/2"></div>
+            </div>
+            <div className="h-6 bg-slate-200 rounded w-16"></div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+async function RecentChargesSection() {
+  const recentCharges = await prisma.charge.findMany({
+    take: 5,
+    orderBy: { processedAt: "desc" },
+  });
+
+  if (recentCharges.length === 0) {
+    return <EmptyState title="Sin cobros recientes" description="Cuando ingresen pagos nuevos aparecerán aquí." />;
+  }
+
+  return (
+    <div className="space-y-3">
+      {recentCharges.map((charge) => (
+        <div key={charge.id} className="rounded-xl border border-outline-custom bg-surface p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="font-semibold text-slate-900">Cobro aprobado</p>
+              <p className="mt-1 text-sm text-slate-600">Monto total: {formatMoney(charge.amountCharged.toNumber(), charge.currency)}</p>
+              <details className="mt-2 text-xs text-slate-400">
+                <summary className="cursor-pointer hover:text-slate-600 outline-none select-none">Ver detalles técnicos</summary>
+                <div className="mt-2 space-y-1 bg-white p-2.5 rounded-lg border border-slate-200 text-slate-600">
+                  <p>ID Reserva: <span className="font-mono break-all">{charge.reservationId}</span></p>
+                  <p>ID Pool: <span className="font-mono break-all">{charge.poolId}</span></p>
+                  <p>ID Cobro: <span className="font-mono break-all">{charge.id}</span></p>
+                  <p>Saldo aplicado: {formatMoney(charge.creditApplied.toNumber(), charge.currency)}</p>
+                </div>
+              </details>
+            </div>
+            <div className="flex flex-col items-start gap-2 sm:items-end">
+              <StatusBadge value={charge.status} label={humanizeStatus(charge.status)} />
+              <p className="text-xs text-slate-500">{formatDateTime(charge.processedAt)}</p>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+async function RecentPricingJobsSection() {
+  const recentFinalizationJobs = await prisma.poolPriceFinalizationJob.findMany({
+    take: 5,
+    orderBy: { startedAt: "desc" },
+  });
+
+  if (recentFinalizationJobs.length === 0) {
+    return <EmptyState title="Sin procesos recientes" description="Cuando se calculen tarifas de viajes completados aparecerán aquí." />;
+  }
+
+  return (
+    <div className="space-y-3">
+      {recentFinalizationJobs.map((job) => (
+        <div key={job.id} className="rounded-xl border border-outline-custom bg-surface p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="font-semibold text-slate-900">Tarifa final calculada</p>
+              <p className="mt-1 text-sm text-slate-600">
+                Monto final: {job.finalPrice !== null ? formatMoney(job.finalPrice.toNumber(), "ARS") : "Pendiente"}
+              </p>
+              <details className="mt-2 text-xs text-slate-400">
+                <summary className="cursor-pointer hover:text-slate-600 outline-none select-none">Ver detalles técnicos</summary>
+                <div className="mt-2 space-y-1 bg-white p-2.5 rounded-lg border border-slate-200 text-slate-600">
+                  <p>ID Pool: <span className="font-mono break-all">{job.poolId}</span></p>
+                  <p>ID Job: <span className="font-mono break-all">{job.id}</span></p>
+                  <p>Motivo: {job.reason}</p>
+                  <p>Ocupación: {job.currentPassengers} pasajeros</p>
+                  <p>Precio base original: {formatMoney(job.basePrice.toNumber(), job.currency)}</p>
+                </div>
+              </details>
+            </div>
+            <div className="text-left sm:text-right">
+              <StatusBadge value={job.status} />
+              <p className="text-xs text-slate-500 mt-2">{formatDateTime(job.startedAt)}</p>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+async function RecentSettlementsSection() {
+  const recentSettlements = await prisma.settlement.findMany({
+    take: 5,
+    orderBy: { settledAt: "desc" },
+  });
+
+  if (recentSettlements.length === 0) {
+    return <EmptyState title="Sin transferencias recientes" description="Los pagos completados aparecerán aquí." />;
+  }
+
+  return (
+    <div className="space-y-3">
+      {recentSettlements.map((settlement) => (
+        <div key={settlement.id} className="rounded-xl border border-outline-custom bg-surface p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="font-semibold text-slate-900">Transferencia enviada</p>
+              <p className="mt-1 text-sm text-slate-600">Monto: {formatMoney(settlement.amount.toNumber(), settlement.currency)}</p>
+              <details className="mt-2 text-xs text-slate-400">
+                <summary className="cursor-pointer hover:text-slate-600 outline-none select-none">Ver detalles técnicos</summary>
+                <div className="mt-2 space-y-1 bg-white p-2.5 rounded-lg border border-slate-200 text-slate-600">
+                  <p>ID Pool: <span className="font-mono break-all">{settlement.poolId}</span></p>
+                  <p>ID Chofer: <span className="font-mono break-all">{settlement.driverUserId}</span></p>
+                  <p>ID Transferencia: <span className="font-mono break-all">{settlement.id}</span></p>
+                </div>
+              </details>
+            </div>
+            <div className="flex flex-col items-start gap-2 sm:items-end">
+              <StatusBadge value={settlement.status} label={humanizeStatus(settlement.status)} />
+              <p className="text-xs text-slate-500">{settlement.settledAt ? formatDateTime(settlement.settledAt) : "Pendiente"}</p>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }

@@ -220,6 +220,13 @@ Representa la reserva individual de un pasajero.
 
 La reserva es la unidad principal de la Rider App. Cada reserva pertenece a un pasajero y puede estar asociada a un pool creado en la Driver App.
 
+En el nuevo flujo, el estado operativo de la reserva y el estado del pago se modelan por separado:
+
+- `reservation_status`: indica el estado operativo de la reserva dentro del flujo del viaje.
+- `payment_status`: indica el estado del pago asociado a la reserva.
+
+Esto evita mezclar conceptos distintos. Una reserva puede estar pagada, pero todavía no tener conductor asignado.
+
 | Campo | Tipo | Descripción |
 |------|------|-------------|
 | `id` | string | Identificador de la reserva. Se comparte con otras apps como `reservation_id`. |
@@ -231,22 +238,36 @@ La reserva es la unidad principal de la Rider App. Cada reserva pertenece a un p
 | `pickup_address` | string | Dirección del punto de recogida. |
 | `pickup_lat` | number | Latitud del punto de recogida. |
 | `pickup_lng` | number | Longitud del punto de recogida. |
-| `status` | string | Estado actual de la reserva. |
-| `max_price` | number | Precio máximo informado al momento de reservar. |
-| `effective_price` | number, nullable | Precio efectivamente pagado luego del cobro automático. |
+| `reservation_status` | string | Estado operativo de la reserva. |
+| `payment_status` | string | Estado del pago asociado a la reserva. |
+| `max_price` | number | Precio máximo que el pasajero debe pagar por la reserva. |
+| `amount_charged` | number, nullable | Monto efectivamente cobrado mediante Mercado Pago luego de aplicar saldo a favor. |
+| `credit_applied` | number | Saldo a favor utilizado para pagar esta reserva. |
+| `final_trip_price` | number, nullable | Precio final calculado al cierre T-1h según la ocupación real del pool. |
+| `credit_granted` | number | Saldo a favor generado para próximos viajes. |
 | `currency` | string | Moneda de los importes. Ejemplo: `ARS`. |
 | `payment_transaction_id` | string, nullable | Identificador de la transacción informada por Payments App. |
 | `payment_rejection_reason` | string, nullable | Motivo de rechazo del pago, si corresponde. |
 | `assigned_driver_snapshot` | json, nullable | Datos del conductor y vehículo asignados, guardados como snapshot cuando el pool pasa a estar asignado. |
 
-Estados posibles de `status`:
+Estados posibles de `reservation_status`:
 
 ```text
+PENDING_PAYMENT
 PENDING_DRIVER
 CONFIRMED
+CANCELED
+```
+
+Estados posibles de `payment_status`:
+
+```text
+UNPAID
+PENDING
 PAID
 DENIED
 CANCELED
+EXPIRED
 ```
 
 Estructura sugerida para `assigned_driver_snapshot`:
@@ -270,6 +291,7 @@ Relaciones:
 - Una reserva referencia un destino.
 - Una reserva referencia un pool externo de Driver App.
 - Una reserva puede recibir un resultado de pago informado por Payments App.
+- Una reserva puede recibir un ajuste de crédito informado por Payments App.
 - Una reserva puede generar reseñas en Feedback App si fue pagada y el viaje finalizó.
 
 Notas:
@@ -278,7 +300,14 @@ Notas:
 - No se guarda snapshot del nombre del destino. Si el destino cambia de nombre en el futuro, el historial mostrará el dato actual del catálogo de destinos.
 - La Rider App guarda un snapshot del conductor y vehículo asignados dentro de la reserva, en el campo `assigned_driver_snapshot`, cuando el pool pasa a estado `ASSIGNED`.
 - Driver App sigue siendo la fuente de verdad de conductores y vehículos. El snapshot en Rider App se utiliza únicamente para mostrar el resumen e historial del viaje.
-- `effective_price` se completa cuando Payments App notifica un pago exitoso mediante `PATCH /api/reservations/:reservation_id/payment-result`.
+- `max_price` representa el precio máximo que el usuario acepta pagar al reservar.
+- `amount_charged` representa cuánto dinero se cobró efectivamente mediante Mercado Pago, luego de aplicar saldo a favor.
+- `credit_applied` representa cuánto saldo a favor se utilizó para pagar esta reserva.
+- `final_trip_price` se completa cuando Payments App calcula el precio final del viaje al cierre T-1h.
+- `credit_granted` se completa cuando Payments App informa que se generó saldo a favor para próximos viajes.
+- La Rider App no calcula saldo a favor. Solo guarda el resultado informado por Payments App para mostrarlo en el resumen, historial y notificaciones al usuario.
+```
+
 ---
 
 ### Historial de viajes
@@ -294,121 +323,61 @@ Cada reserva contiene los datos principales necesarios para el historial:
 - destino;
 - horario;
 - punto de recogida;
-- estado final;
-- precio máximo informado;
-- precio efectivo pagado;
-- transacción de pago asociada, si corresponde.
+- estado operativo de la reserva;
+- estado del pago;
+- precio máximo pagado;
+- saldo a favor aplicado;
+- monto efectivamente cobrado;
+- precio final del viaje, si ya fue calculado;
+- saldo a favor generado para próximos viajes;
+- transacción de pago asociada, si corresponde;
+- conductor y vehículo asignados, si fueron guardados como snapshot.
 
 Si en etapas futuras se requiere optimizar la lectura del historial, puede agregarse una vista o una tabla derivada, pero no es necesaria para el modelo inicial.
-
----
-
-### Notificaciones al pasajero
-
-
-### `passenger_notifications`
-
-Representa las notificaciones persistidas para los pasajeros.
-
-Cada notificación se guarda como un registro nuevo. No se reutiliza ni se edita un mismo registro para distintos eventos.
-
-El objetivo de esta entidad es permitir que la Rider App mantenga un historial de notificaciones relevantes para el usuario, incluso si el usuario no las visualiza en el momento exacto en que ocurren.
-
-| Campo | Tipo | Descripción |
-|------|------|-------------|
-| `id` | string | Identificador de la notificación. |
-| `passenger_user_id` | string | Identificador del pasajero en Clerk. |
-| `reservation_id` | string, nullable | Reserva asociada, si corresponde. |
-| `pool_id` | string, nullable | Pool asociado, si corresponde. |
-| `type` | string | Tipo de notificación. |
-| `message` | string | Mensaje a mostrar al pasajero. |
-| `read_at` | datetime, nullable | Fecha en la que el usuario leyó la notificación. |
-| `created_at` | datetime | Fecha en la que se creó la notificación. |
-
-Ejemplos de `type`:
-
-```text
-POOL_CANCELED
-PAYMENT_DENIED
-PAYMENT_CONFIRMED
-TRIP_STARTED
-DRIVER_ON_WAY
-DRIVER_ARRIVED
-FEEDBACK_AVAILABLE
 ```
-
-Relaciones:
-
-- Una notificación pertenece a un pasajero.
-- Una notificación puede estar asociada a una reserva.
-- Una notificación puede estar asociada a un pool.
-
-Notas:
-
-- Se crea un registro nuevo por cada evento notificable.
-- Esta entidad permite mostrar un historial de notificaciones del usuario.
-- `read_at = null` indica que la notificación todavía no fue leída.
-- Las notificaciones no reemplazan el estado real de la reserva ni del pool. Solo representan mensajes mostrados o pendientes de mostrar al usuario.
 
 
 ---
 
 ## Payments App
 
-La **Payments App** es la fuente de verdad de precios, métodos de pago, cobros, descuentos, transacciones y liquidaciones.
+La **Payments App** es la fuente de verdad de precios, checkout de reservas, cobros, transacciones, saldo a favor, ajustes de crédito y liquidaciones.
+
+En el nuevo flujo, la Payments App ya no realiza cobros automáticos al cierre T-1h. El pasajero paga el precio máximo al momento de reservar.
+
+Luego, al cierre del pool en T-1h, la Payments App calcula el precio final del viaje según la ocupación real del pool y genera saldo a favor para el pasajero cuando corresponda.
+
+También genera saldo a favor cuando un pool se cancela por falta de conductor, acreditando al pasajero el monto pagado.
+
+En esta etapa, el descuento por ocupación no se modela como una entidad independiente. El descuento se calcula a nivel de pool durante el proceso `pool_price_finalization_jobs`, utilizando las reglas definidas en `pricing_rules`. El resultado de ese cálculo se refleja en cada `charge` mediante `final_trip_price` y `credit_granted`, y el saldo a favor se registra en `credit_movements`.
 
 ---
 
 ### Entidades principales
 
-### `payment_methods`
+### `payment_methods` *(opcional futura)*
 
-Representa los métodos de pago vinculados por los pasajeros.
+En esta etapa no se requiere almacenar métodos de pago de pasajeros como entidad principal, porque el pasajero paga directamente cada reserva mediante Mercado Pago al momento de reservar.
 
-| Campo | Tipo | Descripción |
-|------|------|-------------|
-| `id` | string | Identificador interno del método de pago. |
-| `clerk_user_id` | string | Usuario dueño del método de pago. |
-| `provider` | string | Proveedor del método de pago. Ejemplo: `MERCADO_PAGO`. |
-| `provider_token` | string | Token o referencia segura del proveedor. |
-| `status` | string | Estado de vinculación. Ejemplo: `ACTIVE`, `INACTIVE`, `REVOKED`. |
+La Payments App puede operar mediante sesiones de checkout y transacciones de pago sin conservar un método de pago reutilizable para cobros automáticos.
 
-Relaciones:
+Esta entidad podría incorporarse en futuras etapas si se decide volver a implementar cobros automáticos o pagos con medios guardados.
 
-- Un usuario puede tener uno o más métodos de pago.
-- Un cobro utiliza un método de pago asociado al pasajero.
-
----
-
-### `payout_accounts`
-
-Representa las cuentas de cobro configuradas por los conductores.
-
-| Campo | Tipo | Descripción |
-|------|------|-------------|
-| `id` | string | Identificador interno de la cuenta de cobro. |
-| `driver_user_id` | string | Identificador del conductor en Clerk. |
-| `provider` | string | Proveedor o tipo de cuenta. |
-| `account_reference` | string | Referencia segura de la cuenta de cobro. |
-| `alias` | string, nullable | Alias de la cuenta, si corresponde. |
-| `status` | string | Estado de la cuenta. Ejemplo: `ACTIVE`, `INACTIVE`, `REJECTED`. |
-
-Relaciones:
-
-- Un conductor puede tener una o más cuentas de cobro.
-- Una liquidación se realiza hacia una cuenta de cobro del conductor.
+Por este motivo, `payment_methods` no forma parte del modelo principal de datos de esta etapa.
 
 ---
 
 ### `pricing_rules`
 
-Representa las reglas utilizadas para calcular precio máximo, precio estimado y descuentos.
+Representa las reglas utilizadas para calcular el precio máximo, el precio estimado y el precio final del viaje.
+
+En esta etapa, las reglas de precio también permiten calcular el descuento por ocupación del pool. Ese descuento no se descuenta directamente del pago inicial, sino que se usa al cierre T-1h para determinar el precio final y generar saldo a favor.
 
 | Campo | Tipo | Descripción |
 |------|------|-------------|
 | `id` | string | Identificador de la regla. |
 | `destination_id` | string, nullable | Destino al que aplica la regla. Puede ser `null` si es general. |
-| `base_price` | number | Precio base del viaje. |
+| `base_price` | number | Precio base o precio máximo de referencia del viaje. |
 | `min_passengers` | number | Cantidad mínima de pasajeros para aplicar la regla. |
 | `max_passengers` | number | Cantidad máxima de pasajeros para aplicar la regla. |
 | `discount_type` | string | Tipo de descuento. Ejemplo: `PERCENTAGE`, `FIXED_AMOUNT`. |
@@ -417,21 +386,48 @@ Representa las reglas utilizadas para calcular precio máximo, precio estimado y
 
 Relaciones:
 
-- Una regla puede aplicar a uno o varios cálculos de precio.
-- Los cobros pueden guardar el descuento aplicado como snapshot.
+- Una regla puede ser utilizada para calcular el precio máximo, estimado o final de un viaje.
+- Una regla puede ser referenciada por un proceso `pool_price_finalization_jobs` cuando se calcula el precio final del pool.
+
+Notas:
+
+- `pricing_rules` define cómo se calculan precios y descuentos.
+- La Payments App utiliza estas reglas para calcular el precio máximo y el precio estimado antes de la reserva.
+- Al cierre T-1h, la Payments App utiliza la ocupación real del pool para seleccionar la regla correspondiente y calcular el precio final.
+- El descuento por ocupación se registra en `pool_price_finalization_jobs`, no en una entidad separada.
+- El saldo a favor generado por ese descuento se registra en `credit_movements`.
 
 ---
 
-### `auto_charge_jobs`
+### `pool_price_finalization_jobs`
 
-Representa el proceso de cobro automático iniciado al cerrar un pool en T-1h.
+Representa el proceso de cálculo de precio final y generación de saldo a favor para un pool.
+
+Este proceso se ejecuta cuando la Driver App solicita a Payments App el cálculo de ajustes de crédito mediante:
+
+```http
+POST /api/payments/pools/:pool_id/credit-adjustments
+```
+
+Este proceso puede iniciarse por dos motivos:
+
+- `POOL_LOCKED`: el pool llegó a T-1h y se calcula el precio final según la ocupación real.
+- `NO_DRIVER_ASSIGNED`: el pool fue cancelado por falta de conductor y se acredita a cada pasajero el monto pagado.
+
+En esta etapa, el descuento por ocupación se registra directamente en esta entidad, porque el cálculo ocurre a nivel del pool completo y no como una lista de descuentos independientes por cobro.
 
 | Campo | Tipo | Descripción |
 |------|------|-------------|
-| `id` | string | Identificador del proceso de cobro automático. |
+| `id` | string | Identificador del proceso. |
 | `pool_id` | string | Identificador externo del pool. |
-| `requested_by` | string | App que solicitó el cobro. Ejemplo: `DRIVER_APP`. |
-| `current_passengers` | number | Cantidad de pasajeros informada al iniciar el proceso. |
+| `reason` | string | Motivo del ajuste. Ejemplo: `POOL_LOCKED`, `NO_DRIVER_ASSIGNED`. |
+| `current_passengers` | number | Ocupación utilizada para calcular el precio final. |
+| `pricing_rule_id` | string, nullable | Regla de precio utilizada para calcular el precio final. |
+| `base_price` | number | Precio base o precio máximo de referencia antes del descuento. |
+| `final_price` | number, nullable | Precio final calculado para el pool. |
+| `discount_type` | string, nullable | Tipo de descuento aplicado. Ejemplo: `OCCUPANCY_DISCOUNT`. |
+| `discount_value` | number, nullable | Valor del descuento aplicado por pasajero. |
+| `currency` | string | Moneda del cálculo. Ejemplo: `ARS`. |
 | `status` | string | Estado del proceso. |
 | `started_at` | datetime | Fecha de inicio del proceso. |
 | `finished_at` | datetime, nullable | Fecha de finalización del proceso. |
@@ -441,14 +437,89 @@ Estados sugeridos de `status`:
 ```text
 STARTED
 COMPLETED
-PARTIAL_FAILED
 FAILED
+```
+
+Tipos sugeridos de `discount_type`:
+
+```text
+OCCUPANCY_DISCOUNT
+NO_DRIVER_CREDIT
 ```
 
 Relaciones:
 
-- Un proceso de cobro automático pertenece a un pool.
-- Un proceso puede generar múltiples cobros en `charges`.
+- Un proceso de finalización pertenece a un pool externo de Driver App.
+- Un proceso puede referenciar una regla de precio en `pricing_rules`.
+- Un proceso puede actualizar múltiples cobros en `charges`.
+- Un proceso puede generar múltiples movimientos de crédito en `credit_movements`.
+
+Notas:
+
+- Este proceso no realiza cobros.
+- Este proceso reemplaza al antiguo proceso de cobro automático.
+- La Payments App consulta a Rider App el manifiesto de reservas pagadas usando `GET /api/pools/:pool_id/passengers?payment_status=PAID`.
+- La Payments App utiliza `pricing_rules` para calcular el precio final del viaje según la ocupación real del pool.
+- Si `reason = POOL_LOCKED`, `discount_value` representa la diferencia entre `base_price` y `final_price`.
+- Si `reason = NO_DRIVER_ASSIGNED`, `final_price = 0` y el crédito generado para cada pasajero equivale al monto pagado.
+- Si el cálculo genera saldo a favor, se registra un movimiento en `credit_movements` con tipo `CREDIT_GRANTED`.
+
+---
+
+### `checkout_sessions`
+
+Representa una sesión de pago creada para una reserva.
+
+La sesión de checkout se crea cuando la Rider App solicita a Payments App preparar el pago de una reserva mediante:
+
+```http
+POST /api/payments/reservations/:reservation_id/checkout
+```
+
+Esta entidad permite registrar el saldo a favor disponible al momento de iniciar el pago, el saldo aplicado y el monto que finalmente debe cobrarse mediante Mercado Pago.
+
+| Campo | Tipo | Descripción |
+|------|------|-------------|
+| `id` | string | Identificador interno del checkout. |
+| `reservation_id` | string | Identificador externo de la reserva en Rider App. |
+| `pool_id` | string | Identificador externo del pool creado en Driver App. |
+| `passenger_user_id` | string | Identificador del pasajero en Clerk. |
+| `max_price` | number | Precio máximo de la reserva. |
+| `available_credit_at_creation` | number | Saldo disponible del usuario al momento de crear el checkout. |
+| `credit_applied` | number | Saldo a favor aplicado al pago de esta reserva. |
+| `amount_to_charge` | number | Monto que debe cobrarse por Mercado Pago luego de aplicar saldo a favor. |
+| `currency` | string | Moneda del pago. Ejemplo: `ARS`. |
+| `status` | string | Estado del checkout. |
+| `checkout_url` | string, nullable | URL interna de Payments App donde se muestra el resumen del checkout. |
+| `mercado_pago_preference_id` | string, nullable | Identificador de la preferencia creada en Mercado Pago Checkout Pro. |
+| `mercado_pago_init_point` | string, nullable | URL externa de Mercado Pago Checkout Pro usada por Payments App para redirigir al usuario. |
+| `created_at` | datetime | Fecha de creación del checkout. |
+
+Estados sugeridos de `status`:
+
+```text
+CREATED
+PENDING
+PAID
+DENIED
+CANCELED
+EXPIRED
+```
+
+Relaciones:
+
+- Un checkout pertenece a una reserva externa de Rider App.
+- Un checkout pertenece a un pool externo de Driver App.
+- Un checkout puede generar un cobro en `charges`.
+- Un checkout puede aplicar saldo a favor desde `credit_accounts`.
+
+Notas:
+
+- Si `amount_to_charge = 0`, el pago puede completarse usando únicamente saldo a favor.
+- Si `amount_to_charge > 0`, la Payments App genera una preferencia de Mercado Pago Checkout Pro.
+- `checkout_url` siempre apunta a Payments App; la URL externa de Mercado Pago se conserva aparte en `mercado_pago_init_point`.
+- El checkout no reemplaza al cobro; solo representa la preparación del pago.
+
 
 ---
 
@@ -456,21 +527,28 @@ Relaciones:
 
 Representa el cobro de una reserva individual.
 
+En el nuevo flujo, el cobro se realiza al momento de reservar, no al cierre T-1h.
+
+El pasajero paga el precio máximo de la reserva. Antes de cobrar por Mercado Pago, la Payments App aplica el saldo a favor disponible del usuario.
+
 | Campo | Tipo | Descripción |
 |------|------|-------------|
 | `id` | string | Identificador interno del cobro. |
 | `transaction_id` | string | Identificador de transacción informado a otras apps. |
-| `auto_charge_job_id` | string, nullable | Proceso de cobro automático asociado. |
+| `checkout_session_id` | string, nullable | Checkout que originó el cobro. |
+| `pool_price_finalization_job_id` | string, nullable | Proceso de finalización de precio que calculó el precio final y el crédito generado. |
 | `pool_id` | string | Identificador externo del pool. |
 | `reservation_id` | string | Identificador externo de la reserva en Rider App. |
 | `passenger_user_id` | string | Identificador del pasajero en Clerk. |
-| `payment_method_id` | string, nullable | Método de pago utilizado. |
-| `max_price` | number | Precio máximo informado para la reserva. |
-| `effective_price` | number, nullable | Precio efectivamente cobrado. |
+| `max_price` | number | Precio máximo de la reserva. |
+| `credit_applied` | number | Saldo a favor utilizado para pagar esta reserva. |
+| `amount_charged` | number | Monto efectivamente cobrado mediante Mercado Pago. |
+| `final_trip_price` | number, nullable | Precio final calculado al cierre T-1h. |
+| `credit_granted` | number | Saldo a favor generado para próximos viajes. |
 | `currency` | string | Moneda del cobro. Ejemplo: `ARS`. |
 | `status` | string | Estado del cobro. |
-| `rejection_reason` | string, nullable | Motivo de rechazo si el cobro fue denegado. |
-| `processed_at` | datetime, nullable | Fecha de procesamiento del cobro. |
+| `rejection_reason` | string, nullable | Motivo de rechazo si el pago fue denegado. |
+| `processed_at` | datetime, nullable | Fecha de procesamiento del pago. |
 
 Estados sugeridos de `status`:
 
@@ -485,29 +563,24 @@ Relaciones:
 
 - Un cobro pertenece a una reserva externa de Rider App.
 - Un cobro pertenece a un pool externo de Driver App.
-- Un cobro puede tener descuentos aplicados.
-- Un cobro exitoso debe ser notificado a Rider App.
-- Un cobro rechazado debe ser notificado a Rider App y Driver App.
+- Un cobro puede originarse en una sesión de checkout.
+- Un cobro puede ser actualizado por un proceso `pool_price_finalization_jobs`.
+- Un cobro puede aplicar saldo a favor mediante un movimiento `CREDIT_APPLIED`.
+- Un cobro puede generar saldo a favor mediante un movimiento `CREDIT_GRANTED`.
 
+Notas:
+
+- `max_price` es el precio máximo aceptado por el pasajero al reservar.
+- `credit_applied` es el saldo a favor usado para reducir el monto a cobrar.
+- `amount_charged` es el monto cobrado por Mercado Pago.
+- `final_trip_price` se completa cuando se calculan los ajustes de crédito del pool.
+- `credit_granted` se completa cuando el precio final resulta menor que el precio máximo pagado.
+- El detalle de qué regla de descuento se usó se registra a nivel del proceso `pool_price_finalization_jobs`.
+- Si el pago es rechazado, la Payments App notifica a Rider App mediante `PATCH /api/reservations/:reservation_id/payment-result`, Rider App mantiene `reservation_status = PENDING_PAYMENT` y permite reintento.
+- Si el checkout es cancelado o expira, la Payments App lo informa mediante `PATCH /api/reservations/:reservation_id/payment-result` y Rider App pasa la reserva a `CANCELED`.
+- Si el pago falla, la reserva no debe formar parte efectiva del pool.
 ---
 
-### `charge_discounts`
-
-Representa los descuentos aplicados a un cobro.
-
-| Campo | Tipo | Descripción |
-|------|------|-------------|
-| `id` | string | Identificador del descuento aplicado. |
-| `charge_id` | string | Cobro asociado. |
-| `type` | string | Tipo de descuento. Ejemplo: `OCCUPANCY_DISCOUNT`. |
-| `amount` | number | Monto descontado. |
-| `description` | string, nullable | Descripción del descuento. |
-
-Relaciones:
-
-- Un cobro puede tener cero, uno o varios descuentos aplicados.
-
----
 
 ### `settlements`
 
@@ -537,6 +610,98 @@ Relaciones:
 - Una liquidación pertenece a un pool externo.
 - Una liquidación corresponde a un conductor identificado por `driver_user_id`.
 - Una liquidación puede agrupar los cobros exitosos de un pool.
+
+---
+
+### `credit_accounts`
+
+Representa el saldo a favor acumulado de un usuario.
+
+La Payments App es la fuente de verdad del saldo a favor.
+
+Cada usuario que tenga saldo a favor puede tener una cuenta de crédito asociada. Si un usuario todavía no tiene cuenta de crédito, se considera que su saldo disponible es `0`.
+
+| Campo | Tipo | Descripción |
+|------|------|-------------|
+| `id` | string | Identificador de la cuenta de crédito. |
+| `user_id` | string | Identificador del usuario en Clerk. |
+| `balance` | number | Saldo disponible. |
+| `currency` | string | Moneda del saldo. Ejemplo: `ARS`. |
+| `updated_at` | datetime | Fecha de última actualización. |
+
+Relaciones:
+
+- Una cuenta de crédito pertenece a un usuario identificado por Clerk.
+- Una cuenta de crédito puede tener múltiples movimientos en `credit_movements`.
+
+Notas:
+
+- La Rider App puede consultar este saldo mediante `GET /api/payments/users/:user_id/credit-balance`.
+- La Rider App no modifica este saldo.
+- La Payments App aplica automáticamente el saldo disponible al crear un checkout.
+
+### `credit_movements`
+
+Representa cada movimiento de saldo a favor.
+
+Esta entidad permite auditar de dónde salió el saldo del usuario y cuándo fue utilizado.
+
+| Campo | Tipo | Descripción |
+|------|------|-------------|
+| `id` | string | Identificador del movimiento. |
+| `credit_account_id` | string | Cuenta de crédito asociada. |
+| `user_id` | string | Identificador del usuario en Clerk. |
+| `type` | string | Tipo de movimiento. |
+| `amount` | number | Monto del movimiento. |
+| `currency` | string | Moneda del movimiento. |
+| `reservation_id` | string, nullable | Reserva asociada al movimiento. |
+| `pool_id` | string, nullable | Pool asociado al movimiento. |
+| `charge_id` | string, nullable | Cobro asociado al movimiento. |
+| `pool_price_finalization_job_id` | string, nullable | Proceso de finalización de precio que originó el movimiento, si corresponde. |
+| `description` | string, nullable | Descripción del movimiento. |
+| `created_at` | datetime | Fecha en la que se generó el movimiento. |
+
+Tipos posibles de `type`:
+
+```text
+CREDIT_GRANTED
+CREDIT_APPLIED
+MANUAL_ADJUSTMENT
+```
+
+Relaciones:
+
+- Un movimiento pertenece a una cuenta de crédito.
+- Un movimiento puede estar asociado a una reserva.
+- Un movimiento puede estar asociado a un pool.
+- Un movimiento puede estar asociado a un cobro.
+- Un movimiento puede estar asociado a un proceso `pool_price_finalization_jobs`.
+
+Notas:
+
+- `CREDIT_GRANTED` se utiliza cuando Payments App genera saldo a favor para el usuario.
+- `CREDIT_APPLIED` se utiliza cuando Payments App aplica saldo a favor en un checkout.
+- `MANUAL_ADJUSTMENT` se reserva para correcciones administrativas.
+- Cuando el saldo a favor se genera por descuento de ocupación, el movimiento puede estar relacionado con un proceso `pool_price_finalization_jobs`.
+- En esta etapa no se modela expiración de crédito.
+
+### Relación entre precio, descuento y saldo a favor
+
+El flujo de precios queda definido de la siguiente manera:
+
+1. Al reservar, el pasajero paga el precio máximo.
+2. Si tiene saldo a favor, Payments App lo aplica antes de cobrar por Mercado Pago.
+3. Al cierre T-1h, Payments App calcula el precio final usando `pricing_rules` y la ocupación real del pool.
+4. Si el precio final es menor al precio máximo pagado, la diferencia queda registrada dentro del proceso `pool_price_finalization_jobs` como descuento por ocupación.
+5. Esa diferencia se acredita al pasajero como saldo a favor mediante un movimiento `CREDIT_GRANTED` en `credit_movements`.
+6. Cada cobro individual se actualiza con `final_trip_price` y `credit_granted`.
+
+De esta manera:
+
+- `pricing_rules` define cómo se calculan los precios y descuentos.
+- `pool_price_finalization_jobs` registra qué regla se aplicó y cuál fue el descuento por ocupación del pool.
+- `charges` registra el resultado individual aplicado a cada reserva.
+- `credit_movements` registra el movimiento de saldo a favor generado por ese descuento.
 
 ---
 
@@ -639,6 +804,38 @@ Relaciones:
 - Un reporte tiene un usuario autor y un usuario reportado.
 - Puede asociarse a un pool o reserva externa para dar contexto.
 
+---
+
+### `users`
+
+Representa una referencia local mínima de usuarios dentro de la Feedback App.
+
+La entidad se utiliza únicamente para facilitar relaciones internas, consultas y cálculos asociados a reseñas y reportes.
+
+La identidad global del usuario sigue perteneciendo a Clerk.
+
+| Campo        | Tipo             | Descripción                                                      |
+| ------------ | ---------------- | ---------------------------------------------------------------- |
+| `id`         | string           | Identificador compartido del usuario en Clerk (`clerk_user_id`). |
+| `name`       | string, nullable | Nombre visible del usuario.                                      |
+| `role`       | string           | Rol operativo principal del usuario dentro de Feedback App.      |
+| `created_at` | datetime         | Fecha de creación del registro local.                            |
+
+Relaciones:
+
+* Un usuario puede ser autor de muchas reseñas.
+* Un usuario puede recibir muchas reseñas.
+* Un usuario puede realizar muchos reportes.
+* Un usuario puede ser reportado muchas veces.
+
+Notas:
+
+* Esta entidad no reemplaza a Clerk como fuente de verdad.
+* Los roles efectivos del contexto del viaje se determinan mediante campos contextualizados como `author_role`, `target_role`, `reporter_role` y `reported_role`.
+* En esta etapa del sistema, cada usuario opera con un único rol principal dentro de la plataforma (PASSENGER o DRIVER).
+
+---
+
 
 
 ## Datos duplicados y estrategia de consistencia
@@ -650,17 +847,23 @@ Relaciones:
 | `pool_id` | Driver, Rider, Payments, Feedback | Driver App | Driver App genera el `pool_id`. Las demás apps lo guardan como referencia externa y consultan a Driver App cuando necesitan estado operativo del pool. |
 | `reservation_id` | Rider, Driver, Payments, Feedback | Rider App | Rider App genera la reserva. Driver, Payments y Feedback la guardan como referencia externa cuando necesitan asociar datos al pasajero o al viaje. |
 | Estado del pool | Driver, visible en Rider y Feedback | Driver App | Rider App y Feedback App consultan el estado del pool mediante `GET /api/pools/:pool_id/status`. No deben modificarlo directamente. |
-| Estado de la reserva | Rider, referenciado en Payments y Driver | Rider App | Rider App mantiene el estado de reserva. Payments App informa resultados de pago y Rider App actualiza la reserva. |
+| Estado operativo de la reserva | Rider | Rider App | Rider App mantiene `reservation_status`. Las demás apps no deben modificarlo directamente. |
+| Estado del pago | Payments, Rider | Payments App | Payments App informa el resultado del pago a Rider App mediante `PATCH /api/reservations/:reservation_id/payment-result`. Rider App guarda el estado para mostrarlo al usuario y controlar el flujo de reserva. |
 | Pasajeros de un pool | Rider, consultado por Driver, Payments y Feedback | Rider App | Rider App expone `GET /api/pools/:pool_id/passengers`. Driver, Payments y Feedback consumen este endpoint según su necesidad. |
-| Manifiesto operativo final | Driver, originado desde Rider | Driver App como snapshot operativo | Driver App obtiene pasajeros `PAID` desde Rider App y guarda una copia local para ejecutar el recorrido aun si luego hay fallos de comunicación. |
-| Precio máximo de reserva | Rider, calculado por Payments | Payments App para cálculo, Rider App para snapshot comercial | Payments calcula el precio máximo. Rider App lo guarda en la reserva como valor inmutable. |
-| Precio efectivo pagado | Payments, Rider | Payments App | Payments App calcula y persiste el cobro real. Rider App guarda `effective_price` informado por Payments para mostrarlo en resumen e historial. |
+| Manifiesto operativo final | Driver, originado desde Rider | Driver App como snapshot operativo | Driver App obtiene pasajeros con `payment_status = PAID` desde Rider App y guarda una copia local para ejecutar el recorrido aun si luego hay fallos de comunicación. |
+| Precio máximo de reserva | Rider, Payments | Payments App para cálculo, Rider App para snapshot comercial | Payments calcula el precio máximo. Rider App lo guarda en la reserva como valor inmutable. |
+| Reglas de precio y descuentos | Payments | Payments App | Payments App utiliza `pricing_rules` para calcular precio máximo, precio estimado, precio final y descuento por ocupación. |
+| Descuento por ocupación aplicado al pool | Payments | Payments App | Payments App registra el descuento aplicado a nivel del proceso `pool_price_finalization_jobs`, porque el cálculo depende de la ocupación final del pool. |
+| Monto cobrado | Payments, Rider | Payments App | Payments App calcula y persiste `amount_charged`. Rider App guarda el valor informado para mostrarlo en resumen e historial. |
+| Saldo a favor aplicado | Payments, Rider | Payments App | Payments App aplica el saldo a favor al crear el checkout. Rider App guarda `credit_applied` informado por Payments. |
+| Precio final del viaje | Payments, Rider | Payments App | Payments App calcula `final_trip_price` al cierre T-1h. Rider App guarda el valor informado para mostrarlo en el historial. |
+| Saldo a favor generado | Payments, Rider | Payments App | Payments App genera y persiste el saldo a favor. Rider App guarda `credit_granted` para mostrar notificaciones, resumen e historial. |
+| Saldo a favor disponible | Payments, visible en Rider | Payments App | Rider App puede consultar el saldo mediante `GET /api/payments/users/:user_id/credit-balance`, pero no lo calcula ni modifica. |
 | Detalle de pagos y transacciones | Payments, referenciado en Rider | Payments App | Rider App solo guarda datos mínimos del resultado de pago. Payments App mantiene el detalle financiero completo. |
 | Información de conductor y vehículo asignados | Driver, Rider | Driver App | Driver App es la fuente de verdad. Rider App guarda un snapshot mínimo dentro de la reserva cuando el pool pasa a `ASSIGNED`, para mostrar resumen e historial del viaje. |
 | Promedio de calificaciones | Feedback, visible en Rider y Driver | Feedback App | Rider App y Driver App consultan a Feedback App cuando necesitan mostrar reputación. No calculan promedios localmente. |
 | Reseñas | Feedback | Feedback App | Feedback App crea, habilita y completa reseñas. Otras apps solo reciben notificaciones o redirigen al usuario. |
 | Reportes | Feedback | Feedback App | Feedback App persiste reportes y estados de moderación. |
-
 ---
 
 ## Estrategias generales ante inconsistencias
@@ -704,9 +907,11 @@ Una app no debe recalcular datos que pertenecen a otra.
 Ejemplos:
 
 - Rider App no calcula precios: los solicita a Payments App.
+- Rider App no calcula saldo a favor: lo consulta o recibe desde Payments App.
 - Driver App no calcula calificaciones: las solicita a Feedback App.
 - Feedback App no asume pasajeros de un pool: los solicita a Rider App.
-- Payments App no asume pasajeros a cobrar: los solicita a Rider App.
+- Payments App no asume pasajeros pagados de un pool: los solicita a Rider App.
+- Rider App no modifica el saldo a favor: Payments App es la fuente de verdad.
 
 ---
 
@@ -718,9 +923,10 @@ Por eso, el sistema puede tener breves períodos de consistencia eventual.
 
 Ejemplos:
 
-- Payments App procesa un cobro y luego notifica a Rider App.
-- Payments App notifica a Driver App cuando un pago rechazado debe descontarse del pool.
+- Payments App procesa un pago y luego notifica a Rider App.
+- Payments App genera saldo a favor y luego notifica a Rider App para que muestre la notificación al pasajero.
 - Driver App cambia el estado del pool y Rider App lo detecta mediante polling.
+- Driver App solicita a Payments App calcular ajustes de crédito al cierre T-1h.
 - Feedback App consulta el estado del pool para detectar avance o finalización.
 
 ---
@@ -731,9 +937,12 @@ Las operaciones inter-servicio importantes deberían poder recibirse más de una
 
 Ejemplos:
 
+- creación de checkout para una reserva;
 - notificación de pago exitoso;
 - notificación de pago rechazado;
 - cancelación de pool por falta de conductor;
+- cálculo de ajustes de crédito del pool;
+- notificación de crédito generado;
 - pre-creación de reseñas;
 - notificación de reseñas disponibles.
 
@@ -742,6 +951,9 @@ Para esto, las apps pueden usar identificadores como:
 - `reservation_id`;
 - `pool_id`;
 - `transaction_id`;
+- `checkout_session_id`;
+- `pool_price_finalization_job_id`;
+- `credit_movement_id`;
 - `review_id`.
 
 ---
@@ -756,12 +968,20 @@ Para esto, las apps pueden usar identificadores como:
 | Vehículos | Driver App |
 | Destinos | Rider App |
 | Reservas | Rider App |
+| Estado operativo de la reserva | Rider App |
+| Estado del pago | Payments App |
 | Pools | Driver App |
 | Estado operativo del viaje | Driver App |
 | Pasajeros de un pool | Rider App |
 | Manifiesto operativo final | Driver App |
-| Precios y descuentos | Payments App |
+| Precios | Payments App |
+| Reglas de descuento | Payments App |
+| Descuento por ocupación aplicado al pool | Payments App |
+| Checkout de reservas | Payments App |
 | Cobros y transacciones | Payments App |
+| Saldo a favor | Payments App |
+| Movimientos de saldo a favor | Payments App |
+| Ajustes de crédito del pool | Payments App |
 | Liquidaciones | Payments App |
 | Reseñas | Feedback App |
 | Promedios de calificación | Feedback App |
