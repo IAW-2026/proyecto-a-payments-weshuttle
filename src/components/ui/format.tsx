@@ -17,7 +17,7 @@ export function formatMoney(amount: number, currency: string) {
     style: "currency",
     currency,
     minimumFractionDigits: 2,
-  }).format(amount);
+  }).format(amount).replace(/\s+/g, " ");
 }
 
 export function formatDateTime(value: Date | string | null | undefined) {
@@ -30,7 +30,7 @@ export function formatDateTime(value: Date | string | null | undefined) {
   return new Intl.DateTimeFormat("es-AR", {
     dateStyle: "medium",
     timeStyle: "short",
-  }).format(date);
+  }).format(date).replace(/\s+/g, " ");
 }
 
 export function humanizeStatus(value: string) {

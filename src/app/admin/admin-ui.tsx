@@ -35,8 +35,8 @@ export function AdminQuickActions() {
         <p className="mt-2 text-sm text-slate-gray">Revisa el estado de las transacciones, cargos y reservas generadas en la plataforma.</p>
       </Link>
       <Link href="/admin/credits" className="rounded-xl border border-outline-custom bg-white p-6 shadow-sm transition hover:border-primary/20 hover:bg-primary/5">
-        <h3 className="font-semibold text-primary">Saldos y créditos</h3>
-        <p className="mt-2 text-sm text-slate-gray">Controla los saldos a favor aplicados a los viajes y los créditos de devolución.</p>
+        <h3 className="font-semibold text-primary">Ajustes de Crédito</h3>
+        <p className="mt-2 text-sm text-slate-gray">Simula el cierre de viajes grupal, calcula tarifas finales y gestiona devoluciones a los pasajeros.</p>
       </Link>
       <Link href="/admin/pricing-rules" className="rounded-xl border border-outline-custom bg-white p-6 shadow-sm transition hover:border-primary/20 hover:bg-primary/5">
         <h3 className="font-semibold text-primary">Tarifas y reglas</h3>
@@ -45,10 +45,6 @@ export function AdminQuickActions() {
       <Link href="/admin/settlements" className="rounded-xl border border-outline-custom bg-white p-6 shadow-sm transition hover:border-primary/20 hover:bg-primary/5">
         <h3 className="font-semibold text-primary">Pagos a choferes</h3>
         <p className="mt-2 text-sm text-slate-gray">Gestiona y audita las transferencias de ganancias derivadas a los conductores.</p>
-      </Link>
-      <Link href="/admin/pools" className="rounded-xl border border-outline-custom bg-white p-6 shadow-sm transition hover:border-primary/20 hover:bg-primary/5">
-        <h3 className="font-semibold text-primary">Cierre de viajes</h3>
-        <p className="mt-2 text-sm text-slate-gray">Consulta la liquidación final de la tarifa de cada viaje compartido al finalizar.</p>
       </Link>
       <Link href="/admin/pricing-rules/simulator" className="rounded-xl border border-outline-custom bg-white p-6 shadow-sm transition hover:border-primary/20 hover:bg-primary/5">
         <h3 className="font-semibold text-primary">Simulador de tarifas</h3>

@@ -47,13 +47,10 @@ export default async function AdminPricingRulesPage({ searchParams }: PageProps)
       <div className="flex flex-col gap-8">
         <SectionCard>
           <div className="flex flex-col gap-6">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4">
               <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Configuración Global</p>
-                <h2 className="mt-2 text-3xl font-bold text-primary sm:text-4xl">Tarifas y Descuentos</h2>
-                <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-gray sm:text-base">
-                  Ajusta el precio por kilómetro y los descuentos escalonados aplicables a todos los destinos de viaje de la plataforma.
-                </p>
+                <h2 className="text-lg font-bold text-primary">Tarifa Base por Kilómetro</h2>
+                <p className="text-xs text-slate-gray mt-0.5">Ajusta el precio base por kilómetro aplicable a todos los destinos.</p>
               </div>
 
               <div className="flex flex-wrap items-center gap-3">

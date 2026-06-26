@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
-import { notifyReservationPaymentResult } from "@/lib/external-apis";
+import { getPoolPassengers, notifyReservationPaymentResult } from "@/lib/external-apis";
+import { getMockDestinationById } from "@/lib/mock/destinations";
 import { driverClient } from "@/lib/integrations/driver-client";
 import {
   getPaymentClient,
@@ -7,6 +8,7 @@ import {
   isMercadoPagoConfigured,
 } from "@/lib/payments/mercadopago";
 import { prisma } from "@/lib/prisma";
+import { logNotification } from "@/lib/notifications";
 
 type CreateCheckoutInput = {
   reservationId: string;
@@ -60,6 +62,12 @@ type CheckoutSummary = {
   mercadoPagoPreferenceId: string | null;
   mercadoPagoInitPoint: string | null;
   expiresAt: string | null;
+  creditRefund?: number;
+  destinationName?: string | null;
+  departureTime?: string | null;
+  processedAt?: string | null;
+  finalTripPrice?: number | null;
+  isFinalized?: boolean;
 };
 
 type CheckoutPageData = {
@@ -247,7 +255,7 @@ function shouldNotifyRider(status: CheckoutStatus) {
   return status === "PAID" || status === "DENIED" || status === "CANCELED" || status === "EXPIRED";
 }
 
-function buildCheckoutSummary(
+export function buildCheckoutSummary(
   checkout: {
     id: string;
     reservationId: string;
@@ -443,17 +451,47 @@ async function applyCheckoutOutcome(input: {
   });
 
   if (statusChanged && shouldNotifyRider(input.targetStatus)) {
-    await notifyReservationPaymentResult({
-      reservationId: checkout.reservationId,
-      paymentStatus: input.targetStatus,
-      transactionId: input.transactionId ?? buildDemoTransactionId("checkout_result"),
-      maxPrice: decimalToNumber(checkout.maxPrice),
-      creditApplied: input.targetStatus === "PAID" ? decimalToNumber(checkout.creditApplied) : undefined,
-      amountCharged: input.targetStatus === "PAID" ? input.amountCharged ?? 0 : undefined,
-      currency: checkout.currency,
-      rejectionReason: input.rejectionReason,
-      processedAt: input.processedAt.toISOString(),
-    });
+    if (input.targetStatus === "PAID") {
+      await logNotification({
+        type: "PAYMENT_APPROVED",
+        title: "Pago Aprobado",
+        message: `El pago por $${input.amountCharged ?? 0} para la reserva #${checkout.reservationId} fue aprobado con éxito.`,
+        userId: checkout.passengerUserId,
+        role: "RIDER",
+      });
+    } else if (input.targetStatus === "DENIED") {
+      await logNotification({
+        type: "PAYMENT_DENIED",
+        title: "Pago Rechazado",
+        message: `El pago para la reserva #${checkout.reservationId} fue rechazado.`,
+        userId: checkout.passengerUserId,
+        role: "RIDER",
+      });
+    }
+
+    try {
+      await notifyReservationPaymentResult({
+        reservationId: checkout.reservationId,
+        paymentStatus: input.targetStatus,
+        transactionId: input.transactionId ?? buildDemoTransactionId("checkout_result"),
+        maxPrice: decimalToNumber(checkout.maxPrice),
+        creditApplied: input.targetStatus === "PAID" ? decimalToNumber(checkout.creditApplied) : undefined,
+        amountCharged: input.targetStatus === "PAID" ? input.amountCharged ?? 0 : undefined,
+        currency: checkout.currency,
+        rejectionReason: input.rejectionReason,
+        processedAt: input.processedAt.toISOString(),
+      });
+    } catch (err) {
+      console.error("Failed to notify rider app of payment result", err);
+      const errMsg = err instanceof Error ? err.message : "Error desconocido";
+      await logNotification({
+        type: "INTEGRATION_ERROR",
+        title: "Error de integración con Rider App",
+        message: `Fallo al notificar resultado del pago para reserva #${checkout.reservationId}. Error: ${errMsg}`,
+        userId: checkout.passengerUserId,
+        role: "RIDER",
+      });
+    }
 
     if (input.targetStatus === "DENIED") {
       try {
@@ -463,6 +501,14 @@ async function applyCheckoutOutcome(input: {
         });
       } catch (err) {
         console.error("Failed to notify driver app of denied payment", err);
+        const errMsg = err instanceof Error ? err.message : "Error desconocido";
+        await logNotification({
+          type: "INTEGRATION_ERROR",
+          title: "Error de integración con Driver App",
+          message: `Fallo al notificar denegación de pago en pool ${checkout.poolId}. Error: ${errMsg}`,
+          userId: checkout.passengerUserId,
+          role: "DRIVER",
+        });
       }
     }
   }
@@ -722,6 +768,48 @@ export async function createCheckoutSession(
   }
 }
 
+export async function enrichCheckoutWithTripDetails(summary: CheckoutSummary): Promise<CheckoutSummary> {
+  const charges = await prisma.charge.findMany({
+    where: {
+      checkoutSessionId: summary.id,
+      status: "PAID",
+    },
+  });
+
+  const paidCharge = charges[0] || null;
+  const processedAt = paidCharge?.processedAt?.toISOString() ?? null;
+  const finalTripPrice = paidCharge?.finalTripPrice ? paidCharge.finalTripPrice.toNumber() : null;
+  const creditRefund = paidCharge?.creditGranted ? paidCharge.creditGranted.toNumber() : 0;
+  const isFinalized = paidCharge ? paidCharge.finalTripPrice !== null : false;
+
+  let destinationName: string | null = null;
+  let departureTime: string | null = null;
+
+  try {
+    const manifest = await getPoolPassengers(summary.poolId);
+    const passenger = manifest?.passengers.find(
+      (p) => p.reservationId === summary.reservationId
+    );
+    if (passenger) {
+      departureTime = passenger.departureTime;
+      const dest = getMockDestinationById(passenger.destinationId);
+      destinationName = dest ? dest.name : passenger.destinationId;
+    }
+  } catch (err) {
+    console.error("Error fetching pool manifest for checkout details", err);
+  }
+
+  return {
+    ...summary,
+    processedAt,
+    finalTripPrice,
+    creditRefund: creditRefund || (summary.creditRefund ?? 0),
+    isFinalized,
+    destinationName,
+    departureTime,
+  };
+}
+
 export async function getCheckoutPageData(checkoutId: string): Promise<CheckoutPageData | null> {
   const checkout = await getCheckoutById(checkoutId);
 
@@ -729,8 +817,11 @@ export async function getCheckoutPageData(checkoutId: string): Promise<CheckoutP
     return null;
   }
 
+  const summary = buildCheckoutSummary(checkout);
+  const enriched = await enrichCheckoutWithTripDetails(summary);
+
   return {
-    checkout: buildCheckoutSummary(checkout),
+    checkout: enriched,
     isDemoMode: !isMercadoPagoConfigured(),
   };
 }
@@ -834,7 +925,7 @@ export async function reconcileCheckoutReturn(
       error: "INVALID_EXTERNAL_REFERENCE",
       message: "La referencia externa devuelta por Mercado Pago no coincide con el checkout.",
       data: {
-        checkout: buildCheckoutSummary(checkout),
+        checkout: await enrichCheckoutWithTripDetails(buildCheckoutSummary(checkout)),
         isDemoMode: !isMercadoPagoConfigured(),
       },
     };
@@ -879,7 +970,7 @@ export async function reconcileCheckoutReturn(
           error: "INVALID_PAYMENT_REFERENCE",
           message: "El pago recuperado desde Mercado Pago no pertenece a este checkout.",
           data: {
-            checkout: buildCheckoutSummary(checkout),
+            checkout: await enrichCheckoutWithTripDetails(buildCheckoutSummary(checkout)),
             isDemoMode: false,
           },
         };
@@ -929,7 +1020,7 @@ export async function reconcileCheckoutReturn(
   return {
     ok: true,
     data: {
-      checkout: buildCheckoutSummary(updatedCheckout),
+      checkout: await enrichCheckoutWithTripDetails(buildCheckoutSummary(updatedCheckout)),
       isDemoMode: !isMercadoPagoConfigured(),
     },
   };

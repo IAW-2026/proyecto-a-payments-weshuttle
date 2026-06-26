@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { MetricCard } from "@/components/ui/metric-card";
 import { SectionCard } from "@/components/ui/section-card";
 
@@ -80,17 +79,3 @@ export function DriverSummaryMetrics({
   );
 }
 
-export function DriverQuickActions() {
-  return (
-    <section className="grid gap-4 md:grid-cols-2">
-      <Link href="/driver/account" className="rounded-xl border border-outline-custom bg-white p-6 shadow-sm transition hover:border-primary/20 hover:bg-primary/5">
-        <h3 className="font-semibold text-primary">Datos de cobro</h3>
-        <p className="mt-2 text-sm text-slate-gray">Configura la cuenta de Mercado Pago o CBU/CVU donde deseas recibir tus ganancias.</p>
-      </Link>
-      <Link href="/driver/trips" className="rounded-xl border border-outline-custom bg-white p-6 shadow-sm transition hover:border-primary/20 hover:bg-primary/5">
-        <h3 className="font-semibold text-primary">Viajes y ganancias</h3>
-        <p className="mt-2 text-sm text-slate-gray">Revisa el historial de viajes completados, tarifas estimadas y cobros recibidos.</p>
-      </Link>
-    </section>
-  );
-}

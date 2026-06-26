@@ -55,6 +55,7 @@ export async function getDriverSettlementsData(clerkUserId: string, q: string, p
   const [settlements, totalSettlements] = await Promise.all([
     prisma.settlement.findMany({
       where,
+      include: { payoutAccount: true },
       orderBy: [{ settledAt: "desc" }, { id: "desc" }],
       skip: (page - 1) * DRIVER_PAGE_SIZE,
       take: DRIVER_PAGE_SIZE,
@@ -69,21 +70,3 @@ export async function getDriverSettlementsData(clerkUserId: string, q: string, p
   };
 }
 
-export async function getDriverTripsData(clerkUserId: string) {
-  const settlements = await prisma.settlement.findMany({
-    where: { driverUserId: clerkUserId },
-    include: { payoutAccount: true },
-    orderBy: [{ settledAt: "desc" }, { id: "desc" }],
-    take: 8,
-  });
-
-  return settlements.map((settlement) => ({
-    id: settlement.id,
-    poolId: settlement.poolId,
-    amount: settlement.amount,
-    currency: settlement.currency,
-    status: settlement.status,
-    settledAt: settlement.settledAt,
-    payoutReference: settlement.payoutAccount?.alias ?? settlement.payoutAccount?.accountReference ?? null,
-  }));
-}

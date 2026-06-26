@@ -12,9 +12,12 @@ export default async function RiderBalancePage() {
   const authContext = await requirePageRole(["rider"]);
 
   return (
-    <AppShell role="rider" clerkUserId={authContext.clerkUserId} title="Saldo y movimientos" description="Consulta tu credito disponible y los ultimos movimientos vinculados al flujo de pago.">
+    <AppShell role="rider" clerkUserId={authContext.clerkUserId} title="" description="">
       <div className="flex flex-col gap-8">
-        <RiderHero title="Entiende cuanto credito tienes disponible." description="Esta seccion concentra el saldo a favor y los movimientos mas relevantes sin mezclarlo con otras herramientas del rider." />
+        <RiderHero 
+          title="Saldo y movimientos" 
+          description="Consulta tu crédito disponible y los últimos movimientos vinculados al flujo de pago. Esta sección concentra el saldo a favor y los movimientos más relevantes sin mezclarlo con otras herramientas del rider." 
+        />
 
         <Suspense fallback={<RiderBalanceSkeleton />}>
           <RiderBalanceContentSection clerkUserId={authContext.clerkUserId} />

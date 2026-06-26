@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import { getPoolPassengers } from "@/lib/external-apis";
+import { getMockDestinationById } from "@/lib/mock/destinations";
 
 export function paymentBanner(payment: string | undefined) {
   switch (payment) {
@@ -50,6 +52,9 @@ export async function getRiderPageData(clerkUserId: string, reservationId?: stri
     }),
     prisma.checkoutSession.findMany({
       where: { passengerUserId: clerkUserId },
+      include: {
+        charges: true,
+      },
       orderBy: { createdAt: "desc" },
       take: 8,
     }),
@@ -73,11 +78,56 @@ export async function getRiderPageData(clerkUserId: string, reservationId?: stri
       : Promise.resolve(null),
   ]);
 
+  // Enrich each checkout in recentCheckouts with destinationName and departureTime
+  const enrichedCheckouts = await Promise.all(
+    recentCheckouts.map(async (checkout) => {
+      let destinationName: string | null = null;
+      let departureTime: string | null = null;
+
+      try {
+        const manifest = await getPoolPassengers(checkout.poolId);
+        const passenger = manifest?.passengers.find(
+          (p) => p.reservationId === checkout.reservationId
+        );
+        if (passenger) {
+          departureTime = passenger.departureTime;
+          const dest = getMockDestinationById(passenger.destinationId);
+          destinationName = dest ? dest.name : passenger.destinationId;
+        }
+      } catch (err) {
+        console.error("Error fetching pool manifest for list item", err);
+      }
+
+      // Fallbacks if not found (e.g. for pending/simulated checkout sessions)
+      if (!destinationName) {
+        const lowerPoolId = checkout.poolId.toLowerCase();
+        if (lowerPoolId.includes("white") || lowerPoolId.includes("puerto")) {
+          destinationName = "Puerto Ingeniero White";
+        } else if (lowerPoolId.includes("industrial") || lowerPoolId.includes("parque")) {
+          destinationName = "Parque Industrial";
+        } else {
+          destinationName = "Polo Petroquimico";
+        }
+      }
+      if (!departureTime) {
+        const date = new Date(checkout.createdAt);
+        date.setHours(date.getHours() + 1); // 1 hour after creation for realistic mock departure
+        departureTime = date.toISOString();
+      }
+
+      return {
+        ...checkout,
+        destinationName,
+        departureTime,
+      };
+    })
+  );
+
   return {
     reservationId: normalizedReservationId,
     creditAccount,
     recentMovements,
-    recentCheckouts,
+    recentCheckouts: enrichedCheckouts,
     latestCheckout,
     latestCharge,
     availableCredit: creditAccount?.balance.toNumber() ?? 0,

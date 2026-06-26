@@ -91,12 +91,21 @@ export function SettlementsClient({ settlements }: { settlements: SettlementItem
               />
             </div>
             <div className="mt-4 flex items-center justify-between gap-3">
-              <button
-                onClick={() => setActiveSettlement(settlement)}
-                className="rounded-full border border-slate-200 bg-white px-4 py-1.5 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 cursor-pointer"
-              >
-                Gestionar pago
-              </button>
+              {settlement.status === "PENDING" ? (
+                <button
+                  onClick={() => setActiveSettlement(settlement)}
+                  className="rounded-full bg-slate-900 px-4 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition cursor-pointer"
+                >
+                  Gestionar pago
+                </button>
+              ) : (
+                <button
+                  onClick={() => setActiveSettlement(settlement)}
+                  className="rounded-full border border-slate-200 bg-white px-4 py-1.5 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition cursor-pointer"
+                >
+                  Ver transacción
+                </button>
+              )}
               <details className="text-xs text-slate-400">
                 <summary className="cursor-pointer hover:text-slate-600 outline-none select-none">Ver ids</summary>
                 <div className="mt-2 space-y-1 bg-white p-2.5 rounded-lg border border-slate-200 text-slate-600">
@@ -156,12 +165,21 @@ export function SettlementsClient({ settlements }: { settlements: SettlementItem
                   )}
                 </td>
                 <td className="px-4 py-4 align-top text-center">
-                  <button
-                    onClick={() => setActiveSettlement(settlement)}
-                    className="rounded-full bg-slate-900 px-4 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition cursor-pointer"
-                  >
-                    Gestionar pago
-                  </button>
+                  {settlement.status === "PENDING" ? (
+                    <button
+                      onClick={() => setActiveSettlement(settlement)}
+                      className="rounded-full bg-slate-900 px-4 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition cursor-pointer"
+                    >
+                      Gestionar pago
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setActiveSettlement(settlement)}
+                      className="rounded-full border border-slate-200 bg-white px-4 py-1.5 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition cursor-pointer"
+                    >
+                      Ver transacción
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

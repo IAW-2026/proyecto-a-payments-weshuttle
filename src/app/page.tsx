@@ -4,17 +4,26 @@ import { HeaderAuthButtons, HeroAuthButton } from "@/components/auth-client-elem
 export default async function Home() {
   return (
     <div className="min-h-screen flex flex-col bg-linear-to-b from-surface to-slate-55 text-primary">
-      {/* Sticky header navbar */}
-      <header className="sticky top-0 z-50 border-b border-outline-custom bg-white/85 backdrop-blur-md shadow-xs">
+      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-[var(--ws-outline)] shadow-[0_2px_12px_rgba(10,25,47,0.06)]">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-white shadow-md shadow-primary/20 transition-transform duration-300 group-hover:scale-105">
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          <Link href="/" className="flex items-center gap-3 hover:opacity-85 transition-opacity">
+            <div className="flex items-center justify-center w-11 h-11 bg-white rounded-xl border border-slate-200 shadow-[0_2px_8px_rgba(0,0,0,0.04)] p-1.5 shrink-0">
+              <svg viewBox="0 0 100 100" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M 22 34 L 35 75 L 50 45 L 65 75 L 78 34"
+                  fill="none"
+                  stroke="#0c59cf"
+                  strokeWidth="13"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <circle cx="22" cy="30" r="8.5" fill="#e63946" />
+                <circle cx="50" cy="40" r="8.5" fill="#f59e0b" />
+                <circle cx="78" cy="30" r="8.5" fill="#10b981" />
               </svg>
             </div>
-            <span className="text-lg font-bold tracking-tight bg-gradient-to-r from-primary to-slate-gray bg-clip-text text-transparent">
-              WeShuttle <span className="font-semibold text-primary">Payments</span>
+            <span className="ws-brand">
+              WeShuttle <span className="font-semibold">Payments</span>
             </span>
           </Link>
 

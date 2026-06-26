@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { AlertBanner } from "@/components/ui/alert-banner";
 import { MetricCard } from "@/components/ui/metric-card";
@@ -142,3 +144,4 @@ export function RiderSummaryMetrics({
     </div>
   );
 }
+

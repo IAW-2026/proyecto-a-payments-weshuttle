@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import { AppShell } from "@/components/app-shell";
 import { AdminCheckoutSessionsView } from "@/components/admin-checkout-sessions-view";
 import { requirePageRole } from "@/lib/auth";
-import { AdminHero } from "../admin-ui";
 
 type PageProps = {
   searchParams: Promise<{
@@ -18,12 +17,10 @@ export default async function AdminCheckoutsPage({ searchParams }: PageProps) {
     <AppShell
       role="admin"
       clerkUserId={authContext.clerkUserId}
-      title="Control de pagos"
-      description="Listado y control de transacciones de cobro en la plataforma."
+      title=""
+      description=""
     >
       <div className="flex flex-col gap-8">
-        <AdminHero title="Monitorea las transacciones de cobro" description="Esta sección te permite buscar y revisar el estado de los cobros, crédito aplicado y la trazabilidad de cada viaje." />
-        
         <Suspense fallback={<AdminCheckoutsSkeleton />}>
           <AdminCheckoutSessionsView searchParams={searchParams} />
         </Suspense>

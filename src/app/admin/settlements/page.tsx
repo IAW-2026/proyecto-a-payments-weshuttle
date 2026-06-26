@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import { Prisma } from "@prisma/client";
 import { AppShell } from "@/components/app-shell";
-import { AdminHero } from "../admin-ui";
 import { Pagination } from "@/components/pagination";
 import { Search } from "@/components/search";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -27,12 +26,11 @@ function parsePage(value: string | undefined) {
 }
 
 export default async function AdminSettlementsPage({ searchParams }: PageProps) {
-  const [authContext, params, completedCount, pendingCount, totalCount] = await Promise.all([
+  const [authContext, params, completedCount, pendingCount] = await Promise.all([
     requirePageRole(["admin"]),
     searchParams,
     prisma.settlement.count({ where: { status: "COMPLETED" } }),
     prisma.settlement.count({ where: { status: "PENDING" } }),
-    prisma.settlement.count(),
   ]);
 
   const q = params.q?.trim() ?? "";
@@ -46,15 +44,34 @@ export default async function AdminSettlementsPage({ searchParams }: PageProps) 
       description="Gestiona y audita las transferencias de ganancias derivadas a los conductores."
     >
       <div className="flex flex-col gap-8">
-        <AdminHero title="Liquidaciones y pagos a conductores" description="Sigue de cerca las transferencias enviadas o pendientes de acreditación de los choferes por los viajes realizados." />
-
-        <div className="grid gap-4 md:grid-cols-3">
-          <MetricCard title="Transferencias totales" value={String(totalCount)} description="Liquidaciones registradas en el sistema." tone="sky" />
+        <div className="grid gap-4 md:grid-cols-2">
           <MetricCard title="Pagos acreditados" value={String(completedCount)} description="Transferencias ya acreditadas con éxito." tone="emerald" />
           <MetricCard title="Pagos pendientes" value={String(pendingCount)} description="Transferencias aún pendientes de envío." tone="amber" />
         </div>
 
-        <SectionCard>
+        {pendingCount > 0 && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 shadow-sm animate-in fade-in slide-in-from-top-4 duration-300">
+            <div className="flex items-center gap-3">
+              <span className="p-2 rounded-lg bg-amber-100 text-amber-600">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.2} stroke="currentColor" className="w-5.5 h-5.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                </svg>
+              </span>
+              <div>
+                <p className="font-semibold text-slate-900">Liquidaciones pendientes de pago</p>
+                <p className="text-sm text-amber-700">Tenés {pendingCount} {pendingCount === 1 ? "liquidación pendiente" : "liquidaciones pendientes"} de transferir a los choferes.</p>
+              </div>
+            </div>
+            <a
+              href="#registros-tabla"
+              className="rounded-lg bg-amber-600 hover:bg-amber-700 px-4 py-2 text-xs font-bold text-white shadow-xs transition text-center shrink-0 cursor-pointer"
+            >
+              Ver liquidaciones
+            </a>
+          </div>
+        )}
+
+        <SectionCard id="registros-tabla">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
               <h2 className="text-xl font-semibold text-slate-900">Transferencias registradas</h2>

@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
-import { AdminHero, AdminQuickActions } from "./admin-ui";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatDateTime, formatMoney, humanizeStatus } from "@/components/ui/format";
 import { MetricCard } from "@/components/ui/metric-card";
@@ -14,24 +13,13 @@ export default async function AdminHomePage() {
   const [
     authContext,
     totalCollectedData,
-    totalCreditAppliedData,
-    totalCreditGrantedData,
     totalSettledData,
     pendingSettlementsData,
-    chargeStats,
   ] = await Promise.all([
     requirePageRole(["admin"]),
     prisma.charge.aggregate({
       _sum: { amountCharged: true },
       where: { status: "PAID" },
-    }),
-    prisma.creditMovement.aggregate({
-      _sum: { amount: true },
-      where: { type: "CREDIT_APPLIED" },
-    }),
-    prisma.creditMovement.aggregate({
-      _sum: { amount: true },
-      where: { type: "CREDIT_GRANTED" },
     }),
     prisma.settlement.aggregate({
       _sum: { amount: true },
@@ -42,52 +30,26 @@ export default async function AdminHomePage() {
       _count: { id: true },
       where: { status: "PENDING" },
     }),
-    prisma.charge.groupBy({
-      by: ["status"],
-      _count: { id: true },
-    }),
   ]);
 
   const totalCollected = totalCollectedData._sum.amountCharged?.toNumber() || 0;
-  const totalCreditApplied = totalCreditAppliedData._sum.amount?.toNumber() || 0;
-  const totalCreditGranted = totalCreditGrantedData._sum.amount?.toNumber() || 0;
   const totalSettled = totalSettledData._sum.amount?.toNumber() || 0;
   const pendingAmount = pendingSettlementsData._sum.amount?.toNumber() || 0;
   const pendingCount = pendingSettlementsData._count.id || 0;
-
-  const totalCharges = chargeStats.reduce((acc, curr) => acc + curr._count.id, 0);
-  const paidCharges = chargeStats.find((s) => s.status === "PAID")?._count.id || 0;
-  const successRate = totalCharges > 0 ? (paidCharges / totalCharges) * 100 : 0;
 
   return (
     <AppShell
       role="admin"
       clerkUserId={authContext.clerkUserId}
-      title="Control financiero"
-      description="Resumen ejecutivo de recaudación, saldos a favor aplicados, estado de pagos a conductores y salud del sistema."
+      title=""
+      description=""
     >
       <div className="flex flex-col gap-8">
-        <AdminHero
-          title="Vista general del negocio de pagos"
-          description="Esta pantalla resume la recaudación global, saldos y pagos para una lectura y control rápidos del estado de la plataforma."
-          actions={
-            <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
-              <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-500"></span>
-              Sistema en línea
-            </div>
-          }
-        />
-
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-3">
           <MetricCard title="Total recaudado" value={formatMoney(totalCollected, "ARS")} description="Monto cobrado y acreditado con éxito." tone="emerald" />
-          <MetricCard title="Saldo aplicado" value={formatMoney(totalCreditApplied, "ARS")} description="Saldo a favor descontado en pagos de viajes." tone="sky" />
-          <MetricCard title="Saldo devuelto" value={formatMoney(totalCreditGranted, "ARS")} description="Créditos devueltos por cancelaciones o ajustes." tone="amber" />
           <MetricCard title="Pagado a choferes" value={formatMoney(totalSettled, "ARS")} description="Fondos ya transferidos a los conductores." tone="sky" />
           <MetricCard title="Pendiente a choferes" value={String(pendingCount)} description={`Pendiente de transferir: ${formatMoney(pendingAmount, "ARS")}`} tone="amber" />
-          <MetricCard title="Eficacia de cobros" value={`${successRate.toFixed(1)}%`} description={`${paidCharges} de ${totalCharges} transacciones aprobadas.`} tone={successRate > 90 ? "emerald" : successRate > 70 ? "amber" : "rose"} />
         </div>
-
-        <AdminQuickActions />
 
         <div className="grid gap-8 lg:grid-cols-2">
           <SectionCard>
@@ -114,8 +76,8 @@ export default async function AdminHomePage() {
                 <h3 className="text-xl font-semibold text-slate-900">Cálculos de tarifas recientes</h3>
                 <p className="mt-2 text-sm text-slate-600">Últimas tarifas finales definidas para viajes completados.</p>
               </div>
-              <Link href="/admin/pools" className="text-sm font-semibold text-primary hover:underline">
-                Ver cierre de viajes
+              <Link href="/admin/credits" className="text-sm font-semibold text-primary hover:underline">
+                Ver ajustes de crédito
               </Link>
             </div>
 

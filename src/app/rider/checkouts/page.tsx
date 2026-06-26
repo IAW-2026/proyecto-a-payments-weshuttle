@@ -14,9 +14,12 @@ export default async function RiderCheckoutsPage() {
   const authContext = await requirePageRole(["rider"]);
 
   return (
-    <AppShell role="rider" clerkUserId={authContext.clerkUserId} title="Mis Pagos Recientes" description="Historial de tus pagos y estado de tus viajes.">
+    <AppShell role="rider" clerkUserId={authContext.clerkUserId} title="" description="">
       <div className="flex flex-col gap-6 max-w-3xl mx-auto">
-        <RiderHero title="Consulta tu historial de pagos." description="Aquí puedes revisar el estado y el desglose de todos los viajes asociados a tu cuenta." />
+        <RiderHero 
+          title="Mis Pagos Recientes" 
+          description="Historial de tus pagos y estado de tus viajes. Aquí puedes revisar el estado y el desglose de todos los viajes asociados a tu cuenta." 
+        />
 
         <Suspense fallback={<RiderCheckoutsSkeleton />}>
           <RiderCheckoutsContentSection clerkUserId={authContext.clerkUserId} />
@@ -54,8 +57,13 @@ async function RiderCheckoutsContentSection({ clerkUserId }: { clerkUserId: stri
       </div>
 
       <div className="mt-6 space-y-3">
-        {data.recentCheckouts.map((checkout) => (
-          <Link key={checkout.id} href={`/checkout/${checkout.id}`} className="block rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm hover:border-sky-300 hover:bg-sky-50/20 transition-all duration-200">
+        {data.recentCheckouts.map((checkout) => {
+          const creditRefund = checkout.charges?.reduce((acc, c) => acc + c.creditGranted.toNumber(), 0) || 0;
+          const isPaid = checkout.status === "PAID";
+          const isPending = checkout.status === "CREATED" || checkout.status === "PENDING";
+          const isClickable = isPaid || isPending;
+
+          const cardContent = (
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-500 shrink-0">
@@ -65,18 +73,61 @@ async function RiderCheckoutsContentSection({ clerkUserId }: { clerkUserId: stri
                   </svg>
                 </div>
                 <div>
-                  <p className="font-bold text-slate-800">Viaje #{checkout.reservationId}</p>
-                  <p className="text-xs text-slate-400">Creado el {formatDateTime(checkout.createdAt)}</p>
-                  <p className="mt-1 text-sm text-slate-600">Total a pagar: <strong className="text-slate-900 font-bold">{formatMoney(checkout.amountToCharge.toNumber(), checkout.currency)}</strong></p>
+                  <p className="font-bold text-slate-800">
+                    {checkout.destinationName ? `Destino: ${checkout.destinationName}` : `Viaje #${checkout.reservationId}`}
+                  </p>
+                  {checkout.departureTime ? (
+                    <p className="text-xs text-slate-500">
+                      Horario de salida: <span className="font-semibold text-slate-700">{formatDateTime(checkout.departureTime)}</span>
+                    </p>
+                  ) : (
+                    <p className="text-xs text-slate-400">Creado el {formatDateTime(checkout.createdAt)}</p>
+                  )}
+                  <p className="mt-1 text-sm text-slate-600">
+                    {isPaid ? "Total: " : "Total a pagar: "}
+                    <strong className="text-slate-900 font-bold">{formatMoney(checkout.amountToCharge.toNumber(), checkout.currency)}</strong>
+                  </p>
+                  {isPaid && (
+                    <p className="mt-1 text-xs text-emerald-600 font-bold flex items-center gap-1">
+                      <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      Saldo devuelto: +{formatMoney(creditRefund, checkout.currency)}
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="flex flex-col items-start gap-2 sm:items-end">
                 <StatusBadge value={checkout.status} label={humanizeStatus(checkout.status)} />
-                <span className="text-xs font-semibold text-sky-600">Ver recibo</span>
+                {isPaid && (
+                  <span className="text-xs font-semibold text-sky-600">Ver recibo</span>
+                )}
+                {isPending && (
+                  <span className="text-xs font-semibold text-amber-600">Pagar viaje →</span>
+                )}
               </div>
             </div>
-          </Link>
-        ))}
+          );
+
+          if (isClickable) {
+            return (
+              <Link
+                key={checkout.id}
+                href={`/checkout/${checkout.id}`}
+                className="block rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm hover:border-sky-300 hover:bg-sky-50/20 transition-all duration-200"
+              >
+                {cardContent}
+              </Link>
+            );
+          }
+
+          return (
+            <div
+              key={checkout.id}
+              className="rounded-2xl border border-slate-200 bg-white px-4 py-4 opacity-70"
+            >
+              {cardContent}
+            </div>
+          );
+        })}
 
         {data.recentCheckouts.length === 0 ? (
           <EmptyState title="Todavia no hay checkouts" description="Crea un checkout de demo para empezar a mostrar el flujo de pago en la presentacion." />

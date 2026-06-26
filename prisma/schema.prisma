@@ -253,3 +253,28 @@ model SystemSetting {
   @@map("system_settings")
 }
 
+enum NotificationRole {
+  RIDER
+  DRIVER
+  ADMIN
+}
+
+model Notification {
+  id          String            @id @default(cuid())
+  type        String            // p. ej. PAYMENT_APPROVED, SETTLEMENT_PENDING, METHOD_SAVED, METHOD_DELETED, etc.
+  title       String
+  message     String
+  userId      String            @map("user_id") // ID del usuario relacionado
+  role        NotificationRole? @map("role")     // Rol del usuario relacionado
+  actorUserId String            @map("actor_user_id") // ID del usuario que generó el evento
+  actorName   String?           @map("actor_name")    // Nombre del actor obtenido de Clerk
+  actorRole   NotificationRole? @map("actor_role")    // Rol del actor
+  read        Boolean           @default(false)
+  createdAt   DateTime          @default(now()) @map("created_at")
+
+  @@index([userId, read])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+

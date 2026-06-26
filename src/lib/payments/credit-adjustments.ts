@@ -5,6 +5,7 @@ import {
 } from "@/lib/external-apis";
 import { calculateDiscountAmount, findApplicablePricingRule } from "@/lib/pricing-rules";
 import { prisma } from "@/lib/prisma";
+import { logNotification } from "@/lib/notifications";
 
 type CreditAdjustmentReason = "POOL_LOCKED" | "NO_DRIVER_ASSIGNED";
 
@@ -251,16 +252,36 @@ export async function calculateCreditAdjustments(
           creditBalanceAfter,
         });
 
-        await notifyReservationCreditAdjustment({
-          reservationId: passenger.reservationId,
-          poolId: input.poolId,
-          passengerUserId: passenger.passengerUserId,
-          finalTripPrice: finalTripPrice,
-          creditGranted,
-          creditBalanceAfter,
-          reason: input.reason,
-          processedAt: new Date().toISOString(),
+        await logNotification({
+          type: "CREDIT_GENERATED",
+          title: "Crédito Generado",
+          message: `Se generó un crédito de $${creditGranted} a favor del pasajero por ajuste de tarifa (${input.reason === "POOL_LOCKED" ? "ajuste de ocupación" : "viaje cancelado sin chofer"}) en reserva #${passenger.reservationId}.`,
+          userId: passenger.passengerUserId,
+          role: "RIDER",
         });
+
+        try {
+          await notifyReservationCreditAdjustment({
+            reservationId: passenger.reservationId,
+            poolId: input.poolId,
+            passengerUserId: passenger.passengerUserId,
+            finalTripPrice: finalTripPrice,
+            creditGranted,
+            creditBalanceAfter,
+            reason: input.reason,
+            processedAt: new Date().toISOString(),
+          });
+        } catch (err) {
+          console.error("Failed to notify rider app of credit adjustment", err);
+          const errMsg = err instanceof Error ? err.message : "Error desconocido";
+          await logNotification({
+            type: "INTEGRATION_ERROR",
+            title: "Error de integración con Rider App",
+            message: `Fallo al notificar ajuste de crédito para reserva #${passenger.reservationId}. Error: ${errMsg}`,
+            userId: passenger.passengerUserId,
+            role: "RIDER",
+          });
+        }
       }
     }
 
@@ -270,6 +291,14 @@ export async function calculateCreditAdjustments(
         status: "COMPLETED",
         finishedAt: new Date(),
       },
+    });
+
+    await logNotification({
+      type: "POOL_FINALIZATION_COMPLETED",
+      title: "Cierre T-1h Procesado",
+      message: `El proceso de cierre T-1h para el pool ${input.poolId} finalizó con éxito (${manifest.passengers.length} reservas procesadas).`,
+      userId: "system",
+      role: "ADMIN",
     });
 
     return {
@@ -290,6 +319,14 @@ export async function calculateCreditAdjustments(
         status: "FAILED",
         finishedAt: new Date(),
       },
+    });
+
+    await logNotification({
+      type: "POOL_FINALIZATION_FAILED",
+      title: "Cierre T-1h Fallido",
+      message: `El proceso de cierre T-1h para el pool ${input.poolId} falló.`,
+      userId: "system",
+      role: "ADMIN",
     });
 
     throw new Error(`POOL_PRICE_FINALIZATION_FAILED:${input.poolId}:${input.departureTime}`);

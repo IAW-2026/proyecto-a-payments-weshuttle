@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { logNotification } from "@/lib/notifications";
 
 type SettlePoolInput = {
   poolId: string;
@@ -104,6 +105,14 @@ export async function settlePool(input: SettlePoolInput): Promise<SettlePoolResu
       status: "PENDING",
       settledAt: null,
     },
+  });
+
+  await logNotification({
+    type: "SETTLEMENT_PENDING",
+    title: "Liquidación Pendiente",
+    message: `Se reportó fin de viaje en el pool ${input.poolId}. El chofer solicita liquidación de $${amount.toFixed(2)}.`,
+    userId: input.driverUserId,
+    role: "DRIVER",
   });
 
   return {
