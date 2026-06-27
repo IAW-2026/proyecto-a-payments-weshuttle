@@ -195,14 +195,32 @@ function EligiblePoolsSkeleton() {
  * Isolated Async Component that performs passenger manifest fetches
  */
 async function EligiblePoolsSection() {
+  // Query only pools that have paid charges and are not finalized yet (finalTripPrice is null)
   const dbPools = await prisma.charge.findMany({
-    where: { status: "PAID" },
+    where: {
+      status: "PAID",
+      finalTripPrice: null,
+    },
     select: { poolId: true },
     distinct: ["poolId"],
   });
 
+  // Query pools that already have a completed or started finalization job
+  const finalizedJobs = await prisma.poolPriceFinalizationJob.findMany({
+    where: {
+      status: { in: ["STARTED", "COMPLETED"] },
+    },
+    select: { poolId: true },
+  });
+  const finalizedPoolIds = new Set(finalizedJobs.map((j) => j.poolId));
+
   const mockPoolIds = getMockPoolIds();
-  const allPoolIds = Array.from(new Set([...dbPools.map((c) => c.poolId), ...mockPoolIds]));
+  const allPoolIds = Array.from(
+    new Set([
+      ...dbPools.map((c) => c.poolId).filter((id) => !finalizedPoolIds.has(id)),
+      ...mockPoolIds.filter((id) => !finalizedPoolIds.has(id)),
+    ])
+  );
 
   const poolsData = await Promise.all(
     allPoolIds.map(async (poolId) => {

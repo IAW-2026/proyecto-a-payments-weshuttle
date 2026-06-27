@@ -222,6 +222,20 @@ export function getMockPoolIds(): string[] {
   return Object.keys(MOCK_MANIFESTS);
 }
 
+function parsePoolId(poolId: string) {
+  // Pattern: pool_(\d+)_(.+)_(\d+)_(\d{4}-\d{2}-\d{2})
+  const match = poolId.match(/^pool_(\d+)_(.+)_(\d+)_(\d{4}-\d{2}-\d{2})$/);
+  if (match) {
+    const [, , destSlug, hourStr, dateStr] = match;
+    const destinationId = `dest_${destSlug}`;
+    
+    const hour = parseInt(hourStr, 10);
+    const departureTime = new Date(`${dateStr}T${hour.toString().padStart(2, "0")}:00:00`).toISOString();
+    return { destinationId, departureTime };
+  }
+  return null;
+}
+
 export async function getPoolPassengers(
   poolId: string,
   filter?: ExternalPoolPassengersFilter,
@@ -262,6 +276,10 @@ export async function getPoolPassengers(
     return null;
   }
 
+  const parsed = parsePoolId(poolId);
+  const destinationId = parsed?.destinationId ?? "dest_polo_petroquimico";
+  const departureTime = parsed?.departureTime ?? new Date(Date.now() + 60 * 60 * 1000).toISOString();
+
   const fallbackManifest: ExternalPoolPassengersResponse = {
     poolId,
     passengers: charges.map((charge) => ({
@@ -275,8 +293,8 @@ export async function getPoolPassengers(
         lat: -38.718,
         lng: -62.266,
       },
-      destinationId: "dest_polo_petroquimico",
-      departureTime: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      destinationId,
+      departureTime,
       maxPrice: charge.maxPrice.toNumber(),
       amountCharged: charge.amountCharged.toNumber(),
       creditApplied: charge.creditApplied.toNumber(),
