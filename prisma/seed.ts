@@ -201,19 +201,118 @@ async function main() {
 
   await prisma.payoutAccount.createMany({ data: payoutAccountsData });
 
-  // 7. Calcular saldo a favor por pasajero del manifiesto
-  console.log("💰 Calculando saldos a favor (Credits) para pasajeros del manifiesto...");
-  const creditBalances: Record<string, number> = {};
-
-  // Inicializar todos los pasajeros conocidos
+  // 7. Calcular saldo a favor por pasajero del manifiesto mediante simulación cronológica
+  console.log("💰 Ejecutando simulación cronológica de saldos a favor (Credits) para pasajeros del manifiesto...");
+  
+  const runningBalances: Record<string, number> = {};
   for (const p of passengers) {
-    creditBalances[p.clerk_user_id] = 0;
+    runningBalances[p.clerk_user_id] = 0;
   }
 
-  // Sumar 500 por cada reserva CONFIRMED del manifiesto
-  for (const r of reservations) {
-    if (r.reservation_status === "CONFIRMED") {
-      creditBalances[r.passenger_user_id] = (creditBalances[r.passenger_user_id] || 0) + (r.credit_granted || 0);
+  // Ordenar reservas cronológicamente por departure_time
+  const sortedReservations = [...reservations].sort((a, b) => {
+    return new Date(a.departure_time).getTime() - new Date(b.departure_time).getTime();
+  });
+
+  const manifestCheckoutSessions: Prisma.CheckoutSessionCreateManyInput[] = [];
+  const manifestCharges: Prisma.ChargeCreateManyInput[] = [];
+  const manifestCreditMovements: Prisma.CreditMovementCreateManyInput[] = [];
+
+  for (const r of sortedReservations) {
+    const depTime = new Date(r.departure_time);
+    const isConfirmed = r.reservation_status === "CONFIRMED";
+    const poolId = isConfirmed ? r.pool_id! : "pool_canceled_unassigned";
+    const passengerUserId = r.passenger_user_id;
+
+    // 1. Fase de Checkout / Charge
+    const balanceBefore = runningBalances[passengerUserId] || 0;
+    const maxPriceVal = r.max_price || 3500;
+    const creditAppliedVal = Math.min(balanceBefore, maxPriceVal);
+    const amountToChargeVal = maxPriceVal - creditAppliedVal;
+
+    // Actualizar balance
+    runningBalances[passengerUserId] = balanceBefore - creditAppliedVal;
+
+    // CheckoutSession
+    manifestCheckoutSessions.push({
+      id: `chk_${r.id}`,
+      reservationId: r.id,
+      poolId: poolId,
+      passengerUserId: passengerUserId,
+      maxPrice: money(maxPriceVal),
+      availableCreditAtCreation: money(balanceBefore),
+      creditApplied: money(creditAppliedVal),
+      amountToCharge: money(amountToChargeVal),
+      currency: CURRENCY,
+      status: "PAID" as const,
+      provider: "MERCADO_PAGO" as const,
+      checkoutUrl: `https://payments-app.local/checkout/chk_${r.id}`,
+      mercadoPagoPreferenceId: `mp_pref_${r.id}`,
+      mercadoPagoInitPoint: `https://sandbox.mercadopago.com/checkout/v1/redirect?pref_id=mp_pref_${r.id}`,
+      expiresAt: new Date(depTime.getTime() + 60 * 60 * 1000),
+      createdAt: new Date(depTime.getTime() - 2 * 60 * 60 * 1000),
+      updatedAt: new Date(depTime.getTime() - 2 * 60 * 60 * 1000),
+    });
+
+    // Charge
+    manifestCharges.push({
+      id: `chg_${r.id}`,
+      transactionId: r.payment_transaction_id,
+      checkoutSessionId: `chk_${r.id}`,
+      poolPriceFinalizationJobId: isConfirmed ? `ppfj_${poolId}` : null,
+      poolId: poolId,
+      reservationId: r.id,
+      passengerUserId: passengerUserId,
+      maxPrice: money(maxPriceVal),
+      creditApplied: money(creditAppliedVal),
+      amountCharged: money(amountToChargeVal),
+      finalTripPrice: isConfirmed ? money(r.final_trip_price || 3000) : null,
+      creditGranted: isConfirmed ? money(r.credit_granted || 500) : money(0),
+      currency: CURRENCY,
+      status: "PAID" as const,
+      provider: "MERCADO_PAGO" as const,
+      rejectionReason: null,
+      processedAt: new Date(depTime.getTime() - 2 * 60 * 60 * 1000 + 5 * 60 * 1000),
+      createdAt: new Date(depTime.getTime() - 2 * 60 * 60 * 1000),
+    });
+
+    // Movimiento de crédito aplicado (solo si se usó saldo a favor)
+    if (creditAppliedVal > 0) {
+      manifestCreditMovements.push({
+        id: `cm_applied_${r.id}`,
+        creditAccountId: `ca_${passengerUserId}`,
+        userId: passengerUserId,
+        type: "CREDIT_APPLIED" as const,
+        amount: money(creditAppliedVal),
+        currency: CURRENCY,
+        reservationId: r.id,
+        poolId: poolId,
+        chargeId: `chg_${r.id}`,
+        poolPriceFinalizationJobId: null,
+        description: "Saldo a favor aplicado en checkout.",
+        createdAt: new Date(depTime.getTime() - 2 * 60 * 60 * 1000 + 5 * 60 * 1000),
+      });
+    }
+
+    // 2. Fase de Cierre (Finalización de Pool - solo confirmados)
+    if (isConfirmed) {
+      const creditGrantedVal = r.credit_granted || 500;
+      runningBalances[passengerUserId] = (runningBalances[passengerUserId] || 0) + creditGrantedVal;
+
+      manifestCreditMovements.push({
+        id: `cm_granted_${r.id}`,
+        creditAccountId: `ca_${passengerUserId}`,
+        userId: passengerUserId,
+        type: "CREDIT_GRANTED" as const,
+        amount: money(creditGrantedVal),
+        currency: CURRENCY,
+        reservationId: r.id,
+        poolId: poolId,
+        chargeId: `chg_${r.id}`,
+        poolPriceFinalizationJobId: `ppfj_${poolId}`,
+        description: "Saldo a favor generado por descuento de ocupación al cierre T-1h.",
+        createdAt: new Date(depTime.getTime() - 60 * 60 * 1000 + 5 * 60 * 1000),
+      });
     }
   }
 
@@ -251,7 +350,8 @@ async function main() {
     }
   ];
 
-  for (const [userId, balance] of Object.entries(creditBalances)) {
+  // Cargar los saldos finales de los pasajeros del manifiesto según la simulación
+  for (const [userId, balance] of Object.entries(runningBalances)) {
     if (!creditAccountsData.some(ca => ca.userId === userId)) {
       creditAccountsData.push({
         id: `ca_${userId}`,
@@ -777,72 +877,9 @@ async function main() {
   }
 
   // F. Cargar reservas del manifiesto
-  for (const r of reservations) {
-    const depTime = new Date(r.departure_time);
-    const isConfirmed = r.reservation_status === "CONFIRMED";
-    const poolId = isConfirmed ? r.pool_id! : "pool_canceled_unassigned";
-
-    // CheckoutSession
-    checkoutSessionsToCreate.push({
-      id: `chk_${r.id}`,
-      reservationId: r.id,
-      poolId: poolId,
-      passengerUserId: r.passenger_user_id,
-      maxPrice: money(3500),
-      availableCreditAtCreation: money(0),
-      creditApplied: money(0),
-      amountToCharge: money(3500),
-      currency: CURRENCY,
-      status: "PAID" as const,
-      provider: "MERCADO_PAGO" as const,
-      checkoutUrl: `https://payments-app.local/checkout/chk_${r.id}`,
-      mercadoPagoPreferenceId: `mp_pref_${r.id}`,
-      mercadoPagoInitPoint: `https://sandbox.mercadopago.com/checkout/v1/redirect?pref_id=mp_pref_${r.id}`,
-      expiresAt: new Date(depTime.getTime() + 60 * 60 * 1000),
-      createdAt: new Date(depTime.getTime() - 2 * 60 * 60 * 1000),
-      updatedAt: new Date(depTime.getTime() - 2 * 60 * 60 * 1000),
-    });
-
-    // Charge
-    chargesToCreate.push({
-      id: `chg_${r.id}`,
-      transactionId: r.payment_transaction_id,
-      checkoutSessionId: `chk_${r.id}`,
-      poolPriceFinalizationJobId: isConfirmed ? `ppfj_${poolId}` : null,
-      poolId: poolId,
-      reservationId: r.id,
-      passengerUserId: r.passenger_user_id,
-      maxPrice: money(3500),
-      creditApplied: money(0),
-      amountCharged: money(3500),
-      finalTripPrice: isConfirmed ? money(3000) : null,
-      creditGranted: isConfirmed ? money(500) : money(0),
-      currency: CURRENCY,
-      status: "PAID" as const,
-      provider: "MERCADO_PAGO" as const,
-      rejectionReason: null,
-      processedAt: new Date(depTime.getTime() - 2 * 60 * 60 * 1000 + 5 * 60 * 1000),
-      createdAt: new Date(depTime.getTime() - 2 * 60 * 60 * 1000),
-    });
-
-    // CreditMovement (solo para confirmados)
-    if (isConfirmed) {
-      creditMovementsToCreate.push({
-        id: `cm_granted_${r.id}`,
-        creditAccountId: `ca_${r.passenger_user_id}`,
-        userId: r.passenger_user_id,
-        type: "CREDIT_GRANTED" as const,
-        amount: money(500),
-        currency: CURRENCY,
-        reservationId: r.id,
-        poolId: poolId,
-        chargeId: `chg_${r.id}`,
-        poolPriceFinalizationJobId: `ppfj_${poolId}`,
-        description: "Saldo a favor generado por descuento de ocupación al cierre T-1h.",
-        createdAt: new Date(depTime.getTime() - 60 * 60 * 1000 + 5 * 60 * 1000),
-      });
-    }
-  }
+  checkoutSessionsToCreate.push(...manifestCheckoutSessions);
+  chargesToCreate.push(...manifestCharges);
+  creditMovementsToCreate.push(...manifestCreditMovements);
 
   // G. Escribir los registros en la DB
   console.log("💾 Escribiendo CheckoutSessions, Jobs, Charges y CreditMovements en DB...");
